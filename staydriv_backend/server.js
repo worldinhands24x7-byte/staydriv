@@ -402,6 +402,9 @@ const bookingSchema = new mongoose.Schema({
   scheduledTimeSlot: String,
   waitingCharge: Number,
   distance: String,
+  cancelledBy: String,
+  cancelReason: String,
+  updatedAt: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -582,7 +585,37 @@ app.post('/api/booking/cancel', async (req, res) => {
     booking.status = 'cancelled';
     booking.cancelledBy = cancelledBy || 'pilot';
     booking.cancelReason = reason || '';
+    booking.updatedAt = new Date();
     await booking.save();
+
+    // Clear active in-memory dispatch timer if pending
+    if (typeof activeBookings !== 'undefined' && activeBookings[bookingId]) {
+      clearTimeout(activeBookings[bookingId].timer);
+      delete activeBookings[bookingId];
+    }
+
+    // Broadcast cancellation notification to Pilot, Customer, Admin, and Simulator
+    const cancelPayload = {
+      type: 'ride_cancelled',
+      bookingId,
+      status: 'cancelled',
+      cancelledBy: cancelledBy || 'pilot',
+      reason: reason || (cancelledBy === 'customer' ? 'Customer cancelled the ride request' : 'Pilot cancelled the ride request'),
+      cancelReason: reason || (cancelledBy === 'customer' ? 'Customer cancelled the ride request' : 'Pilot cancelled the ride request'),
+      passengerId: booking.passengerId,
+      driverId: booking.driverId,
+      message: cancelledBy === 'customer' 
+        ? 'Customer has cancelled the ride.' 
+        : 'Pilot has cancelled the ride.',
+      activeBooking: booking.toObject ? booking.toObject() : booking
+    };
+
+    if (typeof io !== 'undefined' && io) {
+      io.emit('state_update', cancelPayload);
+      io.emit('ride_cancelled', cancelPayload);
+      io.emit('booking_cancelled', cancelPayload);
+      console.log(`[SOCKET BROADCAST] Ride cancelled by ${cancelPayload.cancelledBy} for booking ${bookingId}`);
+    }
 
     // Write to GlobalState for tracking
     await GlobalState.create({
@@ -860,6 +893,22 @@ app.get('/api/booking/available', async (req, res) => {
       }
     }
 
+    // Also check if any booking assigned to this driver was cancelled by customer recently (last 45s)
+    const fortyFiveSecsAgo = new Date(Date.now() - 45000);
+    const recentCustomerCancelled = await Booking.find({
+      driverId: driverId,
+      status: 'cancelled',
+      cancelledBy: 'customer',
+      $or: [
+        { updatedAt: { $gte: fortyFiveSecsAgo } },
+        { createdAt: { $gte: fortyFiveSecsAgo } }
+      ]
+    }).sort({ updatedAt: -1, createdAt: -1 }).limit(1);
+
+    if (recentCustomerCancelled && recentCustomerCancelled.length > 0) {
+      activeForThisDriver.push(...recentCustomerCancelled);
+    }
+
     res.status(200).json({ success: true, bookings: activeForThisDriver });
   } catch (err) {
     console.error('MongoDB Available Bookings Fetch Error:', err.message);
@@ -882,14 +931,20 @@ app.get('/api/booking/:bookingId', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
 // Endpoint to retrieve active booking for a passenger/customer
 app.get('/api/booking/active/passenger/:passengerId', async (req, res) => {
   try {
     const { passengerId } = req.params;
+    const fortyFiveSecsAgo = new Date(Date.now() - 45000);
     const booking = await Booking.findOne({
       passengerId,
-      status: { $in: ['searching', 'accepted', 'arrived', 'started'] }
-    }).sort({ createdAt: -1 });
+      $or: [
+        { status: { $in: ['searching', 'accepted', 'arrived', 'started'] } },
+        { status: 'cancelled', updatedAt: { $gte: fortyFiveSecsAgo } },
+        { status: 'cancelled', createdAt: { $gte: fortyFiveSecsAgo } }
+      ]
+    }).sort({ updatedAt: -1, createdAt: -1 });
 
     if (booking) {
       res.status(200).json({ success: true, booking });
@@ -898,6 +953,31 @@ app.get('/api/booking/active/passenger/:passengerId', async (req, res) => {
     }
   } catch (err) {
     console.error('MongoDB Passenger Active Booking Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to retrieve active booking for a pilot/driver
+app.get(['/api/booking/active/pilot/:driverId', '/api/booking/active/driver/:driverId'], async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const fortyFiveSecsAgo = new Date(Date.now() - 45000);
+    const booking = await Booking.findOne({
+      driverId,
+      $or: [
+        { status: { $in: ['accepted', 'arrived', 'started'] } },
+        { status: 'cancelled', updatedAt: { $gte: fortyFiveSecsAgo } },
+        { status: 'cancelled', createdAt: { $gte: fortyFiveSecsAgo } }
+      ]
+    }).sort({ updatedAt: -1, createdAt: -1 });
+
+    if (booking) {
+      res.status(200).json({ success: true, booking });
+    } else {
+      res.status(404).json({ success: false, message: 'No active booking found for pilot' });
+    }
+  } catch (err) {
+    console.error('MongoDB Pilot Active Booking Error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1852,6 +1932,33 @@ io.on('connection', (socket) => {
     // Legacy support for global broadcast (customer tracking driver location, etc)
     io.emit('state_update', data);
     GlobalState.create({ type: 'update_state', activeBooking: data });
+  });
+
+  // Client cancellation via WebSockets (Customer or Pilot)
+  socket.on('cancel_booking', (data) => {
+    const bookingId = data?.bookingId;
+    const cancelledBy = data?.cancelledBy || 'customer';
+    const reason = data?.reason || (cancelledBy === 'customer' ? 'Customer cancelled the ride request' : 'Pilot cancelled the ride request');
+
+    if (bookingId && activeBookings[bookingId]) {
+      clearTimeout(activeBookings[bookingId].timer);
+      delete activeBookings[bookingId];
+    }
+
+    const cancelPayload = {
+      type: 'ride_cancelled',
+      bookingId,
+      status: 'cancelled',
+      cancelledBy,
+      reason,
+      cancelReason: reason,
+      message: cancelledBy === 'customer' ? 'Customer has cancelled the ride.' : 'Pilot has cancelled the ride.'
+    };
+
+    io.emit('state_update', cancelPayload);
+    io.emit('ride_cancelled', cancelPayload);
+    io.emit('booking_cancelled', cancelPayload);
+    console.log(`[SOCKET EVENT] cancel_booking received for ${bookingId} by ${cancelledBy}`);
   });
 
   socket.on('disconnect', () => {

@@ -226,6 +226,110 @@
       height: 100%;
       border: none;
     }
+
+    /* Cancellation Popup Modal */
+    .cancel-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.25s ease;
+    }
+    .cancel-modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+    }
+    .cancel-modal-content {
+      position: relative;
+      background: #182234;
+      border: 1px solid #ef4444;
+      box-shadow: 0 16px 40px rgba(239, 68, 68, 0.3);
+      border-radius: 20px;
+      width: 90%;
+      max-width: 480px;
+      overflow: hidden;
+      z-index: 10;
+      animation: popUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .cancel-modal-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cancel-modal-header h3 {
+      font-size: 18px;
+      font-weight: 700;
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      flex: 1;
+    }
+    .cancel-close-btn {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 24px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .cancel-modal-body {
+      padding: 20px;
+      color: #f3f4f6;
+    }
+    .cancel-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(239, 68, 68, 0.2);
+      color: #fca5a5;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      margin-bottom: 12px;
+    }
+    .cancel-message {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #ffffff;
+      line-height: 1.4;
+    }
+    .cancel-reason-box {
+      background: rgba(0, 0, 0, 0.3);
+      border-left: 3px solid #ef4444;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 8px;
+      font-style: italic;
+    }
+    .cancel-modal-footer {
+      padding: 12px 20px 16px;
+      display: flex;
+      justify-content: flex-end;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes popUp {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -302,6 +406,27 @@
     </div>
   </main>
 
+  <!-- Live Ride Cancellation Popup Modal -->
+  <div id="cancelModal" class="cancel-modal" style="display: none;">
+    <div class="cancel-modal-backdrop" onclick="closeCancelModal()"></div>
+    <div class="cancel-modal-content">
+      <div class="cancel-modal-header" id="cancelModalHeader">
+        <span style="font-size: 20px;">🔔</span>
+        <h3 id="cancelModalTitle">Ride Cancelled</h3>
+        <button class="cancel-close-btn" onclick="closeCancelModal()">&times;</button>
+      </div>
+      <div class="cancel-modal-body">
+        <div class="cancel-badge" id="cancelRecipientBadge">Notification to Pilot</div>
+        <p class="cancel-message" id="cancelModalMessage">Customer has cancelled the ride request.</p>
+        <div class="cancel-reason-box" id="cancelModalReason">Reason: "Customer cancelled"</div>
+      </div>
+      <div class="cancel-modal-footer">
+        <button class="btn btn-primary" onclick="closeCancelModal()">OK, Return to Ready State</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
   <script>
     function reloadFrame(frameId) {
       const frame = document.getElementById(frameId);
@@ -314,6 +439,75 @@
       reloadFrame('frame-customer');
       reloadFrame('frame-pilot');
       reloadFrame('frame-admin');
+    }
+
+    function playAlertChime() {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5
+        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.4);
+      } catch (e) {
+        console.warn('Audio chime unavailable:', e);
+      }
+    }
+
+    function showCancellationPopup(data) {
+      const isCustomerCancelled = (data.cancelledBy === 'customer');
+      const title = isCustomerCancelled ? 'Customer Cancelled Ride' : 'Pilot Cancelled Ride';
+      const badge = isCustomerCancelled ? 'Notification to Pilot' : 'Notification to Customer';
+      const message = isCustomerCancelled
+        ? 'The customer has cancelled this ride request.'
+        : 'The pilot has cancelled this ride request.';
+      const reason = data.reason || data.cancelReason || (isCustomerCancelled ? 'Customer cancelled the request' : 'Pilot unable to fulfill ride');
+
+      document.getElementById('cancelModalTitle').innerText = title;
+      document.getElementById('cancelRecipientBadge').innerText = badge;
+      document.getElementById('cancelModalMessage').innerText = message;
+      document.getElementById('cancelModalReason').innerText = `Reason: "${reason}"`;
+      document.getElementById('cancelModal').style.display = 'flex';
+
+      playAlertChime();
+    }
+
+    function closeCancelModal() {
+      document.getElementById('cancelModal').style.display = 'none';
+      refreshAllFrames();
+    }
+
+    // Connect to backend Socket.IO for real-time cancellation notifications
+    try {
+      const socket = io();
+      socket.on('connect', () => {
+        console.log('[Simulator] Connected to Socket.IO for live cancel updates');
+      });
+
+      socket.on('ride_cancelled', (data) => {
+        console.log('[Simulator] Received ride_cancelled event:', data);
+        showCancellationPopup(data);
+      });
+
+      socket.on('booking_cancelled', (data) => {
+        console.log('[Simulator] Received booking_cancelled event:', data);
+        showCancellationPopup(data);
+      });
+
+      socket.on('state_update', (data) => {
+        if (data && (data.status === 'cancelled' || data.type === 'ride_cancelled')) {
+          console.log('[Simulator] Received state_update cancelled:', data);
+          showCancellationPopup(data);
+        }
+      });
+    } catch (err) {
+      console.warn('Socket.IO init error on simulator:', err);
     }
   </script>
 </body>

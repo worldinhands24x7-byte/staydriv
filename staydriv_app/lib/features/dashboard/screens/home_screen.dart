@@ -2328,9 +2328,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return;
     }
 
+    final status = active['status'] as String? ?? 'searching';
+
+    // Prioritize cancellation notification so pilot always receives the popup when customer cancels
+    if (status == 'cancelled') {
+      _stopRinging();
+      final cancelledBy = active['cancelledBy'] as String?;
+      if (cancelledBy == 'customer' || cancelledBy == null) {
+        _showCustomerCancelledNotificationToPilot(active);
+      } else {
+        setState(() {
+          _activeBooking = null;
+          _driverStatus = _isOnline ? 'online' : 'offline';
+          _driverRoutePoints = [];
+        });
+      }
+      return;
+    }
+
     if (_isNearAndMatching(active)) {
-      final status = active['status'] as String? ?? 'searching';
-      
       // Heavy Truck pilots should NOT see any ride progress screen (keep them online/idle)
       final bool isHeavyTruck = active['serviceType'] == 'heavy_truck' ||
           (active['title'] as String? ?? '').toLowerCase().contains('heavy truck') ||
@@ -2356,21 +2372,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (normalizedActive['dropLatLng'] != null && normalizedActive['dropLatLng'] is! LatLng) {
         final map = normalizedActive['dropLatLng'] as Map;
         normalizedActive['dropLatLng'] = LatLng((map['lat'] as num).toDouble(), (map['lng'] as num).toDouble());
-      }
-
-      if (status == 'cancelled') {
-        _stopRinging();
-        final cancelledBy = active['cancelledBy'] as String?;
-        if (cancelledBy == 'customer' || cancelledBy == null) {
-          _showCustomerCancelledNotificationToPilot(active);
-        } else {
-          setState(() {
-            _activeBooking = null;
-            _driverStatus = _isOnline ? 'online' : 'offline';
-            _driverRoutePoints = [];
-          });
-        }
-        return;
       }
 
       setState(() {
