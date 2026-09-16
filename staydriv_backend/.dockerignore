@@ -1,0 +1,10 @@
+node_modules
+npm-debug.log
+.env
+.git
+.github
+generate_icons.js
+CVS
+.svn
+.hg
+.DS_Store

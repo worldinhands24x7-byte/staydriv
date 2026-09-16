@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "372277190040",
+    "project_id": "staydriv-74e8f",
+    "storage_bucket": "staydriv-74e8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372277190040:android:4a9844cdd1b76af9b59fed",
+        "android_client_info": {
+          "package_name": "com.staydriv.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ_Hoy7X5PkMz0MXLLzgvkH_A1e8xzLZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

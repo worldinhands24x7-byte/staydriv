@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the authenticated user is an active admin
+    function getAdminData() {
+      return get(/databases/$(database)/documents/admin_users/$(request.auth.uid)).data;
+    }
+    
+    function isActiveAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/admin_users/$(request.auth.uid)) &&
+             getAdminData().status == 'active';
+    }
+
+    // Helper functions for specific roles
+    function hasRole(role) {
+      return isActiveAdmin() && getAdminData().role == role;
+    }
+
+    function isSuperAdmin() {
+      return hasRole('super_admin');
+    }
+
+    function isOpsAdmin() {
+      return hasRole('admin') || isSuperAdmin();
+    }
+
+    function isSupportExecutive() {
+      return hasRole('support') || isOpsAdmin();
+    }
+
+    function isFinanceManager() {
+      return hasRole('finance') || isSuperAdmin();
+    }
+
+    // 1. Admin Users collection rules
+    match /admin_users/{adminId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+
+    // 2. Customers (users) collection rules
+    match /users/{userId} {
+      allow read: if request.auth != null; // Mobile clients and admin users
+      allow write: if request.auth != null && request.auth.uid == userId || isOpsAdmin();
+    }
+
+    // 3. Partners (drivers) collection rules
+    match /partners/{partnerId} {
+      allow read: if request.auth != null; 
+      allow write: if request.auth != null && request.auth.uid == partnerId || isOpsAdmin();
+    }
+
+    // 4. Bookings collection rules
+    match /bookings/{bookingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (resource.data.customerId == request.auth.uid || resource.data.driverId == request.auth.uid) || isSupportExecutive();
+      allow delete: if isSuperAdmin();
+    }
+
+    // 5. Deliveries collection rules
+    match /deliveries/{deliveryId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (resource.data.customerId == request.auth.uid || resource.data.driverId == request.auth.uid) || isSupportExecutive();
+      allow delete: if isSuperAdmin();
+    }
+
+    // 6. Payments & wallets collection rules
+    match /payments/{paymentId} {
+      allow read: if request.auth != null && (resource.data.userId == request.auth.uid) || isFinanceManager();
+      allow create: if request.auth != null;
+      allow update, delete: if isFinanceManager();
+    }
+
+    match /wallets/{walletId} {
+      allow read: if request.auth != null && request.auth.uid == walletId || isFinanceManager();
+      allow write: if isFinanceManager();
+    }
+
+    // 7. Support Tickets collection rules
+    match /support_tickets/{ticketId} {
+      allow read: if request.auth != null && (resource.data.creatorId == request.auth.uid) || isSupportExecutive();
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (resource.data.creatorId == request.auth.uid) || isSupportExecutive();
+      allow delete: if isOpsAdmin();
+    }
+
+    // 8. Notifications collection rules
+    match /notifications/{notificationId} {
+      allow read: if request.auth != null;
+      allow write: if isOpsAdmin();
+    }
+
+    // 9. Audit Logs collection rules
+    match /audit_logs/{logId} {
+      allow read: if isOpsAdmin();
+      allow create: if request.auth != null; // Log all updates
+      allow update, delete: if false; // Audit logs should be immutable
+    }
+
+    // 10. Platform Configurations rules
+    match /configurations/{configId} {
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
+    }
+  }
+}

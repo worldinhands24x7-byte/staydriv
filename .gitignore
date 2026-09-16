@@ -1,0 +1,40 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment and secret files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Android / Flutter binaries & build outputs
+*.apk
+*.aab
+*.zip
+*.exe
+*.dill
+*.so
+build/
+.dart_tool/
+.gradle/
+android/.gradle/
+ios/.symlinks/
+ios/Pods/
+
+# Web / Admin build outputs (can be generated)
+Staydriv_Admin/dist/
+
+# Logs and temporary files
+*.log
+tunnel_run.log
+
+# IDE and OS files
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

@@ -1,0 +1,55 @@
+name: CI/CD Pipeline - AWS Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-to-aws:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 1. Authenticate with AWS
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 2. Login to ECR
+      - name: Log in to AWS ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 3. Build & Push Image to ECR
+      - name: Build and Push Docker image to AWS ECR
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.login-ecr.outputs.registry }}/staydriv-app:latest
+
+      # 4. Generate deployment bundle zip
+      - name: Create Zip Package for Elastic Beanstalk
+        run: |
+          zip -j deploy-bundle.zip deploy/aws/dockerrun.aws.json
+
+      # 5. Deploy to AWS Elastic Beanstalk
+      - name: Deploy to AWS Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: StayDrivApp
+          environment_name: StayDrivEnv-Prod
+          version_label: "staydriv-release-${{ github.sha }}"
+          region: ${{ secrets.AWS_REGION }}
+          deployment_package: deploy-bundle.zip

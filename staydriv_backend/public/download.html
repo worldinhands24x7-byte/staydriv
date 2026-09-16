@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download StayDriv App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #080b13;
+      --card-bg: rgba(17, 23, 41, 0.7);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --text-color: #f3f4f6;
+      --text-secondary: #9ca3af;
+      --success-color: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.15) 0%, transparent 50%);
+    }
+
+    .container {
+      max-width: 680px;
+      width: 100%;
+      text-align: center;
+    }
+
+    header {
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 48px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+
+    .tagline {
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      margin-bottom: 24px;
+    }
+
+    h2 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .btn-main {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 16px 32px;
+      background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      border-radius: 14px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      margin-bottom: 24px;
+    }
+
+    .btn-main:hover {
+      background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin: 24px 0;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      flex: 1;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .divider:not(:empty)::before {
+      margin-right: .5em;
+    }
+
+    .divider:not(:empty)::after {
+      margin-left: .5em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      text-decoration: none;
+      border-radius: 12px;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary span {
+      font-size: 10px;
+      color: var(--text-secondary);
+    }
+
+    .quick-links {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 24px;
+    }
+
+    .quick-links a {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+
+    .quick-links a:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+
+    footer {
+      margin-top: 40px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">StayDriv</div>
+      <div class="tagline">Ride-hailing platform customer & pilot consoles</div>
+    </header>
+
+    <div class="card">
+      <h2>📲 Download Android App</h2>
+      <p class="subtitle">Select the option that best fits your device. We recommend trying the Universal APK first. If your device installation fails or is slow, download the split APK specific to your CPU architecture.</p>
+
+      <a href="/staydriv.apk" class="btn-main" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);" download="staydriv.apk">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download Combined Standalone APK (staydriv.apk - 60.5 MB)
+      </a>
+
+      <a href="/app-release.apk" class="btn-main" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);" download="app-release.apk">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download Release APK (app-release.apk)
+      </a>
+
+      <a href="/staydriv_v23.aab" class="btn-main" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);" download>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Download Android App Bundle v23 (.aab)
+      </a>
+
+      <div class="divider">Split APKs (Architectures)</div>
+
+      <div class="grid">
+        <a href="/app-arm64-v8a-release.apk" class="btn-secondary" download>
+          <strong>ARM64 (v8a)</strong>
+          <span>Modern Phones (64-bit)</span>
+        </a>
+        <a href="/app-armeabi-v7a-release.apk" class="btn-secondary" download>
+          <strong>ARM v7a</strong>
+          <span>Older Phones (32-bit)</span>
+        </a>
+        <a href="/app-x86_64-release.apk" class="btn-secondary" download>
+          <strong>x86_64</strong>
+          <span>Android Emulators</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="quick-links">
+      <a href="/split.html">🖥️ Open Split-Screen Console</a>
+      <a href="/">🌐 Open Web Application</a>
+    </div>
+
+    <footer>
+      &copy; 2026 StayDriv. All rights reserved.
+    </footer>
+  </div>
+</body>
+</html>
