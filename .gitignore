@@ -21,7 +21,10 @@ yarn-error.log*
 build/
 .dart_tool/
 .gradle/
+.kotlin/
+.cxx/
 android/.gradle/
+android/.kotlin/
 ios/.symlinks/
 ios/Pods/
 
