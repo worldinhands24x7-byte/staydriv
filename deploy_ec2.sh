@@ -1,6 +1,7 @@
 #!/bin/bash
 # ==============================================================================
 # StayDriv - AWS EC2 Automated Deployment Script (Ubuntu 22.04 / 24.04 LTS)
+# Supports MySQL 8.0 & Node.js 20 LTS & MongoDB
 # ==============================================================================
 # Usage:
 #   chmod +x deploy_ec2.sh
@@ -14,7 +15,7 @@ echo "🚀 Starting StayDriv AWS EC2 Production Setup..."
 # 1. Update system packages
 echo "📦 [1/6] Updating system packages..."
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git build-essential nginx ufw gnupg
+sudo apt install -y curl wget git build-essential nginx ufw gnupg mysql-server
 
 # 2. Install Node.js 20 LTS
 echo "🟢 [2/6] Installing Node.js 20 LTS..."
@@ -29,22 +30,32 @@ echo "NPM version: $(npm -v)"
 echo "⚡ [3/6] Installing PM2..."
 sudo npm install -g pm2
 
-# 4. Install MongoDB Community Edition (if not using remote Atlas)
-echo "🍃 [4/6] Setting up MongoDB..."
+# 4. Configure MySQL Server & Schema
+echo "🐬 [4/6] Setting up MySQL Server..."
+sudo systemctl enable mysql --now
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCHEMA_FILE="$SCRIPT_DIR/staydriv_backend/staydriv_mysql_schema.sql"
+
+if [ -f "$SCHEMA_FILE" ]; then
+    echo "📋 Initializing StayDriv MySQL tables from schema..."
+    sudo mysql < "$SCHEMA_FILE" || echo "Notice: Database already exists or requires custom credentials."
+fi
+
+# Optional: Install MongoDB for fallback / dual-mode
 if ! command -v mongod &> /dev/null; then
+    echo "🍃 Setting up MongoDB service..."
     curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-       sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes
+       sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor --yes 2>/dev/null || true
     echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu $(lsb_release -cs)/mongodb-org/7.0 multiverse" | \
-       sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    sudo apt update
-    sudo apt install -y mongodb-org || echo "⚠️ MongoDB install via repo skipped, will verify local service"
-    sudo systemctl daemon-reload
-    sudo systemctl enable mongod --now || echo "Notice: Ensure MongoDB or Atlas is configured."
+       sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list 2>/dev/null || true
+    sudo apt update -y 2>/dev/null || true
+    sudo apt install -y mongodb-org 2>/dev/null || true
+    sudo systemctl enable mongod --now 2>/dev/null || true
 fi
 
 # 5. Setup Backend Dependencies
 echo "📂 [5/6] Setting up staydriv_backend..."
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 BACKEND_DIR="$SCRIPT_DIR/staydriv_backend"
 
 if [ ! -d "$BACKEND_DIR" ]; then

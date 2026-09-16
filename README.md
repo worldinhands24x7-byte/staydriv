@@ -8,84 +8,66 @@
 
 ```
 staydriv/
-├── staydriv_backend/        # Node.js + Express + Socket.IO + MongoDB Backend API
-│   ├── server.js            # Main API & Socket server (Port 3000)
-│   ├── public/              # Live simulator (combined.html), APK download portal, Web app
-│   └── services/            # Tata SMS, Smartflo Calling & Razorpay services
-├── staydriv_app/            # Flutter Cross-Platform Mobile Application (Android & Web)
-│   └── lib/                 # Screens, State management, Ride booking & live tracking
-├── Staydriv_Admin/          # React + Vite TypeScript Admin Management Dashboard
-├── deploy_ec2.sh            # 1-Click Automated AWS EC2 Deployment Script
-├── AWS_EC2_DEPLOYMENT_GUIDE.md # Detailed AWS EC2 Deployment Manual
-└── README.md                # Complete Project & Deployment Guide
+├── staydriv_backend/            # Node.js + Express + Socket.IO Backend API
+│   ├── server.js                # Main API & Socket server (Port 3000)
+│   ├── db.js                    # Database connector (Supports MySQL & MongoDB)
+│   ├── staydriv_mysql_schema.sql # Complete MySQL database schema & tables
+│   ├── public/                  # Live simulator (combined.html), APK download portal, Web app
+│   └── services/                # Tata SMS, Smartflo Calling & Razorpay services
+├── staydriv_app/                # Flutter Cross-Platform Mobile Application (Android & Web)
+│   └── lib/                     # Screens, State management, Ride booking & live tracking
+├── Staydriv_Admin/              # React + Vite TypeScript Admin Management Dashboard
+├── deploy_ec2.sh                # 1-Click Automated AWS EC2 Deployment Script (with MySQL)
+├── AWS_EC2_DEPLOYMENT_GUIDE.md  # Detailed AWS EC2 Deployment Manual
+└── README.md                    # Complete Project & Deployment Guide
 ```
 
 ---
 
-## 🗄️ Database Architecture: Which Database to Use?
+## 🐬 MySQL Database Configuration
 
-### What Database Is Used?
-The StayDriv backend (`server.js`, models, ride matching, and location queries) is **100% written and optimized for MongoDB (Mongoose)**.
+StayDriv includes full MySQL database support and a ready-to-run schema file: [`staydriv_backend/staydriv_mysql_schema.sql`](file:///d:/staydriv/staydriv_backend/staydriv_mysql_schema.sql).
 
-### Can We Use MySQL or PostgreSQL?
-- **For Deployment Right Now: Use MongoDB.**  
-  All schemas (`User`, `Booking`, `Otp`), geospatial queries (`pickupLatLng`, `dropLatLng`), and real-time ride tracking are already programmed in MongoDB. Using MongoDB requires **0 code rewrites** and works out-of-the-box.
-- **If You Choose a SQL Database in the Future: Choose PostgreSQL over MySQL.**  
-  Ride-hailing apps (like Uber and Lyft) rely on **PostGIS** in PostgreSQL for fast distance calculations, radius searches for nearby drivers, and geofencing. MySQL's GIS engine is much more limited for real-time driver tracking. Migrating to PostgreSQL would require rewriting backend queries into SQL/Prisma.
+### 1. The Production Environment File (`staydriv_backend/.env`)
 
-### How to Set Up MongoDB for EC2 (2 Options):
+Configure your `.env` file on your server:
 
-#### Option A: Local MongoDB on the Same EC2 Instance (Recommended, $0 Cost)
-Our deployment script automatically installs and runs MongoDB Community Edition on your EC2 instance.
-In `staydriv_backend/.env`:
-```env
-MONGO_URI=mongodb://127.0.0.1:27017/staydriv
-```
-
-#### Option B: MongoDB Atlas (Cloud Managed)
-If you prefer not to manage database storage on EC2:
-1. Create a free cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas).
-2. Whitelist your EC2 IP (or `0.0.0.0/0`).
-3. Set your connection string in `staydriv_backend/.env`:
-```env
-MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/staydriv?retryWrites=true&w=majority
-```
-
----
-
-## 📍 Where You Have to Change Configurations
-
-When deploying to AWS EC2, you only need to modify **2 files**:
-
-### 1. Backend Server Credentials (`staydriv_backend/.env`)
-
-On your EC2 instance, copy `.env.example` to `.env` and fill in your keys:
-
-```bash
-cd staydriv/staydriv_backend
-cp .env.example .env
-nano .env
-```
-
-Set your configuration:
 ```env
 PORT=3000
 
-# Database Connection (Local or Atlas)
+# ==============================================================================
+# Database Configuration (MySQL / AWS RDS MySQL)
+# ==============================================================================
+DB_TYPE=mysql
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=staydriv_user
+MYSQL_PASSWORD=your_secure_password
+MYSQL_DATABASE=staydriv_db
+
+# (Optional fallback / dual-mode MongoDB connection)
 MONGO_URI=mongodb://127.0.0.1:27017/staydriv
 
+# ==============================================================================
 # Razorpay Production Keys
+# ==============================================================================
 RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxxxx
 RAZORPAY_KEY_SECRET=your_production_secret
 
+# ==============================================================================
 # Google Maps API Key
+# ==============================================================================
 GOOGLE_MAPS_API_KEY=AIzaSyxxxxxxxxxxxxxxxxxxxxxxx
 
+# ==============================================================================
 # TATA Smartflo Calling Gateway
+# ==============================================================================
 TATA_SMARTFLO_JWT_TOKEN=your_jwt_token
 TATA_SMARTFLO_BASE_URL=https://cloudphone.tatateleservices.com
 
+# ==============================================================================
 # TATA DLT SMS Gateway Configuration
+# ==============================================================================
 TATA_SMS_USER=your_sms_user
 TATA_SMS_PASS=your_sms_pass
 TATA_SMS_SENDER=SRL
@@ -96,57 +78,88 @@ TATA_SMS_GATEWAY_URL=https://ttbssmsgw.tatatel.co.in/campaignService/campaigns/q
 
 ---
 
-### 2. Mobile App Backend URL (`staydriv_app/lib/core/network_config.dart`)
+### 2. Setting Up MySQL on Your Server
 
-On your **local development machine** where you build Flutter:
+#### A. If Using Local MySQL on EC2:
+The automated script `./deploy_ec2.sh` installs MySQL automatically. To create your database and user:
 
-Open [`staydriv_app/lib/core/network_config.dart`](file:///d:/staydriv/staydriv_app/lib/core/network_config.dart) at line 6:
+```bash
+# Open MySQL terminal
+sudo mysql
+
+# Run the following SQL commands:
+CREATE DATABASE IF NOT EXISTS staydriv_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS 'staydriv_user'@'localhost' IDENTIFIED BY 'your_secure_password';
+GRANT ALL PRIVILEGES ON staydriv_db.* TO 'staydriv_user'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+Then import the pre-built StayDriv schema:
+```bash
+mysql -u staydriv_user -p staydriv_db < /home/ubuntu/staydriv/staydriv_backend/staydriv_mysql_schema.sql
+```
+
+#### B. If Using AWS RDS MySQL:
+1. In AWS RDS, create a MySQL 8.0 instance.
+2. In your Security Group, allow inbound traffic on port `3306` from your EC2 Security Group.
+3. Import the schema into RDS:
+   ```bash
+   mysql -h your-rds-endpoint.rds.amazonaws.com -u staydriv_user -p staydriv_db < staydriv_mysql_schema.sql
+   ```
+4. Set `MYSQL_HOST=your-rds-endpoint.rds.amazonaws.com` in `staydriv_backend/.env`.
+
+---
+
+## 📍 Where You Have to Change Configurations
+
+When deploying to AWS EC2, you only need to modify **2 files**:
+
+### 1. Backend Server Credentials (`staydriv_backend/.env`)
+Set your MySQL database password, Razorpay keys, Google Maps API key, and Tata SMS credentials as shown in the `.env` section above.
+
+### 2. Flutter Mobile App Backend URL (`staydriv_app/lib/core/network_config.dart`)
+On your development machine, open [`staydriv_app/lib/core/network_config.dart`](file:///d:/staydriv/staydriv_app/lib/core/network_config.dart) at line 6:
 
 ```dart
-// REPLACE the temporary Cloudflare tunnel with your EC2 Domain or Public IP:
+// Line 6:
+// Point to your EC2 domain or Elastic IP:
 static const String defaultHttpsTunnelUrl = 'https://api.yourdomain.com';
-// OR (if using EC2 Public IP directly without a domain name):
+// OR (if using EC2 IP directly without a domain):
 // static const String defaultHttpsTunnelUrl = 'http://<YOUR-EC2-PUBLIC-IP>:3000';
 ```
 
-Then build your final production APK:
+Then build your production APK:
 ```bash
 cd staydriv_app
 flutter build apk --release
 ```
-
-The APK will be generated at:
-`staydriv_app/build/app/outputs/flutter-apk/app-release.apk`
+The resulting APK is ready at: `staydriv_app/build/app/outputs/flutter-apk/app-release.apk`.
 
 ---
 
 ## 🚀 AWS EC2 Step-by-Step Deployment Guide
 
 ### Step 1: Launch an AWS EC2 Instance
-1. Go to the [AWS EC2 Console](https://console.aws.amazon.com/ec2).
+1. Open the [AWS EC2 Console](https://console.aws.amazon.com/ec2).
 2. Click **Launch Instances**:
    - **Name**: `staydriv-backend`
    - **OS**: **Ubuntu 24.04 LTS** or **Ubuntu 22.04 LTS** (64-bit x86).
    - **Instance Type**: `t3.small` or `t3.medium` (Minimum 2 GB RAM recommended).
-   - **Key Pair**: Choose an existing `.pem` key or create a new one (e.g., `staydriv.pem`).
+   - **Key Pair**: Download your `.pem` key (e.g., `staydriv.pem`).
    - **Storage**: 20 GB gp3 SSD.
-3. Configure **Security Group** Inbound Rules:
-   - **SSH (Port 22)**: Source `My IP` (or `0.0.0.0/0`)
+3. In **Security Group Inbound Rules**, open:
+   - **SSH (Port 22)**: Source `0.0.0.0/0` (or `My IP`)
    - **HTTP (Port 80)**: Source `0.0.0.0/0`
    - **HTTPS (Port 443)**: Source `0.0.0.0/0`
    - **Custom TCP (Port 3000)**: Source `0.0.0.0/0`
-4. Click **Launch Instance**.
-5. *(Recommended)* Under **EC2** → **Elastic IPs**, allocate an Elastic IP and associate it with this instance so the public IP never changes across reboots.
+   - **MySQL (Port 3306)**: Only needed if accessing MySQL remotely
+4. Click **Launch Instance** and allocate an **Elastic IP** so the IP remains static.
 
 ---
 
 ### Step 2: Connect to EC2 via SSH
-In PowerShell or Terminal:
 ```bash
-# Set key permissions (Linux/Mac only; Windows users can skip this chmod line)
-chmod 400 staydriv.pem
-
-# SSH into the server
 ssh -i staydriv.pem ubuntu@<YOUR-EC2-PUBLIC-IP>
 ```
 
@@ -159,18 +172,17 @@ Inside your EC2 terminal:
 git clone https://github.com/worldinhands24x7-byte/staydriv.git
 cd staydriv
 
-# 2. Make script executable and run
+# 2. Make deployment script executable and run
 chmod +x deploy_ec2.sh
 ./deploy_ec2.sh
 ```
 
-**What `deploy_ec2.sh` automatically installs and configures:**
-- Updates system packages
+**What `deploy_ec2.sh` automatically does:**
+- Installs **MySQL 8.0 Server** and imports [`staydriv_mysql_schema.sql`](file:///d:/staydriv/staydriv_backend/staydriv_mysql_schema.sql)
 - Installs **Node.js 20 LTS** & **npm**
 - Installs **PM2** process manager globally
-- Installs and starts **MongoDB Community Edition 7.0**
-- Installs all npm backend dependencies
-- Starts `server.js` on port 3000 with auto-restart on crashes and system reboots
+- Installs all backend dependencies (including `mysql2`)
+- Starts `server.js` on port 3000 under PM2 with auto-restart on crashes and system reboots
 
 ---
 
@@ -178,11 +190,11 @@ chmod +x deploy_ec2.sh
 ```bash
 cd /home/ubuntu/staydriv/staydriv_backend
 cp .env.example .env
-nano .env # Enter your real Razorpay, Google Maps, and SMS credentials
+nano .env
 ```
-*(Press `Ctrl + O` and `Enter` to save, `Ctrl + X` to exit)*.
+*(Enter your real database password, Razorpay keys, Google Maps key, and SMS credentials. Save with `Ctrl + O` and `Enter`, exit with `Ctrl + X`)*.
 
-Restart the backend to load new credentials:
+Restart the backend server with PM2:
 ```bash
 pm2 restart staydriv-api
 ```
@@ -190,24 +202,22 @@ pm2 restart staydriv-api
 Verify backend health:
 ```bash
 curl http://localhost:3000/api/health
-# Response: {"status":"ok","timestamp":"...","uptime":...}
+# Output: {"status":"ok","timestamp":"...","uptime":...}
 ```
 
 ---
 
 ### Step 5: Setup Nginx Reverse Proxy & Free SSL (HTTPS)
 
-This connects standard HTTP (Port 80) and HTTPS (Port 443) to your Node.js backend on Port 3000 with WebSocket support for live driver tracking.
-
-1. Create the Nginx configuration:
+1. Create Nginx site configuration:
    ```bash
    sudo nano /etc/nginx/sites-available/staydriv
    ```
-2. Paste the configuration below (replace `api.yourdomain.com` with your domain or EC2 Public IP):
+2. Paste this configuration (replace `api.yourdomain.com` with your domain or EC2 Public IP):
    ```nginx
    server {
        listen 80;
-       server_name api.yourdomain.com; # Or your EC2 Public IP
+       server_name api.yourdomain.com;
 
        client_max_body_size 30M;
 
@@ -242,26 +252,25 @@ This connects standard HTTP (Port 80) and HTTPS (Port 443) to your Node.js backe
 
 ---
 
-### Step 6: Accessing Your Application
+### Step 6: Accessing Your Live Platform
 
-Once deployed, access your live services:
 - **Backend Health Check**: `https://api.yourdomain.com/api/health`
 - **Live Simulator**: `https://api.yourdomain.com/combined.html`
 - **Customer APK Download**: `https://api.yourdomain.com/staydriv.apk`
 
 ---
 
-## 🛠️ Essential PM2 & Server Commands
+## 🛠️ Essential Maintenance Commands
 
 | Action | Command |
 | :--- | :--- |
 | **Check server status** | `pm2 status` |
 | **View real-time logs** | `pm2 logs staydriv-api` |
 | **Restart backend** | `pm2 restart staydriv-api` |
-| **Stop backend** | `pm2 stop staydriv-api` |
-| **Check MongoDB status** | `sudo systemctl status mongod` |
+| **Check MySQL status** | `sudo systemctl status mysql` |
+| **Access MySQL CLI** | `sudo mysql -u staydriv_user -p staydriv_db` |
 | **Restart Nginx** | `sudo systemctl restart nginx` |
-| **Deploy code updates** | `cd /home/ubuntu/staydriv && git pull origin main && pm2 restart staydriv-api` |
+| **Pull code updates** | `cd /home/ubuntu/staydriv && git pull origin main && pm2 restart staydriv-api` |
 
 ---
 
