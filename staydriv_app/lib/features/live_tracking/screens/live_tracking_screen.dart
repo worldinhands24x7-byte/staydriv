@@ -16,6 +16,7 @@ import '../../../core/theme.dart';
 import '../../../core/booking_manager.dart';
 import '../../../core/network_config.dart';
 import '../../../core/api_client.dart';
+import '../../../core/wake_lock_service.dart';
 
 class LiveTrackingScreen extends StatefulWidget {
   final String vehicleType;
@@ -369,6 +370,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
   @override
   void initState() {
     super.initState();
+    WakeLockService.acquireWakeLock(); // Keep device active during ride session
     
     final active = BookingManager().activeBooking;
     LatLng? pickupPos;
@@ -470,6 +472,7 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         }
 
         if (newStatus == 'arrived') {
+          WakeLockService.wakeUpScreen(); // Turn on screen to notify customer pilot has arrived
           if (prevStatus != 'arrived') {
             _startWaitingTimer();
           }
@@ -813,12 +816,14 @@ class _LiveTrackingScreenState extends State<LiveTrackingScreen>
         BookingManager().clearBooking();
       }
     }
+    WakeLockService.releaseWakeLock();
     super.dispose();
   }
 
   void _handleCancellationNotification(String? reason, String? cancelledBy) {
     if (_isPilotCancelledHandled) return;
     _isPilotCancelledHandled = true;
+    WakeLockService.wakeUpScreen(); // Turn on screen and alert user
 
     try {
       FlutterRingtonePlayer().play(

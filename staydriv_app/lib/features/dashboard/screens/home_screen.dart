@@ -29,6 +29,7 @@ import '../../onboarding/screens/login_screen.dart';
 import '../../live_tracking/screens/live_tracking_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/wake_lock_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -1001,6 +1002,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       BookingManager().forceSync();
       if (widget.userRole == 'Customer') {
         BookingManager().restoreAndSyncActiveBooking();
+      }
+    } else if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
+      // Keep background CPU active if pilot is online or active booking is running
+      if (_isOnline || _activeBooking != null) {
+        WakeLockService.acquireWakeLock();
       }
     }
   }
@@ -2164,11 +2170,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     _bookingTimer?.cancel();
     if (value) {
+      WakeLockService.acquireWakeLock(); // Keep CPU awake while pilot is waiting for rides
+      WakeLockService.requestIgnoreBatteryOptimizations(); // Prompt battery optimization exemption
       BookingManager().setDriverOnline(true);
       BookingManager().setDriverVehicle(_selectedVehicle);
       _startGpsTracking();
       _subscribeToBookingManager();
     } else {
+      WakeLockService.releaseWakeLock(); // Release lock when pilot goes offline
       _stopRinging();
       BookingManager().setDriverOnline(false);
       _gpsSub?.cancel();
@@ -2183,6 +2192,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void _startRinging() {
     try {
+      WakeLockService.wakeUpScreen(); // Turn on display backlight and show incoming request over lock screen!
       if (kIsWeb) {
         js.context.callMethod('startStayDrivRinging');
       } else {
