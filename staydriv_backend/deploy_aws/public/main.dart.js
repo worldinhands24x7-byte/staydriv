@@ -34446,8 +34446,9 @@ if(f==null)f="7013213057"
 e=i.h(0,"vehicle")
 if(e==null)e="Bike"
 d="Driver"
-c="Pilot Partner"}else{if((l?null:h.toLowerCase())==="admin"){d="Admin"
-f="9999999999"
+c="Pilot Partner"}else{if((l?null:h.toLowerCase())==="admin"){f=i.h(0,"phone")
+if(f==null)f="9010922111"
+d="Admin"
 c="StayDriv Admin"}else{f=i.h(0,"phone")
 if(f==null)f="9010922111"
 d="Customer"
@@ -115281,7 +115282,7 @@ r.toString
 return s.al0(r,a)},
 $S:731}
 A.aCq.prototype={
-$1(a){var s=this,r=null,q=A.O(16),p=A.k("Withdraw Earnings",r,r,r,A.a8().$1$fontWeight(B.m),r,r,r),o=s.b,n=s.a,m=s.c,l=s.d,k=t.p,j=A.b1P(r,A.ac(A.b([A.k("Withdraw instant payout via Razorpay. Available: \u20b9"+B.d.a8(n.a.d,2),r,r,r,A.W().$2$color$fontSize(B.au,12),r,r,r),B.a6,A.Ba(!1,m,B.a15,r,B.lf,!1,r,r,r,!1,new A.aCm(n)),B.W,A.Ba(!1,l,B.a11,r,r,!1,r,r,r,!1,new A.aCn())],k),B.bS,B.h,B.P),o),i=A.f3(B.ej,new A.aCo(a),r),h=A.cn(r,r,B.cH,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r)
+$1(a){var s=this,r=null,q=A.O(16),p=A.k("Withdraw Earnings",r,r,r,A.a8().$1$fontWeight(B.m),r,r,r),o=s.b,n=s.a,m=s.c,l=s.d,k=t.p,j=A.b1P(r,A.ac(A.b([A.k("Withdraw instant payout via Razorpay. Available: \u20b9"+B.d.a8(n.a.d,2),r,r,r,A.W().$2$color$fontSize(B.au,12),r,r,r),B.a6,A.Ba(!1,m,B.a15,r,B.lf,!1,r,r,r,!1,new A.aCm(n)),B.W,A.Ba(!1,l,B.a10,r,r,!1,r,r,r,!1,new A.aCn())],k),B.bS,B.h,B.P),o),i=A.f3(B.ej,new A.aCo(a),r),h=A.cn(r,r,B.cH,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r)
 return A.ht(A.b([i,A.cY(A.k("Withdraw",r,r,r,A.W().$2$color$fontWeight(B.f,B.m),r,r,r),new A.aCp(n,o,m,l,a),h)],k),r,j,r,new A.b0(q,B.w),p)},
 $S:29}
 A.aCm.prototype={
@@ -119418,7 +119419,7 @@ this.ho()}}
 A.r1.prototype={
 ai(){return A.bqL()}}
 A.MI.prototype={
-aq(){var s,r,q,p,o,n,m=this,l="Customer",k="94904 40281",j="99999 99999",i="90109 22111"
+aq(){var s,r,q,p,o,n,m=this,l="Customer",k="90109 22111"
 m.aR()
 m.aAz()
 s=A.ny().gIc()
@@ -119430,13 +119431,13 @@ o=r==null?null:r.toLowerCase()
 if(o==="customer"){m.cx=l
 m.r.saV(0,k)}else{r=m.r
 if(o==="admin"){m.cx="Admin"
-r.saV(0,j)}else{m.cx="Pilot"
-r.saV(0,i)}}}else if(B.c.p(q,"customer")||B.c.p(p,"role=customer")){m.cx=l
+r.saV(0,k)}else{m.cx="Pilot"
+r.saV(0,k)}}}else if(B.c.p(q,"customer")||B.c.p(p,"role=customer")){m.cx=l
 m.r.saV(0,k)}else{r=B.c.p(q,"admin")||B.c.p(p,"role=admin")
 n=m.r
 if(r){m.cx="Admin"
-n.saV(0,j)}else{m.cx="Pilot"
-n.saV(0,i)}}$.al.p4$.push(new A.aP_(m))},
+n.saV(0,k)}else{m.cx="Pilot"
+n.saV(0,k)}}$.al.p4$.push(new A.aP_(m))},
 li(){var s=0,r=A.x(t.H),q=this,p,o,n,m,l,k,j,i,h,g,f,e
 var $async$li=A.y(function(a,b){if(a===1)return A.u(b,r)
 for(;;)switch(s){case 0:e=A.ny().gIc()
@@ -119457,10 +119458,12 @@ m=p.b=l==null?"7013213057":l
 k=p.c="Pilot Partner"
 j=e.h(0,"vehicle")
 i=p.d=j==null?"Bike":j}else{if((n?null:o.toLowerCase())==="admin"){p.a="Admin"
-p.b="9999999999"
+l=e.h(0,"phone")
+if(l==null)l="9010922111"
+p.b=l
 p.c="StayDriv Admin"
+m=l
 n="Admin"
-m="9999999999"
 k="StayDriv Admin"}else{l=e.h(0,"phone")
 if(l==null)l="9010922111"
 p.b=l
@@ -119731,8 +119734,9 @@ i=f?null:J.E(k,"name")
 if(i==null)if(j==="Driver")i="StayDriv Pilot"
 else{o=j==="Admin"?"StayDriv Admin":"StayDriv Customer"
 i=o}h=f?null:J.E(k,"id")
-if(h==null){f="mock_uid_"+n
-h=j==="Driver"?f+"_pilot":f}s=11
+if(h==null)if(j==="Driver"){f="mock_uid_"+n+"_pilot"
+h=f}else{f=j==="Admin"?"mock_uid_staydriv":"mock_uid_"+n
+h=f}s=11
 return A.n(A.hn(),$async$j9)
 case 11:g=b
 s=12
@@ -119789,7 +119793,7 @@ return A.ax(A.cR(s,A.S(s,A.ac(A.b([n,B.aQ,A.k("Pilot",s,s,s,A.W().$3$color$fontS
 akk(){var s=null,r=this.cx==="Admin",q=r?B.lN:B.G,p=A.O(16),o=A.aY(r?B.af:B.G,2),n=A.be(B.YI,r?B.af:B.dG,s,22)
 return A.ax(A.cR(s,A.S(s,A.ac(A.b([n,B.aQ,A.k("Admin",s,s,s,A.W().$3$color$fontSize$fontWeight(r?B.af:B.dG,13,B.y),s,s,s)],t.p),B.k,B.h,B.P),B.l,s,s,new A.a0(q,s,o,p,s,s,B.p),s,s,s,B.q2,s,s,s),B.D,!1,s,s,s,s,s,s,s,s,s,s,s,s,s,s,new A.aNX(this),s,s,s,s,s,s),1)},
 akX(){var s,r,q,p=this,o=null,n=A.dF(A.cR(o,A.k("StayDriv",o,o,o,A.ber().$4$color$fontSize$fontWeight$letterSpacing(B.af,36,B.aX,-0.5),o,o,o),B.D,!1,o,o,o,o,o,o,o,p.gNL(),o,o,o,o,o,o,o,o,o,o,o,o,o),o,o),m=p.Wz(),l=A.k("Select How You Want to Drive",o,o,o,A.a8().$4$color$fontSize$fontWeight$letterSpacing(B.df,22,B.aX,-0.3),B.bQ,o,o),k=A.anv(new A.aOh(p)),j=A.k("Welcome to StayDriv",o,o,o,A.a8().$4$color$fontSize$fontWeight$letterSpacing(B.df,22,B.aX,-0.3),o,o,o),i=A.k("Enter your mobile number to get started.",o,o,o,A.W().$2$color$fontSize(B.cX,13.5),o,o,o),h=A.k("Mobile Number",o,o,o,A.W().$3$color$fontSize$fontWeight(B.dY,13,B.y),o,o,o),g=A.O(16),f=t.p
-g=A.S(o,A.a_(A.b([A.a_(A.b([A.k("+91",o,o,o,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),o,o,o),B.bH,B.z0],f),B.k,B.h,B.e,0),B.bg,A.S(o,o,B.l,B.jq,o,o,o,24,o,o,o,o,1),B.b8,A.ax(A.d4(o,B.ai,!1,o,!0,B.u,o,A.dg(),p.r,o,o,o,o,o,2,B.a0Y,B.D,!0,o,!0,o,!1,o,B.ah,o,o,o,o,B.hq,o,o,o,1,o,o,!1,"\u2022",o,o,o,new A.aOi(p),o,!1,o,o,!1,o,!0,o,B.a7,o,o,o,o,o,o,o,o,o,o,o,A.b1().$4$color$fontSize$fontWeight$letterSpacing(B.df,16,B.y,1),!0,B.a0,o,B.an,o,o,o,o),1)],f),B.k,B.h,B.e,0),B.l,o,o,new A.a0(B.wB,o,o,g,o,o,B.p),o,o,o,B.e2,o,o,o)
+g=A.S(o,A.a_(A.b([A.a_(A.b([A.k("+91",o,o,o,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),o,o,o),B.bH,B.z0],f),B.k,B.h,B.e,0),B.bg,A.S(o,o,B.l,B.jq,o,o,o,24,o,o,o,o,1),B.b8,A.ax(A.d4(o,B.ai,!1,o,!0,B.u,o,A.dg(),p.r,o,o,o,o,o,2,B.a0X,B.D,!0,o,!0,o,!1,o,B.ah,o,o,o,o,B.hq,o,o,o,1,o,o,!1,"\u2022",o,o,o,new A.aOi(p),o,!1,o,o,!1,o,!0,o,B.a7,o,o,o,o,o,o,o,o,o,o,o,A.b1().$4$color$fontSize$fontWeight$letterSpacing(B.df,16,B.y,1),!0,B.a0,o,B.an,o,o,o,o),1)],f),B.k,B.h,B.e,0),B.l,o,o,new A.a0(B.wB,o,o,g,o,o,B.p),o,o,o,B.e2,o,o,o)
 s=A.cn(o,o,B.af,o,o,o,0,o,o,B.f,o,o,o,o,new A.b0(A.O(16),B.w),o,o,o,o,o)
 r=p.ay
 q=r?o:p.ga2t()
@@ -119843,11 +119847,11 @@ if(h.cx==="Admin"){o=h.ch?"Staff Email Sign In":"Admin OTP Login"
 o=A.k(o,g,g,g,A.W().$2$color$fontSize(B.cX,12),g,g,g)
 o=A.b([A.a_(A.b([o,A.f3(A.k(h.ch?"Use Phone OTP":"Use Password",g,g,g,B.aHM,g,g,g),new A.aO1(h),g)],m),B.k,B.T,B.e,0)],m)
 if(h.ch){l=A.d4(g,B.ai,!1,g,!0,B.u,g,A.dg(),h.w,g,g,g,g,g,2,B.a16,B.D,!0,g,!0,g,!1,g,B.ah,g,g,g,g,B.uG,g,g,g,1,g,g,!1,"\u2022",g,g,g,g,g,!1,g,g,!1,g,!0,g,B.a7,g,g,g,g,g,g,g,g,g,g,g,g,!0,B.a0,g,B.an,g,g,g,g)
-k=A.d4(g,B.ai,!1,g,!0,B.u,g,A.dg(),h.x,g,g,g,g,g,2,B.a12,B.D,!0,g,!0,g,!1,g,B.ah,g,g,g,g,g,g,g,g,1,g,g,!0,"\u2022",g,g,g,g,g,!1,g,g,!1,g,!0,g,B.a7,g,g,g,g,g,g,g,g,g,g,g,g,!0,B.a0,g,B.an,g,g,g,g)
+k=A.d4(g,B.ai,!1,g,!0,B.u,g,A.dg(),h.x,g,g,g,g,g,2,B.a11,B.D,!0,g,!0,g,!1,g,B.ah,g,g,g,g,g,g,g,g,1,g,g,!0,"\u2022",g,g,g,g,g,!1,g,g,!1,g,!0,g,B.a7,g,g,g,g,g,g,g,g,g,g,g,g,!0,B.a0,g,B.an,g,g,g,g)
 j=A.cn(g,g,B.af,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g)
 B.b.J(o,A.b([l,B.W,k,B.a6,A.cj(A.cY(B.aK8,h.CW?g:h.gatb(),j),48,1/0)],m))}B.b.J(n,o)}if(!h.ch||h.cx!=="Admin"){o=A.k("Mobile Number",g,g,g,A.W().$3$color$fontSize$fontWeight(B.dY,13,B.y),g,g,g)
 l=A.O(16)
-l=A.S(g,A.a_(A.b([A.a_(A.b([A.k("+91",g,g,g,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),g,g,g),B.bH,B.z0],m),B.k,B.h,B.e,0),B.bg,A.S(g,g,B.l,B.jq,g,g,g,24,g,g,g,g,1),B.b8,A.ax(A.d4(g,B.ai,!1,g,!0,B.u,g,A.dg(),h.r,g,g,g,g,g,2,B.a0X,B.D,!0,g,!0,g,!1,g,B.ah,g,g,g,g,B.hq,g,g,g,1,g,g,!1,"\u2022",g,g,g,new A.aO2(h),g,!1,g,g,!1,g,!0,g,B.a7,g,g,g,g,g,g,g,g,g,g,g,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),!0,B.a0,g,B.an,g,g,g,g),1)],m),B.k,B.h,B.e,0),B.l,g,g,new A.a0(B.wB,g,g,l,g,g,B.p),g,g,g,B.e2,g,g,g)
+l=A.S(g,A.a_(A.b([A.a_(A.b([A.k("+91",g,g,g,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),g,g,g),B.bH,B.z0],m),B.k,B.h,B.e,0),B.bg,A.S(g,g,B.l,B.jq,g,g,g,24,g,g,g,g,1),B.b8,A.ax(A.d4(g,B.ai,!1,g,!0,B.u,g,A.dg(),h.r,g,g,g,g,g,2,B.a12,B.D,!0,g,!0,g,!1,g,B.ah,g,g,g,g,B.hq,g,g,g,1,g,g,!1,"\u2022",g,g,g,new A.aO2(h),g,!1,g,g,!1,g,!0,g,B.a7,g,g,g,g,g,g,g,g,g,g,g,A.b1().$3$color$fontSize$fontWeight(B.df,16,B.y),!0,B.a0,g,B.an,g,g,g,g),1)],m),B.k,B.h,B.e,0),B.l,g,g,new A.a0(B.wB,g,g,l,g,g,B.p),g,g,g,B.e2,g,g,g)
 k=A.cn(g,g,B.af,g,g,g,g,g,g,B.f,g,g,g,g,new A.b0(A.O(16),B.w),g,g,g,g,g)
 j=h.ay
 i=j?g:h.ga2t()
@@ -120094,7 +120098,7 @@ $S:0}
 A.aO3.prototype={
 $0(){var s=this.a
 s.cx="Customer"
-s.r.saV(0,"94904 40281")
+s.r.saV(0,"90109 22111")
 s.y=!1},
 $S:0}
 A.aO4.prototype={
@@ -120118,7 +120122,7 @@ $S:0}
 A.aNW.prototype={
 $0(){var s=this.a
 s.cx="Admin"
-s.r.saV(0,"99999 99999")
+s.r.saV(0,"90109 22111")
 s.y=!1},
 $S:0}
 A.aOh.prototype={
@@ -120588,11 +120592,11 @@ o=A.aY(o,j?2:1)
 i=A.be(B.y7,j?B.q:B.B,g,28)
 s=A.b([B.aG,s,B.aQ,r,B.bD,q,B.a3,A.a_(A.b([n,B.V,p,B.V,A.ax(A.cR(g,A.S(g,A.ac(A.b([i,B.a3,A.k("Admin",g,g,g,A.a8().$3$color$fontSize$fontWeight(j?B.q:B.B,14,B.y),g,g,g)],k),B.k,B.aF,B.e),B.l,g,g,new A.a0(m,g,o,l,g,g,B.p),g,100,g,g,g,g,g),B.D,!1,g,g,g,g,g,g,g,g,g,g,g,g,g,g,new A.aS_(h),g,g,g,g,g,g),1)],k),B.k,B.h,B.e,0),B.bD],k)
 if(h.y==="Driver")B.b.J(s,A.b([A.k("Select Vehicle Type",g,g,g,A.a8().$3$color$fontSize$fontWeight(B.B,14,B.y),g,g,g),B.a3,A.cj(A.vq(A.b([h.xY("Bike",B.eD,"Bike Taxi / small parcels"),h.xY("Auto",B.fb,"Fast passenger / medium"),h.xY("Car",B.fa,"Comfort passenger cab"),h.xY("Mini Truck",B.jY,"Large transport / cargo"),h.xY("Heavy Truck",B.ce,"Heavy goods transport")],k),g,g,B.b3,!1),90,g),B.bD],k))
-s.push(A.Ba(!1,h.e,B.a10,g,g,!1,g,g,g,!1,new A.aS0()))
+s.push(A.Ba(!1,h.e,B.a1_,g,g,!1,g,g,g,!1,new A.aS0()))
 if(h.y==="Admin"){r=A.b1v(B.a13,B.a27,new A.aS1(h),h.as,t.N)
 q=h.ax
-B.b.J(s,A.b([B.bq,r,B.bq,A.Ba(!1,h.r,A.dP(g,g,g,g,g,g,g,g,!0,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",g,g,g,g,g,g,g,g,"PASSWORD",!0,!0,!1,g,g,g,g,g,g,g,g,A.dn(g,g,A.be(q?B.Yv:B.yj,B.B,g,20),g,g,new A.aS2(h),g,g,g,g),g,g,g,g,g),g,g,q,new A.aS3(h),g,g,!1,new A.aS4(h))],k))}if(h.y==="Driver")B.b.J(s,A.b([B.bq,A.Ba(!1,h.w,B.a1_,g,g,!1,g,g,new A.aS5(h,a),!0,new A.aS6(h))],k))
-if(h.y!=="Admin")B.b.J(s,A.b([B.bq,A.Ba(!1,h.x,B.a0Z,g,g,!1,g,g,g,!1,g)],k))
+B.b.J(s,A.b([B.bq,r,B.bq,A.Ba(!1,h.r,A.dP(g,g,g,g,g,g,g,g,!0,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,g,"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",g,g,g,g,g,g,g,g,"PASSWORD",!0,!0,!1,g,g,g,g,g,g,g,g,A.dn(g,g,A.be(q?B.Yv:B.yj,B.B,g,20),g,g,new A.aS2(h),g,g,g,g),g,g,g,g,g),g,g,q,new A.aS3(h),g,g,!1,new A.aS4(h))],k))}if(h.y==="Driver")B.b.J(s,A.b([B.bq,A.Ba(!1,h.w,B.a0Z,g,g,!1,g,g,new A.aS5(h,a),!0,new A.aS6(h))],k))
+if(h.y!=="Admin")B.b.J(s,A.b([B.bq,A.Ba(!1,h.x,B.a0Y,g,g,!1,g,g,g,!1,g)],k))
 s.push(B.bD)
 if(h.y==="Driver"){r=A.cn(g,g,B.eq,g,g,g,1,g,g,B.f,g,g,g,g,new A.b0(A.O(12),B.w),g,g,g,g,g)
 r=A.cj(A.cY(A.k("ALREADY REGISTERED LOGIN",g,g,g,A.a8().$3$fontSize$fontWeight$letterSpacing(15,B.m,0.5),g,g,g),new A.aRQ(h,a),r),50,1/0)
@@ -128190,17 +128194,17 @@ B.a0U=new A.qJ(null,null,null,null,null,null,null,null,null,B.qJ,B.p3,!1,null,!1
 B.a0V=new A.fF(null,null,null,"Email Address",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
 B.a0W=new A.fF(null,null,null,"Full Name",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
 B.c9=new A.a57(B.w)
-B.a0X=new A.fF(null,null,null,null,null,null,null,null,null,null,"94904 40281",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,B.f5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.c9,!0,null,null,null,null)
-B.a0Y=new A.fF(null,null,null,null,null,null,null,null,null,null,"90109 22111",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,B.f5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.c9,null,null,B.c9,B.c9,!0,null,null,null,null)
+B.a0X=new A.fF(null,null,null,null,null,null,null,null,null,null,"90109 22111",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,B.f5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.c9,null,null,B.c9,B.c9,!0,null,null,null,null)
 B.aO1=new A.fF(null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
 B.iC=new A.dc(4,B.hE,B.bk)
 B.z8=new A.fF(null,null,null,"SERVER BACKEND URL",null,null,null,null,null,null,"https://staydriv-v3-dev.loca.lt",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,!0,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)
-B.a0Z=new A.fF(null,null,null,"REFERRAL CODE (OPTIONAL)",null,null,null,null,null,null,"STAYDRIV50",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
-B.a1_=new A.fF(null,null,null,"DATE OF BIRTH",null,null,null,null,null,null,"Select Date of Birth",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.yM,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
-B.a10=new A.fF(null,null,null,"FULL NAME (OPTIONAL)",null,null,null,null,null,null,"John Doe",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
-B.a11=new A.fF(null,null,null,"UPI ID or Bank Account",null,null,null,null,null,null,"driver@okaxis",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)
-B.a12=new A.fF(null,null,null,"Password",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,!0,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)
+B.a0Y=new A.fF(null,null,null,"REFERRAL CODE (OPTIONAL)",null,null,null,null,null,null,"STAYDRIV50",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
+B.a0Z=new A.fF(null,null,null,"DATE OF BIRTH",null,null,null,null,null,null,"Select Date of Birth",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.yM,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
+B.a1_=new A.fF(null,null,null,"FULL NAME (OPTIONAL)",null,null,null,null,null,null,"John Doe",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
+B.a10=new A.fF(null,null,null,"UPI ID or Bank Account",null,null,null,null,null,null,"driver@okaxis",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)
+B.a11=new A.fF(null,null,null,"Password",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,!0,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)
 B.z9=new A.fF(null,null,null,"ADD MORE FEEDBACK",null,null,null,null,null,null,"Great drive, very helpful!",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
+B.a12=new A.fF(null,null,null,null,null,null,null,null,null,null,"90109 22111",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,B.f5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.c9,!0,null,null,null,null)
 B.a13=new A.fF(null,null,null,"ROLE TYPE",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
 B.a14=new A.fF(null,null,null,"Date of Birth (DD/MM/YYYY)",null,null,null,null,null,null,"DD/MM/YYYY",null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,!0,null,null,null,null)
 B.a15=new A.fF(null,null,null,"Withdrawal Amount",null,null,null,null,null,null,null,null,null,null,null,null,!0,!0,!1,null,null,null,null,null,null,null,null,null,null,null,null,"\u20b9 ",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,B.iC,!0,null,null,null,null)

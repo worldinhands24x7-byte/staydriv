@@ -226,7 +226,7 @@ app.get('/api/user/:uid', async (req, res) => {
         admin = new User({
           uid: 'mock_uid_staydriv',
           name: 'StayDriv Admin',
-          phone: '9999999999',
+          phone: '9010922111',
           role: 'admin',
           salary: 0
         });
@@ -1134,7 +1134,7 @@ app.post('/api/booking/update', async (req, res) => {
         admin = new User({
           uid: 'mock_uid_staydriv',
           name: 'StayDriv Admin',
-          phone: '9999999999',
+          phone: '9010922111',
           role: 'admin',
           salary: 0,
         });

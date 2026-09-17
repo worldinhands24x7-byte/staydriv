@@ -75,20 +75,20 @@ class _LoginScreenState extends State<LoginScreen> {
       final role = queryParams['role']?.toLowerCase();
       if (role == 'customer') {
         _selectedRole = 'Customer';
-        _phoneController.text = '94904 40281';
+        _phoneController.text = '90109 22111';
       } else if (role == 'admin') {
         _selectedRole = 'Admin';
-        _phoneController.text = '99999 99999';
+        _phoneController.text = '90109 22111';
       } else {
         _selectedRole = 'Pilot';
         _phoneController.text = '90109 22111';
       }
     } else if (path.contains('customer') || fullUrl.contains('role=customer')) {
       _selectedRole = 'Customer';
-      _phoneController.text = '94904 40281';
+      _phoneController.text = '90109 22111';
     } else if (path.contains('admin') || fullUrl.contains('role=admin')) {
       _selectedRole = 'Admin';
-      _phoneController.text = '99999 99999';
+      _phoneController.text = '90109 22111';
     } else {
       _selectedRole = 'Pilot';
       _phoneController.text = '90109 22111';
@@ -115,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
         selectedVehicle = queryParams['vehicle'] ?? 'Bike';
       } else if (role?.toLowerCase() == 'admin') {
         uiRole = 'Admin';
-        phone = '9999999999';
+        phone = queryParams['phone'] ?? '9010922111';
         displayName = 'StayDriv Admin';
       } else {
         phone = queryParams['phone'] ?? '9010922111';
@@ -443,7 +443,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ? 'Driver'
           : (_selectedRole == 'Admin' ? 'Admin' : 'Customer');
       final displayName = user?['name'] ?? (uiRole == 'Driver' ? 'StayDriv Pilot' : (uiRole == 'Admin' ? 'StayDriv Admin' : 'StayDriv Customer'));
-      final uid = user?['id'] ?? (uiRole == 'Driver' ? 'mock_uid_${phone}_pilot' : 'mock_uid_$phone');
+      final uid = user?['id'] ?? (uiRole == 'Driver' ? 'mock_uid_${phone}_pilot' : (uiRole == 'Admin' ? 'mock_uid_staydriv' : 'mock_uid_$phone'));
 
 
       final prefs = await SharedPreferences.getInstance();
@@ -1006,7 +1006,7 @@ class _LoginScreenState extends State<LoginScreen> {
         onTap: () {
           setState(() {
             _selectedRole = 'Customer';
-            _phoneController.text = '94904 40281';
+            _phoneController.text = '90109 22111';
             _showOtpSheet = false;
           });
         },
@@ -1110,7 +1110,7 @@ class _LoginScreenState extends State<LoginScreen> {
         onTap: () {
           setState(() {
             _selectedRole = 'Admin';
-            _phoneController.text = '99999 99999';
+            _phoneController.text = '90109 22111';
             _showOtpSheet = false;
           });
         },
@@ -1924,7 +1924,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           keyboardType: TextInputType.phone,
                           style: GoogleFonts.robotoMono(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF0F1E4A)),
                           decoration: const InputDecoration(
-                            hintText: '94904 40281',
+                            hintText: '90109 22111',
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(vertical: 14),
                           ),

@@ -49,7 +49,7 @@ void main() async {
       selectedVehicle = queryParams['vehicle'] ?? 'Bike';
     } else if (role?.toLowerCase() == 'admin') {
       uiRole = 'Admin';
-      phone = '9999999999';
+      phone = queryParams['phone'] ?? '9010922111';
       displayName = 'StayDriv Admin';
     } else {
       phone = queryParams['phone'] ?? '9010922111';
