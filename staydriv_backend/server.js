@@ -134,10 +134,50 @@ const userSchema = new mongoose.Schema({
   isBlocked: { type: Boolean, default: false },
   blockReason: { type: String, default: '' },
   blockedAt: { type: Date },
+  weeklyIncentives: { type: mongoose.Schema.Types.Mixed, default: {} },
   lastActive: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.models.User || mongoose.model('User', userSchema);
+
+// StayDriv Pilot Weekly Ride Incentive Rules (Monday to Sunday)
+const WEEKLY_INCENTIVES = {
+  Bike: {
+    tier1: { rides: 30, bonus: 750 },
+    tier2: { rides: 50, bonus: 1300, incrementalBonus: 550 } // ₹750 + ₹550 = ₹1,300 total bonus
+  },
+  Auto: {
+    tier1: { rides: 30, bonus: 950 },
+    tier2: { rides: 50, bonus: 1500, incrementalBonus: 550 } // ₹950 + ₹550 = ₹1,500 total bonus
+  },
+  Car: {
+    tier1: { rides: 30, bonus: 1200 },
+    tier2: { rides: 50, bonus: 1800, incrementalBonus: 600 } // ₹1,200 + ₹600 = ₹1,800 total bonus
+  }
+};
+
+// Helper to compute Monday 00:00:00 to Sunday 23:59:59 week window
+function getWeekBounds(refDate = new Date()) {
+  const d = new Date(refDate);
+  const day = d.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+
+  const mondayStr = monday.toISOString().slice(0, 10);
+  const weekKey = `week_${mondayStr}`;
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const label = `${monday.getDate()} ${months[monday.getMonth()]} – ${sunday.getDate()} ${months[sunday.getMonth()]}`;
+
+  return { monday, sunday, weekKey, label };
+}
 
 // Mount OTP Auth Routes
 const otpRoutes = require('./routes/otp');
@@ -411,6 +451,134 @@ const bookingSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const Booking = mongoose.model('Booking', bookingSchema);
+
+// Endpoint to fetch pilot's real-time weekly ride incentive status & progress (Monday to Sunday)
+app.get('/api/pilot/incentive-status', async (req, res) => {
+  try {
+    const driverId = req.query.driverId || req.query.uid || '';
+    const requestedVehicle = req.query.vehicleType;
+    const { monday, sunday, weekKey, label } = getWeekBounds();
+
+    let pilot = null;
+    let pilotUids = [];
+    if (driverId) {
+      pilotUids.push(driverId);
+      pilot = await User.findOne({ uid: driverId });
+      if (!pilot && driverId.startsWith('mock_uid_')) {
+        let phone = driverId.replace('mock_uid_', '');
+        pilotUids.push(phone);
+        if (phone.endsWith('_pilot')) {
+          phone = phone.replace('_pilot', '');
+          pilotUids.push(phone);
+          pilotUids.push('mock_uid_' + phone);
+          pilotUids.push(phone + '_pilot');
+        }
+        pilot = await User.findOne({ phone, role: 'partner' });
+      }
+    }
+
+    // Determine pilot vehicle type
+    const vehicle = requestedVehicle || (pilot && pilot.vehicleType) || 'Bike';
+    const normalizedVehicle = vehicle.toLowerCase().includes('auto')
+      ? 'Auto'
+      : (vehicle.toLowerCase().includes('car') ? 'Car' : 'Bike');
+
+    const rules = WEEKLY_INCENTIVES[normalizedVehicle] || WEEKLY_INCENTIVES.Bike;
+
+    // Count completed rides for this pilot during the current week (Monday 00:00 to Sunday 23:59)
+    let completedRidesCount = 0;
+    if (pilotUids.length > 0) {
+      completedRidesCount = await Booking.countDocuments({
+        driverId: { $in: pilotUids },
+        status: 'completed',
+        updatedAt: { $gte: monday, $lte: sunday }
+      });
+    }
+
+    const weekIncentiveData = (pilot && pilot.weeklyIncentives && pilot.weeklyIncentives[weekKey]) || {
+      tier1_credited: false,
+      tier2_credited: false,
+      totalBonusCredited: 0,
+      history: []
+    };
+
+    const tier1Achieved = completedRidesCount >= rules.tier1.rides;
+    const tier2Achieved = completedRidesCount >= rules.tier2.rides;
+
+    let totalBonusEarned = 0;
+    if (weekIncentiveData.totalBonusCredited > 0) {
+      totalBonusEarned = weekIncentiveData.totalBonusCredited;
+    } else {
+      if (tier2Achieved) totalBonusEarned = rules.tier2.bonus;
+      else if (tier1Achieved) totalBonusEarned = rules.tier1.bonus;
+    }
+
+    let nextTarget = null;
+    if (!tier1Achieved) {
+      nextTarget = {
+        target: rules.tier1.rides,
+        bonus: rules.tier1.bonus,
+        remainingRides: Math.max(0, rules.tier1.rides - completedRidesCount),
+        tier: 1
+      };
+    } else if (!tier2Achieved) {
+      nextTarget = {
+        target: rules.tier2.rides,
+        bonus: rules.tier2.bonus,
+        remainingRides: Math.max(0, rules.tier2.rides - completedRidesCount),
+        tier: 2
+      };
+    } else {
+      nextTarget = {
+        target: rules.tier2.rides,
+        bonus: rules.tier2.bonus,
+        remainingRides: 0,
+        allCompleted: true,
+        tier: 2
+      };
+    }
+
+    res.status(200).json({
+      success: true,
+      week: {
+        monday: monday.toISOString(),
+        sunday: sunday.toISOString(),
+        weekKey,
+        label
+      },
+      pilot: {
+        uid: driverId,
+        name: pilot ? pilot.name : 'Pilot Partner',
+        walletBalance: pilot ? pilot.salary : 0,
+        vehicleType: normalizedVehicle
+      },
+      completedRidesThisWeek: completedRidesCount,
+      vehicleType: normalizedVehicle,
+      tiers: {
+        tier1: {
+          ridesRequired: rules.tier1.rides,
+          bonus: rules.tier1.bonus,
+          achieved: tier1Achieved,
+          credited: weekIncentiveData.tier1_credited,
+          remaining: Math.max(0, rules.tier1.rides - completedRidesCount)
+        },
+        tier2: {
+          ridesRequired: rules.tier2.rides,
+          bonus: rules.tier2.bonus,
+          achieved: tier2Achieved,
+          credited: weekIncentiveData.tier2_credited,
+          remaining: Math.max(0, rules.tier2.rides - completedRidesCount)
+        }
+      },
+      totalBonusEarnedThisWeek: totalBonusEarned,
+      nextTarget,
+      allRules: WEEKLY_INCENTIVES
+    });
+  } catch (err) {
+    console.error('Pilot Incentive Status Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // MongoDB Schema for Payments
 const paymentSchema = new mongoose.Schema({
@@ -860,8 +1028,104 @@ app.post('/api/booking/update', async (req, res) => {
         }
         if (pilot) {
           pilot.salary = (pilot.salary || 5000) + netEarnings;
-          await pilot.save();
           console.log(`[EARNINGS] Added ₹${netEarnings.toFixed(2)} to pilot ${driverId}. New balance: ₹${pilot.salary}`);
+
+          // --- WEEKLY RIDE INCENTIVE OFFER EVALUATION (Mon-Sun) ---
+          try {
+            const { monday, sunday, weekKey, label } = getWeekBounds();
+            const vehicle = (booking && booking.vehicle) || (activeBooking && activeBooking.vehicle) || pilot.vehicleType || 'Bike';
+            const normalizedVehicle = vehicle.toLowerCase().includes('auto')
+              ? 'Auto'
+              : (vehicle.toLowerCase().includes('car') ? 'Car' : 'Bike');
+            const incentiveRules = WEEKLY_INCENTIVES[normalizedVehicle] || WEEKLY_INCENTIVES.Bike;
+
+            // Query total completed rides for this pilot in current week
+            const pilotUids = [driverId];
+            if (driverId.startsWith('mock_uid_')) {
+              let phone = driverId.replace('mock_uid_', '');
+              pilotUids.push(phone);
+              if (phone.endsWith('_pilot')) {
+                phone = phone.replace('_pilot', '');
+                pilotUids.push(phone);
+                pilotUids.push('mock_uid_' + phone);
+                pilotUids.push(phone + '_pilot');
+              }
+            }
+
+            const weeklyCompletedCount = await Booking.countDocuments({
+              driverId: { $in: pilotUids },
+              status: 'completed',
+              updatedAt: { $gte: monday, $lte: sunday }
+            });
+
+            pilot.weeklyIncentives = pilot.weeklyIncentives || {};
+            if (!pilot.weeklyIncentives[weekKey]) {
+              pilot.weeklyIncentives[weekKey] = {
+                vehicle: normalizedVehicle,
+                completedRides: weeklyCompletedCount,
+                tier1_credited: false,
+                tier2_credited: false,
+                totalBonusCredited: 0,
+                history: []
+              };
+            }
+
+            const currentWeekData = pilot.weeklyIncentives[weekKey];
+            currentWeekData.completedRides = weeklyCompletedCount;
+            currentWeekData.vehicle = normalizedVehicle;
+            let creditedBonusNow = 0;
+
+            // Tier 1 Check: 30 Rides
+            if (weeklyCompletedCount >= incentiveRules.tier1.rides && !currentWeekData.tier1_credited) {
+              const t1Bonus = incentiveRules.tier1.bonus;
+              pilot.salary += t1Bonus;
+              currentWeekData.tier1_credited = true;
+              currentWeekData.totalBonusCredited += t1Bonus;
+              creditedBonusNow += t1Bonus;
+              currentWeekData.history.push({
+                tier: 1,
+                targetRides: incentiveRules.tier1.rides,
+                bonus: t1Bonus,
+                creditedAt: new Date()
+              });
+              console.log(`[INCENTIVE] 🏆 Tier 1 Achieved for ${pilot.name || driverId} (${normalizedVehicle}): ${weeklyCompletedCount} rides this week! Credited ₹${t1Bonus} bonus. Total balance: ₹${pilot.salary}`);
+            }
+
+            // Tier 2 Check: 50 Rides
+            if (weeklyCompletedCount >= incentiveRules.tier2.rides && !currentWeekData.tier2_credited) {
+              const t2IncrementalBonus = incentiveRules.tier2.incrementalBonus;
+              pilot.salary += t2IncrementalBonus;
+              currentWeekData.tier2_credited = true;
+              currentWeekData.totalBonusCredited += t2IncrementalBonus;
+              creditedBonusNow += t2IncrementalBonus;
+              currentWeekData.history.push({
+                tier: 2,
+                targetRides: incentiveRules.tier2.rides,
+                bonus: t2IncrementalBonus,
+                cumulativeBonus: incentiveRules.tier2.bonus,
+                creditedAt: new Date()
+              });
+              console.log(`[INCENTIVE] 🌟 Tier 2 Achieved for ${pilot.name || driverId} (${normalizedVehicle}): ${weeklyCompletedCount} rides this week! Credited ₹${t2IncrementalBonus} incremental bonus (Total: ₹${incentiveRules.tier2.bonus}). Total balance: ₹${pilot.salary}`);
+            }
+
+            pilot.markModified('weeklyIncentives');
+            await pilot.save();
+
+            if (creditedBonusNow > 0) {
+              io.emit('pilot_incentive_credited', {
+                driverId,
+                pilotName: pilot.name,
+                vehicle: normalizedVehicle,
+                completedRides: weeklyCompletedCount,
+                bonusCredited: creditedBonusNow,
+                newBalance: pilot.salary,
+                weekKey,
+                label
+              });
+            }
+          } catch (incErr) {
+            console.error('Error calculating weekly pilot incentive:', incErr);
+          }
         }
       }
       

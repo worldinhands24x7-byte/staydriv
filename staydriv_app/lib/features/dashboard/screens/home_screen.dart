@@ -1056,6 +1056,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             totalEarnings: _totalEarnings,
             completedRides: _completedRides,
             isAdvanceWithdrawn: _isAdvanceWithdrawn,
+            pilotVehicle: _selectedVehicle,
             onWithdrawAdvance: () {
               setState(() {
                 _totalEarnings -= 200.0;
@@ -3267,12 +3268,112 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final double netEarnings = fareVal * 0.85;
     final double commission = fareVal * 0.15;
 
+    // --- AUTOMATIC WEEKLY INCENTIVE EVALUATION (Mon - Sun) ---
+    final now = DateTime.now();
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    final sunday = DateTime(monday.year, monday.month, monday.day + 6, 23, 59, 59, 999);
+
+    int weeklyCompletedCount = 1; // including this new completed ride
+    for (var r in _completedRides) {
+      final st = (r['status'] as String? ?? 'completed').toLowerCase();
+      if (st != 'completed' && st != 'accepted') continue;
+      final ts = r['timestamp'] as int? ?? 0;
+      if (ts == 0) continue;
+      final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+      if (dt.isAfter(monday.subtract(const Duration(milliseconds: 1))) &&
+          dt.isBefore(sunday.add(const Duration(milliseconds: 1)))) {
+        weeklyCompletedCount++;
+      }
+    }
+
+    double incentiveBonusEarned = 0.0;
+    String celebrationTitle = '';
+    String celebrationDesc = '';
+
+    int t1Target = 30;
+    int t2Target = 50;
+    int t1Bonus = 750;
+    int t2Total = 1300;
+    int t2Incremental = 550;
+
+    final veh = _selectedVehicle.toLowerCase();
+    if (veh.contains('auto')) {
+      t1Bonus = 950;
+      t2Total = 1500;
+      t2Incremental = 550;
+    } else if (veh.contains('car')) {
+      t1Bonus = 1200;
+      t2Total = 1800;
+      t2Incremental = 600;
+    }
+
+    if (weeklyCompletedCount == t1Target) {
+      incentiveBonusEarned = t1Bonus.toDouble();
+      celebrationTitle = '🎉 30 Rides Completed! ₹$t1Bonus Bonus Credited!';
+      celebrationDesc = 'Outstanding effort! You reached Target 1 ($t1Target rides) for this week! ₹$t1Bonus has been automatically credited to your Instant Cashout balance. Complete ${t2Target - t1Target} more rides for the ₹$t2Total mega bonus!';
+    } else if (weeklyCompletedCount == t2Target) {
+      incentiveBonusEarned = t2Incremental.toDouble();
+      celebrationTitle = '🌟 50 Rides Completed! ₹$t2Incremental Bonus Credited!';
+      celebrationDesc = 'Incredible dedication! You unlocked Target 2 ($t2Target rides) and achieved the ₹$t2Total weekly grand bonus! ₹$t2Incremental has been automatically credited to your Instant Cashout balance!';
+    }
+
     setState(() {
-      _totalEarnings += netEarnings;
+      _totalEarnings += (netEarnings + incentiveBonusEarned);
       _completedRides.insert(0, newRide);
     });
 
     BookingManager().clearBooking();
+
+    if (celebrationTitle.isNotEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: Color(0xFFF59E0B), width: 1.5),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.emoji_events_rounded, color: Color(0xFFF59E0B), size: 28),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  celebrationTitle,
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            celebrationDesc,
+            style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFFCBD5E1), height: 1.4),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                foregroundColor: Colors.black,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Claim & Awesome!', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+    }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -3282,7 +3383,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Payment of $priceStr received! ₹${netEarnings.toStringAsFixed(2)} added to your wallet (15% commission of ₹${commission.toStringAsFixed(2)} sent to admin).',
+                'Payment of $priceStr received! ₹${netEarnings.toStringAsFixed(2)} added to your wallet (15% commission of ₹${commission.toStringAsFixed(2)} sent to admin).' +
+                    (incentiveBonusEarned > 0 ? ' + ₹${incentiveBonusEarned.toInt()} Weekly Incentive Bonus Credited!' : ''),
                 style: const TextStyle(fontSize: 12),
               ),
             ),
@@ -6598,6 +6700,109 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
                     ],
                   ),
+
+                  // Compact Weekly Incentive Tracker
+                  Builder(builder: (context) {
+                    final now = DateTime.now();
+                    final mon = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+                    final sun = DateTime(mon.year, mon.month, mon.day + 6, 23, 59, 59, 999);
+                    int weekRides = 0;
+                    for (var r in _completedRides) {
+                      final st = (r['status'] as String? ?? 'completed').toLowerCase();
+                      if (st != 'completed' && st != 'accepted') continue;
+                      final ts = r['timestamp'] as int? ?? 0;
+                      if (ts == 0) continue;
+                      final dt = DateTime.fromMillisecondsSinceEpoch(ts);
+                      if (dt.isAfter(mon.subtract(const Duration(milliseconds: 1))) &&
+                          dt.isBefore(sun.add(const Duration(milliseconds: 1)))) {
+                        weekRides++;
+                      }
+                    }
+
+                    int t1 = 30;
+                    int t2 = 50;
+                    int t1B = 750;
+                    int t2B = 1300;
+                    final v = _selectedVehicle.toLowerCase();
+                    if (v.contains('auto')) {
+                      t1B = 950;
+                      t2B = 1500;
+                    } else if (v.contains('car')) {
+                      t1B = 1200;
+                      t2B = 1800;
+                    }
+
+                    final nextTarget = weekRides < t1 ? t1 : t2;
+                    final nextBonus = weekRides < t1 ? t1B : t2B;
+                    final progress = (weekRides / t2.toDouble()).clamp(0.0, 1.0);
+
+                    return Column(
+                      children: [
+                        const SizedBox(height: 10),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _currentTabIndex = 1; // Open Earnings & Activity Dashboard
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.emoji_events_rounded, color: Color(0xFFF59E0B), size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Weekly Incentive ($_selectedVehicle)',
+                                            style: GoogleFonts.hankenGrotesk(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          Text(
+                                            '$weekRides/$nextTarget Rides (₹$nextBonus Goal)',
+                                            style: GoogleFonts.robotoMono(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: const Color(0xFFFBBF24),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 5),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(3),
+                                        child: LinearProgressIndicator(
+                                          value: progress,
+                                          backgroundColor: const Color(0xFF0F172A),
+                                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFF59E0B)),
+                                          minHeight: 4,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF94A3B8), size: 11),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ],
               ),
             ),

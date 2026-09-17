@@ -13,6 +13,8 @@ class ActivityScreen extends StatefulWidget {
   final VoidCallback onGoToHome;
   final Function(double)? onWithdrawMoney;
   
+  final String pilotVehicle;
+  
   const ActivityScreen({
     super.key,
     required this.userRole,
@@ -22,6 +24,7 @@ class ActivityScreen extends StatefulWidget {
     required this.onWithdrawAdvance,
     required this.onGoToHome,
     this.onWithdrawMoney,
+    this.pilotVehicle = 'Bike',
   });
 
   @override
@@ -31,6 +34,13 @@ class ActivityScreen extends StatefulWidget {
 class _ActivityScreenState extends State<ActivityScreen> {
   String _activeTab = 'past'; // past or scheduled
   String _timeFilter = 'Day'; // Day, Week, Month, Year
+  late String _selectedIncentiveVehicle;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIncentiveVehicle = widget.pilotVehicle.isNotEmpty ? widget.pilotVehicle : 'Bike';
+  }
 
   void _switchTab(String tabName) {
     setState(() {
@@ -430,6 +440,742 @@ class _ActivityScreenState extends State<ActivityScreen> {
     return sum;
   }
 
+  DateTime get _currentMonday {
+    final now = DateTime.now();
+    // Monday is 1, Sunday is 7
+    final monday = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
+    return DateTime(monday.year, monday.month, monday.day, 0, 0, 0);
+  }
+
+  DateTime get _currentSunday {
+    final monday = _currentMonday;
+    return DateTime(monday.year, monday.month, monday.day + 6, 23, 59, 59, 999);
+  }
+
+  String get _weekDateLabel {
+    final mon = _currentMonday;
+    final sun = _currentSunday;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${mon.day} ${months[mon.month - 1]} – ${sun.day} ${months[sun.month - 1]}';
+  }
+
+  // Count rides completed by this pilot between Monday 00:00 and Sunday 23:59
+  int _getWeeklyCompletedRidesCount(String vehicleCategory) {
+    int count = 0;
+    final start = _currentMonday;
+    final end = _currentSunday;
+
+    for (var ride in widget.completedRides) {
+      final status = (ride['status'] as String? ?? 'completed').toLowerCase();
+      if (status != 'completed' && status != 'accepted') continue;
+
+      final ts = ride['timestamp'] as int? ?? 0;
+      if (ts == 0) continue;
+      final rideDate = DateTime.fromMillisecondsSinceEpoch(ts);
+
+      if (rideDate.isAfter(start.subtract(const Duration(milliseconds: 1))) &&
+          rideDate.isBefore(end.add(const Duration(milliseconds: 1)))) {
+        final rideVehicle = (ride['vehicle'] as String? ?? '').toLowerCase();
+        final cat = vehicleCategory.toLowerCase();
+        if (cat == 'bike' && (rideVehicle.contains('bike') || rideVehicle.contains('moto') || rideVehicle.contains('two'))) {
+          count++;
+        } else if (cat == 'auto' && (rideVehicle.contains('auto') || rideVehicle.contains('rickshaw'))) {
+          count++;
+        } else if (cat == 'car' && (rideVehicle.contains('car') || rideVehicle.contains('cab') || rideVehicle.contains('taxi') || rideVehicle.contains('sedan'))) {
+          count++;
+        } else if (rideVehicle.isEmpty || rideVehicle == 'bike') {
+          if (cat == 'bike') count++;
+        }
+      }
+    }
+    return count;
+  }
+
+  // StayDriv Pilot Weekly Ride Incentive Rules (Monday to Sunday)
+  // Bike: 30 rides -> ₹750 bonus; 50 rides -> ₹1,300 bonus
+  // Auto: 30 rides -> ₹950 bonus; 50 rides -> ₹1,500 bonus
+  // Car: 30 rides -> ₹1,200 bonus; 50 rides -> ₹1,800 bonus
+  Map<String, dynamic> _getIncentiveRules(String vehicleCategory) {
+    switch (vehicleCategory.toLowerCase()) {
+      case 'auto':
+        return {
+          'vehicle': 'Auto',
+          'tier1': {'rides': 30, 'bonus': 950},
+          'tier2': {'rides': 50, 'bonus': 1500},
+        };
+      case 'car':
+        return {
+          'vehicle': 'Car',
+          'tier1': {'rides': 30, 'bonus': 1200},
+          'tier2': {'rides': 50, 'bonus': 1800},
+        };
+      case 'bike':
+      default:
+        return {
+          'vehicle': 'Bike',
+          'tier1': {'rides': 30, 'bonus': 750},
+          'tier2': {'rides': 50, 'bonus': 1300},
+        };
+    }
+  }
+
+  Widget _buildWeeklyIncentiveCard() {
+    final rules = _getIncentiveRules(_selectedIncentiveVehicle);
+    final tier1 = rules['tier1'] as Map<String, dynamic>;
+    final tier2 = rules['tier2'] as Map<String, dynamic>;
+    final int tier1Target = tier1['rides'] as int;
+    final int tier1Bonus = tier1['bonus'] as int;
+    final int tier2Target = tier2['rides'] as int;
+    final int tier2Bonus = tier2['bonus'] as int;
+
+    final int completedCount = _getWeeklyCompletedRidesCount(_selectedIncentiveVehicle);
+    final bool tier1Achieved = completedCount >= tier1Target;
+    final bool tier2Achieved = completedCount >= tier2Target;
+
+    final double progressRatio = (completedCount / tier2Target.toDouble()).clamp(0.0, 1.0);
+
+    String progressMessage;
+    Color messageColor = const Color(0xFF38BDF8);
+    if (tier2Achieved) {
+      progressMessage = '🌟 Maximum weekly incentive of ₹$tier2Bonus achieved & credited!';
+      messageColor = const Color(0xFF10B981);
+    } else if (tier1Achieved) {
+      final remaining = tier2Target - completedCount;
+      progressMessage = '🎉 ₹$tier1Bonus Credited! Complete $remaining more rides for ₹$tier2Bonus!';
+      messageColor = const Color(0xFFF59E0B);
+    } else {
+      final remaining = tier1Target - completedCount;
+      progressMessage = '$remaining more rides this week to unlock your ₹$tier1Bonus bonus!';
+    }
+
+    int currentBonusEarned = 0;
+    if (tier2Achieved) {
+      currentBonusEarned = tier2Bonus;
+    } else if (tier1Achieved) {
+      currentBonusEarned = tier1Bonus;
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.35),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.4),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.4)),
+                    ),
+                    child: const Center(
+                      child: Icon(Icons.emoji_events_rounded, color: Color(0xFFF59E0B), size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Weekly Ride Incentive',
+                        style: GoogleFonts.hankenGrotesk(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      Text(
+                        'Monday to Sunday Offer',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF94A3B8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF334155),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF475569)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_month_rounded, color: Color(0xFF38BDF8), size: 12),
+                    const SizedBox(width: 4),
+                    Text(
+                      _weekDateLabel,
+                      style: GoogleFonts.robotoMono(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Vehicle Type Selector Tabs (Bike, Auto, Car)
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0F172A),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF334155)),
+            ),
+            child: Row(
+              children: ['Bike', 'Auto', 'Car'].map((veh) {
+                final isSelected = _selectedIncentiveVehicle.toLowerCase() == veh.toLowerCase();
+                String emoji = veh == 'Bike' ? '🏍️ ' : (veh == 'Auto' ? '🛺 ' : '🚗 ');
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedIncentiveVehicle = veh;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: isSelected
+                            ? const LinearGradient(
+                                colors: [Color(0xFF2563EB), Color(0xFF3B82F6)],
+                              )
+                            : null,
+                        color: isSelected ? null : Colors.transparent,
+                        borderRadius: BorderRadius.circular(11),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(emoji, style: const TextStyle(fontSize: 13)),
+                          Text(
+                            veh,
+                            style: GoogleFonts.hankenGrotesk(
+                              color: isSelected ? Colors.white : const Color(0xFF94A3B8),
+                              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Live Progress Bar & Target Counter Box
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B).withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF334155)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'COMPLETED THIS WEEK',
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 9.5,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF94A3B8),
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '$completedCount',
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              TextSpan(
+                                text: ' / $tier2Target rides',
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF94A3B8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: currentBonusEarned > 0
+                              ? [const Color(0xFF059669), const Color(0xFF10B981)]
+                              : [const Color(0xFF1E293B), const Color(0xFF334155)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: currentBonusEarned > 0 ? const Color(0xFF34D399) : const Color(0xFF475569),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currentBonusEarned > 0 ? 'EARNED BONUS' : 'NEXT BONUS',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                              color: currentBonusEarned > 0 ? Colors.white70 : const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Text(
+                            currentBonusEarned > 0
+                                ? '₹$currentBonusEarned'
+                                : (completedCount < tier1Target ? '₹$tier1Bonus' : '₹$tier2Bonus'),
+                            style: GoogleFonts.hankenGrotesk(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: currentBonusEarned > 0 ? Colors.white : const Color(0xFFF59E0B),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Multi-stop Progress Bar (0 -> 30 -> 50)
+                Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // Background track
+                    Container(
+                      height: 10,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                    // Active Fill
+                    FractionallySizedBox(
+                      widthFactor: progressRatio,
+                      child: Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFF59E0B)],
+                          ),
+                          borderRadius: BorderRadius.circular(5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.5),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Milestone Labels under the bar
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '0',
+                      style: GoogleFonts.robotoMono(color: const Color(0xFF64748B), fontSize: 10),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          tier1Achieved ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                          color: tier1Achieved ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                          size: 12,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '30 Rides ($tier1Bonus)',
+                          style: GoogleFonts.robotoMono(
+                            color: tier1Achieved ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
+                            fontSize: 10,
+                            fontWeight: tier1Achieved ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          tier2Achieved ? Icons.emoji_events_rounded : Icons.stars_rounded,
+                          color: tier2Achieved ? const Color(0xFFF59E0B) : const Color(0xFF64748B),
+                          size: 13,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          '50 Rides ($tier2Bonus)',
+                          style: GoogleFonts.robotoMono(
+                            color: tier2Achieved ? const Color(0xFFFBBF24) : const Color(0xFF94A3B8),
+                            fontSize: 10,
+                            fontWeight: tier2Achieved ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Motivational Progress Callout
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: messageColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: messageColor.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.tips_and_updates_rounded, color: messageColor, size: 14),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          progressMessage,
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: messageColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Two Milestone Target Cards
+          Row(
+            children: [
+              // Tier 1 Card
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: tier1Achieved
+                        ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                        : const Color(0xFF0F172A).withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: tier1Achieved
+                          ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                          : const Color(0xFF334155),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'TARGET 1',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: tier1Achieved
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFF3B82F6).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tier1Achieved ? '✓ Credited' : '${(tier1Target - completedCount).clamp(0, tier1Target)} left',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: tier1Achieved ? Colors.white : const Color(0xFF60A5FA),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '30 Rides',
+                        style: GoogleFonts.hankenGrotesk(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹$tier1Bonus Bonus',
+                        style: GoogleFonts.hankenGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFF10B981),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // Tier 2 Card
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: tier2Achieved
+                        ? const Color(0xFFF59E0B).withValues(alpha: 0.14)
+                        : const Color(0xFF0F172A).withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: tier2Achieved
+                          ? const Color(0xFFF59E0B).withValues(alpha: 0.6)
+                          : const Color(0xFF334155),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'TARGET 2',
+                            style: GoogleFonts.robotoMono(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF94A3B8),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: tier2Achieved
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              tier2Achieved ? '✓ Credited' : '${(tier2Target - completedCount).clamp(0, tier2Target)} left',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: tier2Achieved ? Colors.black : const Color(0xFFFBBF24),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '50 Rides',
+                        style: GoogleFonts.hankenGrotesk(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '₹$tier2Bonus Bonus',
+                        style: GoogleFonts.hankenGrotesk(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Auto-credit disclaimer footnote
+          Row(
+            children: [
+              const Icon(Icons.bolt_rounded, color: Color(0xFFF59E0B), size: 14),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Bonus automatically credited to Instant Cashout upon hitting target each week (Mon – Sun).',
+                  style: GoogleFonts.inter(
+                    fontSize: 9.5,
+                    color: const Color(0xFF94A3B8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRideHistoryCard(BuildContext context, Map<String, dynamic> ride) {
+    final isHeavyTruck = (ride['vehicle'] as String? ?? '').toLowerCase().contains('truck');
+
+    final listTileChild = ListTile(
+      leading: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(
+          ride['icon'] as IconData? ?? Icons.directions_car,
+          color: AppTheme.primaryColor,
+        ),
+      ),
+      title: Row(
+        children: [
+          Expanded(
+            child: Text(
+              ride['title'] as String? ?? 'StayDriv Ride',
+              style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+          ),
+          if (ride['status'] == 'accepted')
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Text(
+                'Accepted',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+            ),
+        ],
+      ),
+      subtitle: Text(
+        ride['route'] as String? ?? '',
+        style: GoogleFonts.inter(fontSize: 12),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Text(
+            ride['price'] as String? ?? '',
+            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
+          ),
+          Text(
+            ride['date'] as String? ?? '',
+            style: GoogleFonts.robotoMono(fontSize: 10, color: AppTheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: isHeavyTruck
+          ? InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => _showHeavyTruckRideDetailsBottomSheet(context, ride),
+              child: listTileChild,
+            )
+          : listTileChild,
+    );
+  }
+
   Widget _buildDriverActivityView() {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 600;
@@ -455,8 +1201,8 @@ class _ActivityScreenState extends State<ActivityScreen> {
             maxWidth: isDesktop ? 600 : double.infinity,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: ListView(
+            padding: const EdgeInsets.only(top: 8, bottom: 32),
             children: [
               // Time Filter Selector
               Container(
@@ -557,6 +1303,10 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // Weekly Ride Incentive Offer Card (Bike, Auto, Car)
+              _buildWeeklyIncentiveCard(),
               const SizedBox(height: 16),
 
               // Weekly Expense Advance Card
@@ -693,95 +1443,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
               ),
               const SizedBox(height: 10),
 
-              Expanded(
-                child: filteredRides.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No rides completed in this period.',
-                          style: GoogleFonts.inter(color: AppTheme.onSurfaceVariant),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: filteredRides.length,
-                        itemBuilder: (context, index) {
-                          final ride = filteredRides[index];
-                          final isHeavyTruck = (ride['vehicle'] as String? ?? '').toLowerCase().contains('truck');
-                          
-                          final listTileChild = ListTile(
-                            leading: Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: AppTheme.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                ride['icon'] as IconData? ?? Icons.directions_car,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    ride['title'] as String? ?? 'StayDriv Ride',
-                                    style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600, fontSize: 15),
-                                  ),
-                                ),
-                                if (ride['status'] == 'accepted')
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.blue.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: Colors.blue.shade200),
-                                    ),
-                                    child: Text(
-                                      'Accepted',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade700,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            subtitle: Text(
-                              ride['route'] as String? ?? '',
-                              style: GoogleFonts.inter(fontSize: 12),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  ride['price'] as String? ?? '',
-                                  style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
-                                ),
-                                Text(
-                                  ride['date'] as String? ?? '',
-                                  style: GoogleFonts.robotoMono(fontSize: 10, color: AppTheme.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            child: isHeavyTruck
-                                ? InkWell(
-                                    borderRadius: BorderRadius.circular(12),
-                                    onTap: () => _showHeavyTruckRideDetailsBottomSheet(context, ride),
-                                    child: listTileChild,
-                                  )
-                                : listTileChild,
-                          );
-                        },
-                      ),
-              ),
+              if (filteredRides.isEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 36),
+                  child: Center(
+                    child: Text(
+                      'No rides completed in this period.',
+                      style: GoogleFonts.inter(color: AppTheme.onSurfaceVariant),
+                    ),
+                  ),
+                )
+              else
+                ...filteredRides.map((ride) => _buildRideHistoryCard(context, ride)),
             ],
           ),
         ),
