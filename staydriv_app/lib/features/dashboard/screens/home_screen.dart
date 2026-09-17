@@ -155,13 +155,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   StreamSubscription<String>? _rideStatusSub;
   StreamSubscription<Position>? _gpsSub;
 
-  // Admin streams
+  // Admin & Staff state
   Stream<QuerySnapshot>? _adminBookingsStream;
   Stream<QuerySnapshot>? _adminDriversStream;
 
   Timer? _adminMongoPollTimer;
   List<Map<String, dynamic>> _mongoAdminBookings = [];
   List<Map<String, dynamic>> _mongoAdminDrivers = [];
+  List<Map<String, dynamic>> _mongoAdminCustomers = [];
+  List<Map<String, dynamic>> _adminComplaints = [];
+  List<Map<String, dynamic>> _adminRefunds = [];
+  int _adminSelectedTab = 0; // 0: Overview/Bookings, 1: Pending Pilot Approvals, 2: Blocked Pilots, 3: Blocked Customers, 4: Misbehave Pilot, 5: Misbehave Customer, 6: Customer Refunds, 7: Pilot Refunds, 8: Complaints
+  String _complaintFilterStatus = 'all'; // 'all', 'pending', 'resolved'
   Map<String, dynamic>? _selectedDriverForDocApproval;
   String _adminSearchQuery = '';
 
@@ -194,17 +199,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _subscribeToCustomerBookingManager();
       BookingManager().restoreAndSyncActiveBooking();
     }
-    if (widget.userRole == 'Admin') {
+    if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {
       if (_isFirebaseInitialized) {
         _adminBookingsStream = FirebaseFirestore.instance
             .collection('bookings')
             .orderBy('createdAt', descending: true)
-            .limit(10)
+            .limit(50)
             .snapshots();
         _adminDriversStream = FirebaseFirestore.instance
             .collection('partners')
             .snapshots();
       } else {
+        _fetchAdminDataOnce();
         _startAdminMongoPolling();
       }
     }
@@ -483,43 +489,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Future<void> _fetchAdminDataOnce() async {
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+
+      final bResponse = await ApiClient().get(Uri.parse('$baseUrl/api/admin/bookings'), retry: false);
+      if (bResponse.statusCode == 200) {
+        final bData = jsonDecode(bResponse.body);
+        if (bData['success'] == true && bData['bookings'] != null) {
+          _mongoAdminBookings = List<Map<String, dynamic>>.from(bData['bookings']);
+        }
+      }
+
+      final dResponse = await ApiClient().get(Uri.parse('$baseUrl/api/admin/drivers'), retry: false);
+      if (dResponse.statusCode == 200) {
+        final dData = jsonDecode(dResponse.body);
+        if (dData['success'] == true && dData['drivers'] != null) {
+          _mongoAdminDrivers = List<Map<String, dynamic>>.from(dData['drivers']);
+        }
+      }
+
+      final cResponse = await ApiClient().get(Uri.parse('$baseUrl/api/admin/customers'), retry: false);
+      if (cResponse.statusCode == 200) {
+        final cData = jsonDecode(cResponse.body);
+        if (cData['success'] == true && cData['customers'] != null) {
+          _mongoAdminCustomers = List<Map<String, dynamic>>.from(cData['customers']);
+        }
+      }
+
+      final cmpResponse = await ApiClient().get(Uri.parse('$baseUrl/api/admin/complaints'), retry: false);
+      if (cmpResponse.statusCode == 200) {
+        final cmpData = jsonDecode(cmpResponse.body);
+        if (cmpData['success'] == true && cmpData['complaints'] != null) {
+          _adminComplaints = List<Map<String, dynamic>>.from(cmpData['complaints']);
+        }
+      }
+
+      final rResponse = await ApiClient().get(Uri.parse('$baseUrl/api/admin/refunds'), retry: false);
+      if (rResponse.statusCode == 200) {
+        final rData = jsonDecode(rResponse.body);
+        if (rData['success'] == true && rData['refunds'] != null) {
+          _adminRefunds = List<Map<String, dynamic>>.from(rData['refunds']);
+        }
+      }
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint("Error fetching Admin data: $e");
+    }
+  }
+
   void _startAdminMongoPolling() {
     _adminMongoPollTimer?.cancel();
     _adminMongoPollTimer = Timer.periodic(const Duration(seconds: 4), (timer) async {
       if (!mounted) return;
-      try {
-        final baseUrl = NetworkConfig.backendUrl;
-        
-        final bookingsUrl = Uri.parse('$baseUrl/api/admin/bookings');
-        final bResponse = await ApiClient().get(bookingsUrl, retry: false);
-        if (bResponse.statusCode == 200) {
-          final bData = jsonDecode(bResponse.body);
-          if (bData['success'] == true && bData['bookings'] != null) {
-            final List rawBookings = bData['bookings'];
-            if (mounted) {
-              setState(() {
-                _mongoAdminBookings = List<Map<String, dynamic>>.from(rawBookings);
-              });
-            }
-          }
-        }
-
-        final driversUrl = Uri.parse('$baseUrl/api/admin/drivers');
-        final dResponse = await ApiClient().get(driversUrl, retry: false);
-        if (dResponse.statusCode == 200) {
-          final dData = jsonDecode(dResponse.body);
-          if (dData['success'] == true && dData['drivers'] != null) {
-            final List rawDrivers = dData['drivers'];
-            if (mounted) {
-              setState(() {
-                _mongoAdminDrivers = List<Map<String, dynamic>>.from(rawDrivers);
-              });
-            }
-          }
-        }
-      } catch (e) {
-        debugPrint("Error polling Admin data from MongoDB: $e");
-      }
+      await _fetchAdminDataOnce();
     });
   }
 
@@ -1170,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildDashboardView() {
     if (widget.userRole == 'Driver') {
       return _buildDriverDashboardView();
-    } else if (widget.userRole == 'Admin') {
+    } else if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {
       return _buildAdminDashboardView();
     }
      return Stack(
@@ -3883,6 +3909,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return _buildAdminDashboardContent(
         bookings: _mongoAdminBookings,
         drivers: _mongoAdminDrivers,
+        customers: _mongoAdminCustomers,
+        complaints: _adminComplaints,
+        refunds: _adminRefunds,
         isLoading: false,
       );
     }
@@ -3895,15 +3924,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           builder: (context, driversSnapshot) {
             final List<Map<String, dynamic>> bookingsList = bookingsSnapshot.hasData
                 ? bookingsSnapshot.data!.docs.map((doc) => doc.data() as Map<String, dynamic>).toList()
-                : [];
+                : _mongoAdminBookings;
             final List<Map<String, dynamic>> driversList = driversSnapshot.hasData
                 ? driversSnapshot.data!.docs.map((doc) => doc.data() as Map<String, dynamic>).toList()
-                : [];
+                : _mongoAdminDrivers;
 
             return _buildAdminDashboardContent(
               bookings: bookingsList,
               drivers: driversList,
-              isLoading: !bookingsSnapshot.hasData || !driversSnapshot.hasData,
+              customers: _mongoAdminCustomers,
+              complaints: _adminComplaints,
+              refunds: _adminRefunds,
+              isLoading: !bookingsSnapshot.hasData && _mongoAdminBookings.isEmpty,
             );
           },
         );
@@ -4435,44 +4467,566 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  // Admin & Staff Operations
+  Future<void> _callUser(String phone) async {
+    if (phone.isEmpty) return;
+    final cleanPhone = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri.parse('tel:$cleanPhone');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not launch phone dialer for +91 $cleanPhone')),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error launching call: $e");
+    }
+  }
+
+  Future<void> _toggleBlockUser({
+    required String uid,
+    required String phone,
+    required String role,
+    required bool isBlocked,
+    String? reason,
+  }) async {
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final url = Uri.parse('$baseUrl/api/admin/user/block');
+      final resp = await ApiClient().post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'uid': uid,
+          'phone': phone,
+          'role': role,
+          'isBlocked': isBlocked,
+          'reason': reason ?? (isBlocked ? 'Blocked by Admin/Staff' : ''),
+        }),
+      );
+      if (resp.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isBlocked ? 'User blocked successfully' : 'User unblocked successfully'),
+              backgroundColor: isBlocked ? Colors.red : Colors.green,
+            ),
+          );
+        }
+        await _fetchAdminDataOnce();
+      }
+    } catch (e) {
+      debugPrint("Error updating block status: $e");
+    }
+  }
+
+  Future<void> _resolveComplaint({
+    required String complaintId,
+    String? notes,
+  }) async {
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final url = Uri.parse('$baseUrl/api/admin/complaint/resolve');
+      final resp = await ApiClient().post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'complaintId': complaintId,
+          'resolutionNotes': notes ?? 'Resolved by ${widget.userRole}',
+        }),
+      );
+      if (resp.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Complaint marked as resolved'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _fetchAdminDataOnce();
+      }
+    } catch (e) {
+      debugPrint("Error resolving complaint: $e");
+    }
+  }
+
+  Future<void> _resolveRefund({
+    required String refundId,
+    required String status, // 'processed' or 'rejected'
+  }) async {
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final url = Uri.parse('$baseUrl/api/admin/refund/resolve');
+      final resp = await ApiClient().post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'refundId': refundId,
+          'status': status,
+          'processedBy': widget.userRole,
+        }),
+      );
+      if (resp.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Refund $status successfully'),
+              backgroundColor: status == 'processed' ? Colors.green : Colors.red,
+            ),
+          );
+        }
+        await _fetchAdminDataOnce();
+      }
+    } catch (e) {
+      debugPrint("Error resolving refund: $e");
+    }
+  }
+
+  void _showBlockUserDialog({
+    required String role, // 'partner' or 'customer'
+    String? presetUid,
+    String? presetPhone,
+    String? presetName,
+  }) {
+    final phoneCtrl = TextEditingController(text: presetPhone ?? '');
+    final reasonCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.block_rounded, color: Colors.red),
+            const SizedBox(width: 8),
+            Text(
+              role == 'partner' ? 'Block Pilot' : 'Block Customer',
+              style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (presetName != null) ...[
+              Text(
+                'Name: $presetName',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+            ],
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: 'Phone Number',
+                hintText: '10-digit phone',
+                prefixText: '+91 ',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                labelText: 'Reason for Blocking',
+                hintText: 'e.g. Abusive behaviour, fraud, non-compliance',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (phoneCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+              await _toggleBlockUser(
+                uid: presetUid ?? '',
+                phone: phoneCtrl.text.trim(),
+                role: role,
+                isBlocked: true,
+                reason: reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'Blocked by Admin/Staff',
+              );
+            },
+            child: const Text('Confirm Block'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateComplaintDialog({String? defaultType}) {
+    String selectedType = defaultType ?? 'miss_behave_with_pilot';
+    final repNameCtrl = TextEditingController();
+    final repPhoneCtrl = TextEditingController();
+    final targetNameCtrl = TextEditingController();
+    final targetPhoneCtrl = TextEditingController();
+    final bookingIdCtrl = TextEditingController();
+    final subjectCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Log Incident / Complaint',
+            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'miss_behave_with_pilot', child: Text('Miss Behave with Pilot')),
+                    DropdownMenuItem(value: 'miss_behave_with_customer', child: Text('Miss Behave with Customer')),
+                    DropdownMenuItem(value: 'general_complaint', child: Text('General Complaint / Issue')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => selectedType = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: repNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: selectedType == 'miss_behave_with_pilot' ? 'Pilot Name' : 'Complainant / Customer Name',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: repPhoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Complainant Phone',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: targetNameCtrl,
+                  decoration: InputDecoration(
+                    labelText: selectedType == 'miss_behave_with_pilot' ? 'Customer Name (Offender)' : 'Pilot Name (Offender)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: bookingIdCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Booking ID (Optional)',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: subjectCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Subject / Title',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: descCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Incident Description',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (descCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                try {
+                  final baseUrl = NetworkConfig.backendUrl;
+                  await ApiClient().post(
+                    Uri.parse('$baseUrl/api/admin/complaint'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'type': selectedType,
+                      'reportedByRole': selectedType == 'miss_behave_with_pilot' ? 'partner' : 'customer',
+                      'reportedByName': repNameCtrl.text.trim().isNotEmpty ? repNameCtrl.text.trim() : 'User',
+                      'reportedByPhone': repPhoneCtrl.text.trim(),
+                      'targetName': targetNameCtrl.text.trim(),
+                      'targetPhone': targetPhoneCtrl.text.trim(),
+                      'bookingId': bookingIdCtrl.text.trim(),
+                      'subject': subjectCtrl.text.trim().isNotEmpty ? subjectCtrl.text.trim() : 'Incident Report',
+                      'description': descCtrl.text.trim(),
+                    }),
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Incident logged successfully'), backgroundColor: Colors.green),
+                    );
+                  }
+                  await _fetchAdminDataOnce();
+                } catch (e) {
+                  debugPrint("Error creating complaint: $e");
+                }
+              },
+              child: const Text('Save Incident'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCreateRefundDialog({String defaultType = 'customer'}) {
+    String refundType = defaultType;
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final bookingIdCtrl = TextEditingController();
+    final amountCtrl = TextEditingController();
+    final reasonCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(
+            'Add Pending Refund Request',
+            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: refundType,
+                  decoration: InputDecoration(
+                    labelText: 'Refund Beneficiary',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'customer', child: Text('Customer Refund')),
+                    DropdownMenuItem(value: 'pilot', child: Text('Pilot Payout / Refund')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => refundType = val);
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: bookingIdCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Booking ID',
+                    hintText: 'e.g. BK-10822',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: refundType == 'customer' ? 'Customer Name' : 'Pilot Name',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: amountCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Amount (₹)',
+                    hintText: 'e.g. 150',
+                    prefixText: '₹ ',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: reasonCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Reason for Refund',
+                    hintText: 'e.g. Cancelled ride prepaid, route dispute',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade700,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (amountCtrl.text.trim().isEmpty) return;
+                Navigator.pop(ctx);
+                try {
+                  final baseUrl = NetworkConfig.backendUrl;
+                  await ApiClient().post(
+                    Uri.parse('$baseUrl/api/admin/refund'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'refundType': refundType,
+                      'bookingId': bookingIdCtrl.text.trim(),
+                      'userName': nameCtrl.text.trim().isNotEmpty ? nameCtrl.text.trim() : 'User',
+                      'userPhone': phoneCtrl.text.trim(),
+                      'amount': '₹${amountCtrl.text.trim().replaceAll('₹', '').trim()}',
+                      'reason': reasonCtrl.text.trim().isNotEmpty ? reasonCtrl.text.trim() : 'Booking cancellation adjustment',
+                    }),
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Refund request added successfully'), backgroundColor: Colors.green),
+                    );
+                  }
+                  await _fetchAdminDataOnce();
+                } catch (e) {
+                  debugPrint("Error creating refund: $e");
+                }
+              },
+              child: const Text('Submit Refund'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAdminDashboardContent({
     required List<Map<String, dynamic>> bookings,
     required List<Map<String, dynamic>> drivers,
+    List<Map<String, dynamic>>? customers,
+    List<Map<String, dynamic>>? complaints,
+    List<Map<String, dynamic>>? refunds,
     required bool isLoading,
   }) {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 600;
+    final allCustomers = customers ?? _mongoAdminCustomers;
+    final allComplaints = complaints ?? _adminComplaints;
+    final allRefunds = refunds ?? _adminRefunds;
 
     final activeDrivers = drivers.length;
     final searchingBookings = bookings.where((b) => b['status'] == 'searching').length;
+    final pendingApprovalDrivers = drivers.where((d) => d['approved'] != true).length;
+    final blockedPilotsCount = drivers.where((d) => d['isBlocked'] == true).length;
+    final blockedCustomersCount = allCustomers.where((c) => c['isBlocked'] == true).length;
+    final missBehaveWithPilotCount = allComplaints.where((c) => c['type'] == 'miss_behave_with_pilot').length;
+    final missBehaveWithCustomerCount = allComplaints.where((c) => c['type'] == 'miss_behave_with_customer').length;
+    final customerRefundsCount = allRefunds.where((r) => r['refundType'] == 'customer' && r['status'] == 'pending').length;
+    final pilotRefundsCount = allRefunds.where((r) => r['refundType'] == 'pilot' && r['status'] == 'pending').length;
+    final anyComplaintsCount = allComplaints.where((c) => c['status'] == 'pending').length;
+
+    // Filtered collections by search query
+    final query = _adminSearchQuery.toLowerCase().trim();
 
     final filteredBookings = bookings.where((b) {
-      if (_adminSearchQuery.isEmpty) return true;
+      if (query.isEmpty) return true;
       final title = (b['title'] ?? '').toString().toLowerCase();
       final pickup = (b['pickup'] ?? '').toString().toLowerCase();
       final drop = (b['drop'] ?? '').toString().toLowerCase();
       final driver = (b['driverName'] ?? '').toString().toLowerCase();
       final status = (b['status'] ?? '').toString().toLowerCase();
-      final query = _adminSearchQuery.toLowerCase();
-      return title.contains(query) ||
-          pickup.contains(query) ||
-          drop.contains(query) ||
-          driver.contains(query) ||
-          status.contains(query);
+      return title.contains(query) || pickup.contains(query) || drop.contains(query) || driver.contains(query) || status.contains(query);
     }).toList();
 
-    final filteredDrivers = drivers.where((d) {
-      if (_adminSearchQuery.isEmpty) return true;
+    final filteredPendingDrivers = drivers.where((d) => d['approved'] != true).where((d) {
+      if (query.isEmpty) return true;
       final name = (d['name'] ?? '').toString().toLowerCase();
       final phone = (d['phone'] ?? '').toString().toLowerCase();
       final vehicle = (d['vehicleType'] ?? '').toString().toLowerCase();
       final plate = (d['vehiclePlate'] ?? '').toString().toLowerCase();
-      final query = _adminSearchQuery.toLowerCase();
-      return name.contains(query) ||
-          phone.contains(query) ||
-          vehicle.contains(query) ||
-          plate.contains(query);
+      return name.contains(query) || phone.contains(query) || vehicle.contains(query) || plate.contains(query);
     }).toList();
+
+    final filteredBlockedPilots = drivers.where((d) => d['isBlocked'] == true).where((d) {
+      if (query.isEmpty) return true;
+      final name = (d['name'] ?? '').toString().toLowerCase();
+      final phone = (d['phone'] ?? '').toString().toLowerCase();
+      final reason = (d['blockReason'] ?? '').toString().toLowerCase();
+      return name.contains(query) || phone.contains(query) || reason.contains(query);
+    }).toList();
+
+    final filteredBlockedCustomers = allCustomers.where((c) => c['isBlocked'] == true).where((c) {
+      if (query.isEmpty) return true;
+      final name = (c['name'] ?? '').toString().toLowerCase();
+      final phone = (c['phone'] ?? '').toString().toLowerCase();
+      final reason = (c['blockReason'] ?? '').toString().toLowerCase();
+      return name.contains(query) || phone.contains(query) || reason.contains(query);
+    }).toList();
+
+    final filteredMissBehavePilot = allComplaints.where((c) => c['type'] == 'miss_behave_with_pilot').where((c) {
+      if (query.isEmpty) return true;
+      final text = "${c['reportedByName']} ${c['reportedByPhone']} ${c['targetName']} ${c['subject']} ${c['description']}".toLowerCase();
+      return text.contains(query);
+    }).toList();
+
+    final filteredMissBehaveCustomer = allComplaints.where((c) => c['type'] == 'miss_behave_with_customer').where((c) {
+      if (query.isEmpty) return true;
+      final text = "${c['reportedByName']} ${c['reportedByPhone']} ${c['targetName']} ${c['subject']} ${c['description']}".toLowerCase();
+      return text.contains(query);
+    }).toList();
+
+    final filteredCustomerRefunds = allRefunds.where((r) => r['refundType'] == 'customer').where((r) {
+      if (query.isEmpty) return true;
+      final text = "${r['userName']} ${r['userPhone']} ${r['bookingId']} ${r['amount']} ${r['reason']}".toLowerCase();
+      return text.contains(query);
+    }).toList();
+
+    final filteredPilotRefunds = allRefunds.where((r) => r['refundType'] == 'pilot').where((r) {
+      if (query.isEmpty) return true;
+      final text = "${r['userName']} ${r['userPhone']} ${r['bookingId']} ${r['amount']} ${r['reason']}".toLowerCase();
+      return text.contains(query);
+    }).toList();
+
+    final filteredAllComplaints = allComplaints.where((c) {
+      if (_complaintFilterStatus != 'all' && c['status'] != _complaintFilterStatus) return false;
+      if (query.isEmpty) return true;
+      final text = "${c['complaintId']} ${c['reportedByName']} ${c['reportedByPhone']} ${c['subject']} ${c['description']}".toLowerCase();
+      return text.contains(query);
+    }).toList();
+
+    final isStaff = widget.userRole == 'Staff';
 
     return Column(
       children: [
@@ -4480,7 +5034,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -4493,8 +5047,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           setState(() {
                             _selectedDriverForDocApproval = null;
                           });
-                        } else {
-                          // Go/stay on admin console only (do nothing)
+                        } else if (_adminSelectedTab != 0) {
+                          setState(() {
+                            _adminSelectedTab = 0;
+                          });
                         }
                       },
                     ),
@@ -4502,18 +5058,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: AppTheme.primaryColor,
+                        color: isStaff ? Colors.indigo.shade700 : AppTheme.primaryColor,
                       ),
-                      child: const Icon(Icons.admin_panel_settings, color: Colors.white),
+                      child: Icon(
+                        isStaff ? Icons.badge_outlined : Icons.admin_panel_settings,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Admin Console',
+                          isStaff ? 'Staff Console' : 'Admin Console',
                           style: GoogleFonts.hankenGrotesk(
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
@@ -4531,25 +5090,63 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.logout_rounded, color: AppTheme.errorColor),
-                  onPressed: () async {
-                    await FirebaseService().signOut();
-                    if (mounted) {
-                      Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                      );
-                    }
-                  },
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.sync_rounded, color: AppTheme.primaryColor),
+                      tooltip: 'Refresh Data',
+                      onPressed: () async {
+                        await _fetchAdminDataOnce();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Console data refreshed'), duration: Duration(seconds: 1)),
+                          );
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.logout_rounded, color: AppTheme.errorColor),
+                      tooltip: 'Logout',
+                      onPressed: () async {
+                        await FirebaseService().signOut();
+                        if (mounted) {
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
         ),
 
-        // Stats and Lists
+        // Horizontal Scrollable Tabs
+        Container(
+          height: 44,
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildTabPill(0, 'All Bookings', bookings.length, Icons.receipt_long_rounded),
+              _buildTabPill(1, 'Pilot Pending Approval', pendingApprovalDrivers, Icons.how_to_reg_rounded),
+              _buildTabPill(2, 'Blocked Pilot', blockedPilotsCount, Icons.block_rounded),
+              _buildTabPill(3, 'Blocked Customer', blockedCustomersCount, Icons.person_off_rounded),
+              _buildTabPill(4, 'Miss Behave with Pilot', missBehaveWithPilotCount, Icons.report_problem_rounded),
+              _buildTabPill(5, 'Miss Behave with Customer', missBehaveWithCustomerCount, Icons.warning_amber_rounded),
+              _buildTabPill(6, 'Refund Payments Pending for Customers', customerRefundsCount, Icons.currency_rupee_rounded),
+              _buildTabPill(7, 'Refund Payments Pending for Pilots', pilotRefundsCount, Icons.account_balance_wallet_rounded),
+              _buildTabPill(8, 'Any Complaints', anyComplaintsCount, Icons.support_agent_rounded),
+            ],
+          ),
+        ),
+
+        // Stats and Dynamic Tab Content
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
@@ -4558,538 +5155,1333 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stats Bento Grid
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFE0E7FF), Color(0xFFC7D2FE)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x0A000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'PILOTS REGISTERED',
-                              style: GoogleFonts.robotoMono(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$activeDrivers',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.primaryColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x0A000000),
-                              blurRadius: 10,
-                              offset: Offset(0, 4),
-                            )
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'SEARCHING RIDES',
-                              style: GoogleFonts.robotoMono(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.safetyYellowText,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$searchingBookings',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.safetyYellowText,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Search Bar for Quick Search
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.02),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
-                    controller: _adminSearchController,
-                    onChanged: (value) {
-                      setState(() {
-                        _adminSearchQuery = value;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Search bookings (pickup, dropoff, pilot, status)...',
-                      hintStyle: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: AppTheme.onSurfaceVariant.withOpacity(0.6),
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        color: AppTheme.primaryColor,
-                        size: 20,
-                      ),
-                      suffixIcon: _adminSearchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear_rounded, size: 18),
-                              onPressed: () {
-                                _adminSearchController.clear();
-                                setState(() {
-                                  _adminSearchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppTheme.outlineVariant.withOpacity(0.4),
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: AppTheme.outlineVariant.withOpacity(0.3),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: AppTheme.primaryColor,
-                          width: 1.5,
-                        ),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Section 1: Recent Bookings
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Recent Bookings',
-                      style: GoogleFonts.hankenGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.onSurfaceColor,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        'REAL-TIME',
-                        style: GoogleFonts.robotoMono(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                if (isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else if (filteredBookings.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _adminSearchQuery.isEmpty ? 'No bookings found' : 'No matching bookings found',
-                      style: GoogleFonts.inter(color: AppTheme.onSurfaceVariant),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredBookings.length,
-                    itemBuilder: (context, index) {
-                      final data = filteredBookings[index];
-                      final status = data['status'] ?? 'searching';
-
-                      Color statusColor = Colors.orange;
-                      if (status == 'accepted' || status == 'started') {
-                        statusColor = AppTheme.primaryColor;
-                      } else if (status == 'completed') {
-                        statusColor = Colors.green;
-                      }
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    data['title'] ?? 'Ride Booking',
-                                    style: GoogleFonts.hankenGrotesk(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: statusColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      status.toString().toUpperCase(),
-                                      style: GoogleFonts.robotoMono(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                        color: statusColor,
-                                      ),
-                                    ),
-                                  ),
+                      // Top Row Stats (Pilots Registered & Searching Rides)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFE0E7FF), Color(0xFFC7D2FE)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: const [
+                                  BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'From: ${data['pickup'] ?? ""}',
-                                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'To: ${data['drop'] ?? ""}',
-                                style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Fare: ${data['price'] ?? "₹150"}',
+                                    'PILOTS REGISTERED',
                                     style: GoogleFonts.robotoMono(
-                                      fontSize: 13,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: AppTheme.onSurfaceColor,
-                                    ),
-                                  ),
-                                  if (data['driverName'] != null)
-                                    Text(
-                                      'Driver: ${data['driverName']}',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                        color: AppTheme.primaryColor,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                const SizedBox(height: 24),
-
-                // Section 2: Pilot Verification & Approvals List
-                Text(
-                  'Pilot Verification & Approvals',
-                  style: GoogleFonts.hankenGrotesk(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.onSurfaceColor,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else if (filteredDrivers.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _adminSearchQuery.isEmpty ? 'No registered pilots found' : 'No matching pilots found',
-                      style: GoogleFonts.inter(color: AppTheme.onSurfaceVariant),
-                    ),
-                  )
-                else
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: filteredDrivers.length,
-                    itemBuilder: (context, index) {
-                      final data = filteredDrivers[index];
-                      final uid = data['uid'] ?? '';
-                      final name = data['name'] ?? 'Driver';
-                      final phone = data['phone'] ?? '';
-                      final isApproved = data['approved'] == true;
-                      final isOnline = data['online'] == true;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: AppTheme.primaryAccent.withOpacity(0.2),
-                                    child: Icon(
-                                      _getVehicleIcon(data['vehicleType'] ?? 'Bike'),
                                       color: AppTheme.primaryColor,
                                     ),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: GoogleFonts.hankenGrotesk(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'Phone: +91 $phone',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 12,
-                                            color: AppTheme.onSurfaceVariant,
-                                          ),
-                                        ),
-                                      ],
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$activeDrivers',
+                                    style: GoogleFonts.hankenGrotesk(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.primaryColor,
                                     ),
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: isApproved 
-                                              ? Colors.green.withOpacity(0.1) 
-                                              : Colors.orange.withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          isApproved ? 'APPROVED' : 'PENDING APPROVAL',
-                                          style: GoogleFonts.robotoMono(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: isApproved ? Colors.green : Colors.orange,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 6,
-                                            height: 6,
-                                            decoration: BoxDecoration(
-                                              color: isOnline ? Colors.green : Colors.grey,
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            isOnline ? 'Online' : 'Offline',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 10,
-                                              color: AppTheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Vehicle: ${data['vehiclePlate'] ?? "Plate"} (${data['vehicleType'] ?? "Bike"})',
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: AppTheme.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: const [
+                                  BoxShadow(color: Color(0x0A000000), blurRadius: 10, offset: Offset(0, 4))
+                                ],
                               ),
-                              const SizedBox(height: 12),
-                              const Divider(height: 1),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  if ((data['vehicleType'] as String? ?? '').toLowerCase().contains('heavy truck')) ...[
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        border: Border.all(color: Colors.red, width: 1.5),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: TextButton.icon(
-                                        onPressed: () => _showAdvanceTruckRidesHistoryDialog(uid, name),
-                                        icon: const Icon(Icons.pending_actions_rounded, size: 16, color: Colors.red),
-                                        label: Text(
-                                          'Advance booking history for heavy truck',
-                                          style: GoogleFonts.hankenGrotesk(
-                                            color: Colors.red.shade800,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  TextButton.icon(
-                                    onPressed: () => _showRidesHistoryDialog(uid, name, todayOnly: true),
-                                    icon: const Icon(Icons.today_rounded, size: 16, color: Colors.orange),
-                                    label: Text(
-                                      'Today Rides History',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        color: Colors.orange.shade800,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  Text(
+                                    'SEARCHING RIDES',
+                                    style: GoogleFonts.robotoMono(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.safetyYellowText,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  TextButton.icon(
-                                    onPressed: () => _showRidesHistoryDialog(uid, name, todayOnly: false),
-                                    icon: const Icon(Icons.history_rounded, size: 16, color: Colors.purple),
-                                    label: Text(
-                                      'Total Rides History',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        color: Colors.purple.shade700,
-                                        fontWeight: FontWeight.bold,
-                                      ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '$searchingBookings',
+                                    style: GoogleFonts.hankenGrotesk(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.safetyYellowText,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  TextButton.icon(
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // 8 Bento Action Cards with red border indicator matching user image
+                      GridView.count(
+                        crossAxisCount: 2,
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 1.35,
+                        children: [
+                          _buildAdminBentoCard(
+                            tabIndex: 1,
+                            title: 'New Registration of Pilot pending for Approval',
+                            count: pendingApprovalDrivers,
+                            icon: Icons.how_to_reg_rounded,
+                            badgeColor: Colors.orange,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 2,
+                            title: 'Blocked Pilot',
+                            count: blockedPilotsCount,
+                            icon: Icons.block_rounded,
+                            badgeColor: Colors.red.shade700,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 3,
+                            title: 'Blocked Customer',
+                            count: blockedCustomersCount,
+                            icon: Icons.person_off_rounded,
+                            badgeColor: Colors.red.shade800,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 4,
+                            title: 'Miss Behave with Pilot',
+                            count: missBehaveWithPilotCount,
+                            icon: Icons.report_problem_rounded,
+                            badgeColor: Colors.deepOrange,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 5,
+                            title: 'Miss Behave with Customer',
+                            count: missBehaveWithCustomerCount,
+                            icon: Icons.warning_amber_rounded,
+                            badgeColor: Colors.purple.shade700,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 6,
+                            title: 'Refund Payments Pending for Customers',
+                            count: customerRefundsCount,
+                            icon: Icons.currency_rupee_rounded,
+                            badgeColor: Colors.green.shade700,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 7,
+                            title: 'Refund Payments Pending for Pilots',
+                            count: pilotRefundsCount,
+                            icon: Icons.account_balance_wallet_rounded,
+                            badgeColor: Colors.blue.shade700,
+                          ),
+                          _buildAdminBentoCard(
+                            tabIndex: 8,
+                            title: 'Any Complaints',
+                            count: anyComplaintsCount,
+                            icon: Icons.support_agent_rounded,
+                            badgeColor: Colors.teal.shade700,
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Search Bar adapted to active tab
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: TextField(
+                          controller: _adminSearchController,
+                          onChanged: (value) {
+                            setState(() {
+                              _adminSearchQuery = value;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: _getAdminSearchHintText(_adminSelectedTab),
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: AppTheme.onSurfaceVariant.withOpacity(0.6),
+                            ),
+                            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryColor, size: 20),
+                            suffixIcon: _adminSearchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 18),
                                     onPressed: () {
+                                      _adminSearchController.clear();
                                       setState(() {
-                                        _selectedDriverForDocApproval = data;
+                                        _adminSearchQuery = '';
                                       });
                                     },
-                                    icon: const Icon(Icons.description_outlined, size: 16, color: AppTheme.primaryColor),
-                                    label: Text(
-                                      'View Docs',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        color: AppTheme.primaryColor,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  TextButton.icon(
-                                    onPressed: () => _updateDriverApproval(uid, name, phone, false),
-                                    icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                                    label: Text(
-                                      'Not Approve',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton.icon(
-                                    onPressed: () => _updateDriverApproval(uid, name, phone, true),
-                                    icon: const Icon(Icons.check, size: 16, color: Colors.white),
-                                    label: Text(
-                                      'Approve',
-                                      style: GoogleFonts.hankenGrotesk(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                                  )
+                                : null,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Dynamic Content Switcher Based on Tab
+                      if (_adminSelectedTab == 0)
+                        _buildAdminOverviewTab(filteredBookings, drivers, isLoading)
+                      else if (_adminSelectedTab == 1)
+                        _buildAdminPendingPilotsTab(filteredPendingDrivers)
+                      else if (_adminSelectedTab == 2)
+                        _buildAdminBlockedPilotsTab(filteredBlockedPilots)
+                      else if (_adminSelectedTab == 3)
+                        _buildAdminBlockedCustomersTab(filteredBlockedCustomers)
+                      else if (_adminSelectedTab == 4)
+                        _buildAdminMissBehaveTab(filteredMissBehavePilot, isWithPilot: true)
+                      else if (_adminSelectedTab == 5)
+                        _buildAdminMissBehaveTab(filteredMissBehaveCustomer, isWithPilot: false)
+                      else if (_adminSelectedTab == 6)
+                        _buildAdminRefundsTab(filteredCustomerRefunds, isCustomer: true)
+                      else if (_adminSelectedTab == 7)
+                        _buildAdminRefundsTab(filteredPilotRefunds, isCustomer: false)
+                      else if (_adminSelectedTab == 8)
+                        _buildAdminComplaintsTab(filteredAllComplaints),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabPill(int index, String label, int count, IconData icon) {
+    final isSelected = _adminSelectedTab == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _adminSelectedTab = index;
+          _adminSearchQuery = '';
+          _adminSearchController.clear();
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryColor : AppTheme.outlineVariant.withOpacity(0.5),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.25), blurRadius: 6, offset: const Offset(0, 2))]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: isSelected ? Colors.white : AppTheme.primaryColor),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected ? Colors.white : AppTheme.onSurfaceColor,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withOpacity(0.25) : AppTheme.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$count',
+                style: GoogleFonts.robotoMono(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : AppTheme.primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAdminBentoCard({
+    required int tabIndex,
+    required String title,
+    required int count,
+    required IconData icon,
+    required Color badgeColor,
+  }) {
+    final isSelected = _adminSelectedTab == tabIndex;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _adminSelectedTab = tabIndex;
+          _adminSearchQuery = '';
+          _adminSearchController.clear();
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          // RED BORDER IF ACTIVE / MATCHING USER'S RED BORDER SPECIFICATION
+          border: Border.all(
+            color: isSelected ? Colors.red : AppTheme.outlineVariant.withOpacity(0.4),
+            width: isSelected ? 2.5 : 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: isSelected ? Colors.red.withOpacity(0.15) : Colors.black.withOpacity(0.03),
+              blurRadius: isSelected ? 10 : 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: badgeColor, size: 20),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: GoogleFonts.robotoMono(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              title,
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                color: isSelected ? Colors.red.shade900 : AppTheme.onSurfaceColor,
+                height: 1.2,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getAdminSearchHintText(int tab) {
+    switch (tab) {
+      case 1:
+        return 'Search pending pilots by name, phone, vehicle...';
+      case 2:
+        return 'Search blocked pilots by name, phone, reason...';
+      case 3:
+        return 'Search blocked customers by name, phone...';
+      case 4:
+        return 'Search misbehaviour incidents with pilots...';
+      case 5:
+        return 'Search misbehaviour incidents with customers...';
+      case 6:
+        return 'Search customer refunds by booking ID, phone...';
+      case 7:
+        return 'Search pilot refunds by pilot name, booking ID...';
+      case 8:
+        return 'Search complaints by ticket ID, subject...';
+      default:
+        return 'Search bookings (pickup, dropoff, pilot, status)...';
+    }
+  }
+
+  // View: Tab 0 Overview / Recent Bookings
+  Widget _buildAdminOverviewTab(List<Map<String, dynamic>> filteredBookings, List<Map<String, dynamic>> drivers, bool isLoading) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent Bookings',
+              style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: AppTheme.onSurfaceColor),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text(
+                'REAL-TIME',
+                style: GoogleFonts.robotoMono(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (isLoading)
+          const Center(child: CircularProgressIndicator())
+        else if (filteredBookings.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            alignment: Alignment.center,
+            child: Text('No bookings found', style: GoogleFonts.inter(color: AppTheme.onSurfaceVariant)),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: filteredBookings.length,
+            itemBuilder: (context, index) {
+              final data = filteredBookings[index];
+              final status = data['status'] ?? 'searching';
+              Color statusColor = Colors.orange;
+              if (status == 'accepted' || status == 'started') statusColor = AppTheme.primaryColor;
+              if (status == 'completed') statusColor = Colors.green;
+              if (status == 'cancelled') statusColor = Colors.red;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            data['title'] ?? 'Ride Booking',
+                            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 15),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Text(
+                              status.toString().toUpperCase(),
+                              style: GoogleFonts.robotoMono(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text('From: ${data['pickup'] ?? ""}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Text('To: ${data['drop'] ?? ""}', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Fare: ${data['price'] ?? "₹150"}', style: GoogleFonts.robotoMono(fontSize: 13, fontWeight: FontWeight.bold)),
+                          if (data['driverName'] != null)
+                            Text('Driver: ${data['driverName']}', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.primaryColor)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 1 Pilot Pending Approvals
+  Widget _buildAdminPendingPilotsTab(List<Map<String, dynamic>> pendingDrivers) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'New Registration of Pilot pending for Approval',
+                    style: GoogleFonts.hankenGrotesk(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.orange.shade900),
+                  ),
+                  Text('${pendingDrivers.length} pilots awaiting verification', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (pendingDrivers.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.check_circle_outline_rounded, size: 48, color: Colors.green.shade600),
+                const SizedBox(height: 8),
+                Text('All registered pilots are approved!', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: pendingDrivers.length,
+            itemBuilder: (context, index) {
+              final data = pendingDrivers[index];
+              final uid = data['uid'] ?? '';
+              final name = data['name'] ?? 'Driver';
+              final phone = data['phone'] ?? '';
+              final vehicle = data['vehicleType'] ?? 'Bike';
+              final plate = data['vehiclePlate'] ?? 'Pending Plate';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.orange.withOpacity(0.4), width: 1.2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: Colors.orange.withOpacity(0.15),
+                            child: Icon(_getVehicleIcon(vehicle), color: Colors.orange.shade800),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+                                const SizedBox(height: 2),
+                                Text('Phone: +91 $phone', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                                Text('Vehicle: $plate ($vehicle)', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                            child: Text(
+                              'PENDING',
+                              style: GoogleFonts.robotoMono(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange.shade900),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _callUser(phone),
+                            icon: const Icon(Icons.call, size: 16, color: AppTheme.primaryColor),
+                            label: const Text('Call'),
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                _selectedDriverForDocApproval = data;
+                              });
+                            },
+                            icon: const Icon(Icons.description_outlined, size: 16, color: AppTheme.primaryColor),
+                            label: const Text('View Docs'),
+                          ),
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            onPressed: () => _updateDriverApproval(uid, name, phone, false),
+                            icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                            label: Text('Reject', style: GoogleFonts.hankenGrotesk(color: Colors.red, fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 4),
+                          ElevatedButton.icon(
+                            onPressed: () => _updateDriverApproval(uid, name, phone, true),
+                            icon: const Icon(Icons.check, size: 16, color: Colors.white),
+                            label: const Text('Approve'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 2 Blocked Pilots
+  Widget _buildAdminBlockedPilotsTab(List<Map<String, dynamic>> blockedPilots) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Blocked Pilot', style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.red.shade900)),
+                Text('${blockedPilots.length} pilots currently blocked', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showBlockUserDialog(role: 'partner'),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Block a Pilot'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (blockedPilots.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.verified_user_rounded, size: 48, color: Colors.green.shade600),
+                const SizedBox(height: 8),
+                Text('No pilots are currently blocked', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: blockedPilots.length,
+            itemBuilder: (context, index) {
+              final data = blockedPilots[index];
+              final uid = data['uid'] ?? '';
+              final name = data['name'] ?? 'Pilot';
+              final phone = data['phone'] ?? '';
+              final reason = data['blockReason'] ?? 'Blocked by Administrator';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.red.withOpacity(0.4), width: 1.2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(backgroundColor: Colors.red.withOpacity(0.15), child: const Icon(Icons.block, color: Colors.red)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('Phone: +91 $phone', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                                Text('Vehicle: ${data['vehiclePlate'] ?? "Plate"} (${data['vehicleType'] ?? "Vehicle"})', style: GoogleFonts.inter(fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Text('BLOCKED', style: GoogleFonts.robotoMono(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
+                        child: Text('Reason: $reason', style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade900)),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _callUser(phone),
+                            icon: const Icon(Icons.call, size: 16),
+                            label: const Text('Call'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _toggleBlockUser(uid: uid, phone: phone, role: 'partner', isBlocked: false),
+                            icon: const Icon(Icons.lock_open_rounded, size: 16),
+                            label: const Text('Unblock Pilot'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 3 Blocked Customers
+  Widget _buildAdminBlockedCustomersTab(List<Map<String, dynamic>> blockedCustomers) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Blocked Customer', style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.red.shade900)),
+                Text('${blockedCustomers.length} customers blocked', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showBlockUserDialog(role: 'customer'),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Block Customer'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (blockedCustomers.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.verified_user_rounded, size: 48, color: Colors.green.shade600),
+                const SizedBox(height: 8),
+                Text('No customers are currently blocked', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: blockedCustomers.length,
+            itemBuilder: (context, index) {
+              final data = blockedCustomers[index];
+              final uid = data['uid'] ?? '';
+              final name = data['name'] ?? 'Customer';
+              final phone = data['phone'] ?? '';
+              final reason = data['blockReason'] ?? 'Blocked by Administrator';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: Colors.red.withOpacity(0.4), width: 1.2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(backgroundColor: Colors.red.withOpacity(0.15), child: const Icon(Icons.person_off, color: Colors.red)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+                                Text('Phone: +91 $phone', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            child: Text('BLOCKED', style: GoogleFonts.robotoMono(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.red.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
+                        child: Text('Reason: $reason', style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade900)),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton.icon(
+                            onPressed: () => _callUser(phone),
+                            icon: const Icon(Icons.call, size: 16),
+                            label: const Text('Call'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () => _toggleBlockUser(uid: uid, phone: phone, role: 'customer', isBlocked: false),
+                            icon: const Icon(Icons.lock_open_rounded, size: 16),
+                            label: const Text('Unblock Customer'),
+                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 4 & 5 Misbehaviour Incidents
+  Widget _buildAdminMissBehaveTab(List<Map<String, dynamic>> items, {required bool isWithPilot}) {
+    final title = isWithPilot ? 'Miss Behave with Pilot' : 'Miss Behave with Customer';
+    final themeColor = isWithPilot ? Colors.deepOrange : Colors.purple.shade700;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: themeColor)),
+                  Text('${items.length} incidents reported', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateComplaintDialog(defaultType: isWithPilot ? 'miss_behave_with_pilot' : 'miss_behave_with_customer'),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Log Incident'),
+              style: ElevatedButton.styleFrom(backgroundColor: themeColor, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (items.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.shield_outlined, size: 48, color: Colors.green.shade600),
+                const SizedBox(height: 8),
+                Text('No misbehaviour incidents reported!', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final data = items[index];
+              final complaintId = data['complaintId'] ?? '';
+              final repName = data['reportedByName'] ?? 'Reporter';
+              final repPhone = data['reportedByPhone'] ?? '';
+              final targetName = data['targetName'] ?? 'Offender';
+              final targetPhone = data['targetPhone'] ?? '';
+              final bookingId = data['bookingId'] ?? '';
+              final subject = data['subject'] ?? 'Incident';
+              final desc = data['description'] ?? '';
+              final status = data['status'] ?? 'pending';
+              final isResolved = status == 'resolved';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: themeColor.withOpacity(0.3), width: 1),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.warning_rounded, color: themeColor, size: 20),
+                              const SizedBox(width: 8),
+                              Text(complaintId, style: GoogleFonts.robotoMono(fontWeight: FontWeight.bold, fontSize: 13)),
+                              if (bookingId.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(6)),
+                                  child: Text(bookingId, style: GoogleFonts.robotoMono(fontSize: 11)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isResolved ? Colors.green.withOpacity(0.12) : Colors.orange.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              isResolved ? 'RESOLVED' : 'PENDING REVIEW',
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isResolved ? Colors.green : Colors.orange.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(subject, style: GoogleFonts.hankenGrotesk(fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(desc, style: GoogleFonts.inter(fontSize: 13, color: AppTheme.onSurfaceVariant)),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: themeColor.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(isWithPilot ? 'Pilot (Victim):' : 'Customer (Victim):', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold)),
+                                Text('$repName (+91 $repPhone)', style: GoogleFonts.inter(fontSize: 12)),
+                              ],
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(isWithPilot ? 'Customer (Offender):' : 'Pilot (Offender):', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade800)),
+                                Text('$targetName ${targetPhone.isNotEmpty ? "(+91 $targetPhone)" : ""}', style: GoogleFonts.inter(fontSize: 12, color: Colors.red.shade900)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (repPhone.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _callUser(repPhone),
+                              icon: const Icon(Icons.call, size: 16),
+                              label: Text('Call ${isWithPilot ? "Pilot" : "Customer"}'),
+                            ),
+                          if (targetPhone.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _callUser(targetPhone),
+                              icon: const Icon(Icons.call, size: 16, color: Colors.red),
+                              label: Text('Call Offender', style: GoogleFonts.inter(color: Colors.red)),
+                            ),
+                          if (!isResolved) ...[
+                            const SizedBox(width: 4),
+                            ElevatedButton.icon(
+                              onPressed: () => _resolveComplaint(complaintId: complaintId),
+                              icon: const Icon(Icons.check, size: 16),
+                              label: const Text('Resolve'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 6 & 7 Refund Payments
+  Widget _buildAdminRefundsTab(List<Map<String, dynamic>> refunds, {required bool isCustomer}) {
+    final title = isCustomer ? 'Refund Payments Pending for Customers' : 'Refund Payments Pending for Pilots';
+    final themeColor = isCustomer ? Colors.green.shade800 : Colors.blue.shade800;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.hankenGrotesk(fontSize: 17, fontWeight: FontWeight.w700, color: themeColor)),
+                  Text('${refunds.length} refunds recorded', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateRefundDialog(defaultType: isCustomer ? 'customer' : 'pilot'),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(isCustomer ? 'Add Refund' : 'Add Pilot Payout'),
+              style: ElevatedButton.styleFrom(backgroundColor: themeColor, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (refunds.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade600),
+                const SizedBox(height: 8),
+                Text('No pending refund payments!', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: refunds.length,
+            itemBuilder: (context, index) {
+              final data = refunds[index];
+              final refundId = data['refundId'] ?? '';
+              final bookingId = data['bookingId'] ?? '';
+              final userName = data['userName'] ?? 'User';
+              final userPhone = data['userPhone'] ?? '';
+              final amount = data['amount'] ?? '₹0';
+              final reason = data['reason'] ?? 'Cancellation refund';
+              final paymentMethod = data['paymentMethod'] ?? 'Online';
+              final status = data['status'] ?? 'pending';
+              final isPending = status == 'pending';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: isPending ? Colors.orange.withOpacity(0.5) : Colors.green.withOpacity(0.4), width: 1.2),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(refundId, style: GoogleFonts.robotoMono(fontWeight: FontWeight.bold, fontSize: 13)),
+                              if (bookingId.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(6)),
+                                  child: Text(bookingId, style: GoogleFonts.robotoMono(fontSize: 11)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isPending ? Colors.orange.withOpacity(0.12) : Colors.green.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status.toString().toUpperCase(),
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isPending ? Colors.orange.shade900 : Colors.green,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Beneficiary: $userName', style: GoogleFonts.hankenGrotesk(fontSize: 15, fontWeight: FontWeight.bold)),
+                          Text(amount, style: GoogleFonts.robotoMono(fontSize: 18, fontWeight: FontWeight.w800, color: themeColor)),
+                        ],
+                      ),
+                      Text('Phone: +91 $userPhone', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                      Text('Payment Mode: $paymentMethod', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: themeColor.withOpacity(0.06), borderRadius: BorderRadius.circular(8)),
+                        child: Text('Reason: $reason', style: GoogleFonts.inter(fontSize: 12)),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (userPhone.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _callUser(userPhone),
+                              icon: const Icon(Icons.call, size: 16),
+                              label: const Text('Call'),
+                            ),
+                          if (isPending) ...[
+                            TextButton.icon(
+                              onPressed: () => _resolveRefund(refundId: refundId, status: 'rejected'),
+                              icon: const Icon(Icons.close, size: 16, color: Colors.red),
+                              label: Text('Reject', style: GoogleFonts.hankenGrotesk(color: Colors.red, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 6),
+                            ElevatedButton.icon(
+                              onPressed: () => _resolveRefund(refundId: refundId, status: 'processed'),
+                              icon: const Icon(Icons.check, size: 16),
+                              label: Text(isCustomer ? 'Process Refund' : 'Approve Payout'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+      ],
+    );
+  }
+
+  // View: Tab 8 Any Complaints
+  Widget _buildAdminComplaintsTab(List<Map<String, dynamic>> complaints) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Any Complaints', style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.teal.shade900)),
+                Text('${complaints.length} tickets recorded', style: GoogleFonts.inter(fontSize: 12, color: AppTheme.onSurfaceVariant)),
+              ],
+            ),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateComplaintDialog(defaultType: 'general_complaint'),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('Register Complaint'),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade700, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Filter Sub-Chips
+        Row(
+          children: [
+            ChoiceChip(
+              label: const Text('All'),
+              selected: _complaintFilterStatus == 'all',
+              onSelected: (val) => setState(() => _complaintFilterStatus = 'all'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('Pending'),
+              selected: _complaintFilterStatus == 'pending',
+              onSelected: (val) => setState(() => _complaintFilterStatus = 'pending'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('Resolved'),
+              selected: _complaintFilterStatus == 'resolved',
+              onSelected: (val) => setState(() => _complaintFilterStatus = 'resolved'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (complaints.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(28),
+            alignment: Alignment.center,
+            child: Column(
+              children: [
+                Icon(Icons.support_agent_rounded, size: 48, color: Colors.teal.shade600),
+                const SizedBox(height: 8),
+                Text('No complaints in this category!', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: complaints.length,
+            itemBuilder: (context, index) {
+              final data = complaints[index];
+              final complaintId = data['complaintId'] ?? '';
+              final repName = data['reportedByName'] ?? 'User';
+              final repPhone = data['reportedByPhone'] ?? '';
+              final role = data['reportedByRole'] ?? 'customer';
+              final subject = data['subject'] ?? 'Complaint';
+              final desc = data['description'] ?? '';
+              final status = data['status'] ?? 'pending';
+              final isResolved = status == 'resolved';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                child: Padding(
+                  padding: const EdgeInsets.all(14.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Text(complaintId, style: GoogleFonts.robotoMono(fontWeight: FontWeight.bold, fontSize: 13)),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.teal.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
+                                child: Text(role.toUpperCase(), style: GoogleFonts.robotoMono(fontSize: 10, color: Colors.teal.shade800, fontWeight: FontWeight.bold)),
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    },
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isResolved ? Colors.green.withOpacity(0.12) : Colors.orange.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              status.toString().toUpperCase(),
+                              style: GoogleFonts.robotoMono(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isResolved ? Colors.green : Colors.orange.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(subject, style: GoogleFonts.hankenGrotesk(fontSize: 15, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(desc, style: GoogleFonts.inter(fontSize: 13, color: AppTheme.onSurfaceVariant)),
+                      const SizedBox(height: 6),
+                      Text('Reported By: $repName (+91 $repPhone)', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (repPhone.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _callUser(repPhone),
+                              icon: const Icon(Icons.call, size: 16),
+                              label: const Text('Call Complainant'),
+                            ),
+                          if (!isResolved) ...[
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () => _resolveComplaint(complaintId: complaintId),
+                              icon: const Icon(Icons.check, size: 16),
+                              label: const Text('Mark as Resolved'),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              );
+            },
           ),
-        ),
       ],
     );
   }

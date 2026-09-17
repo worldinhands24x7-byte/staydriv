@@ -131,6 +131,9 @@ const userSchema = new mongoose.Schema({
   permit: String,
   salary: { type: Number, default: 5000 },
   pendingCancellationCharge: { type: Number, default: 0 },
+  isBlocked: { type: Boolean, default: false },
+  blockReason: { type: String, default: '' },
+  blockedAt: { type: Date },
   lastActive: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now }
 });
@@ -430,6 +433,320 @@ const payoutSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const Payout = mongoose.model('Payout', payoutSchema);
+
+// MongoDB Schema for Complaints & Misbehaviour Reports
+const complaintSchema = new mongoose.Schema({
+  complaintId: { type: String, required: true, unique: true },
+  type: { type: String, default: 'general_complaint' }, // 'miss_behave_with_pilot', 'miss_behave_with_customer', 'general_complaint'
+  reportedByRole: { type: String, default: 'customer' }, // 'customer', 'partner', 'staff'
+  reportedByName: String,
+  reportedByPhone: String,
+  targetName: String,
+  targetPhone: String,
+  bookingId: String,
+  subject: String,
+  description: String,
+  status: { type: String, default: 'pending' }, // 'pending', 'investigating', 'resolved'
+  resolutionNotes: String,
+  createdAt: { type: Date, default: Date.now },
+  resolvedAt: Date
+});
+const Complaint = mongoose.models.Complaint || mongoose.model('Complaint', complaintSchema);
+
+// MongoDB Schema for Refunds (Customer & Pilot)
+const refundSchema = new mongoose.Schema({
+  refundId: { type: String, required: true, unique: true },
+  refundType: { type: String, default: 'customer' }, // 'customer' or 'pilot'
+  bookingId: String,
+  userName: String,
+  userPhone: String,
+  amount: String,
+  paymentMethod: { type: String, default: 'Online / Razorpay' },
+  transactionId: String,
+  reason: String,
+  status: { type: String, default: 'pending' }, // 'pending', 'processed', 'rejected'
+  processedBy: String,
+  createdAt: { type: Date, default: Date.now },
+  processedAt: Date
+});
+const Refund = mongoose.models.Refund || mongoose.model('Refund', refundSchema);
+
+// Endpoint to retrieve all customers for Admin
+app.get('/api/admin/customers', async (req, res) => {
+  try {
+    const customers = await User.find({ role: 'customer' }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, customers });
+  } catch (err) {
+    console.error('MongoDB Admin Customers Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to block or unblock user (Pilot or Customer)
+app.post('/api/admin/user/block', async (req, res) => {
+  try {
+    const { uid, phone, role, isBlocked, reason } = req.body;
+    let user = null;
+    if (uid) user = await User.findOne({ uid });
+    if (!user && phone && role) user = await User.findOne({ phone, role });
+    if (!user && phone) user = await User.findOne({ phone });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    user.isBlocked = !!isBlocked;
+    user.blockReason = isBlocked ? (reason || 'Blocked by Admin/Staff') : '';
+    user.blockedAt = isBlocked ? new Date() : null;
+    await user.save();
+    console.log(`User ${user.name} (${user.phone}) block status updated: isBlocked=${user.isBlocked}`);
+    res.status(200).json({ success: true, message: isBlocked ? 'User blocked successfully' : 'User unblocked successfully', user });
+  } catch (err) {
+    console.error('MongoDB Block User Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to fetch complaints / misbehaviours
+app.get('/api/admin/complaints', async (req, res) => {
+  try {
+    const { type, status } = req.query;
+    let query = {};
+    if (type) query.type = type;
+    if (status) query.status = status;
+    const complaints = await Complaint.find(query).sort({ createdAt: -1 }).limit(100);
+    res.status(200).json({ success: true, complaints });
+  } catch (err) {
+    console.error('MongoDB Admin Complaints Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to create a complaint / incident report
+app.post('/api/admin/complaint', async (req, res) => {
+  try {
+    const { type, reportedByRole, reportedByName, reportedByPhone, targetName, targetPhone, bookingId, subject, description } = req.body;
+    const complaintId = 'CMP-' + Date.now().toString().slice(-6);
+    const complaint = new Complaint({
+      complaintId,
+      type: type || 'general_complaint',
+      reportedByRole: reportedByRole || 'customer',
+      reportedByName: reportedByName || 'User',
+      reportedByPhone: reportedByPhone || '',
+      targetName: targetName || '',
+      targetPhone: targetPhone || '',
+      bookingId: bookingId || '',
+      subject: subject || 'Complaint',
+      description: description || '',
+      status: 'pending',
+      createdAt: new Date()
+    });
+    await complaint.save();
+    res.status(200).json({ success: true, complaint });
+  } catch (err) {
+    console.error('MongoDB Admin Create Complaint Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to resolve a complaint
+app.post('/api/admin/complaint/resolve', async (req, res) => {
+  try {
+    const { complaintId, resolutionNotes } = req.body;
+    const complaint = await Complaint.findOne({ complaintId });
+    if (!complaint) return res.status(404).json({ success: false, message: 'Complaint not found' });
+    complaint.status = 'resolved';
+    complaint.resolutionNotes = resolutionNotes || 'Resolved by Admin/Staff';
+    complaint.resolvedAt = new Date();
+    await complaint.save();
+    res.status(200).json({ success: true, complaint });
+  } catch (err) {
+    console.error('MongoDB Admin Resolve Complaint Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to fetch refunds (customer or pilot)
+app.get('/api/admin/refunds', async (req, res) => {
+  try {
+    const { refundType, status } = req.query;
+    let query = {};
+    if (refundType) query.refundType = refundType;
+    if (status) query.status = status;
+    const refunds = await Refund.find(query).sort({ createdAt: -1 }).limit(100);
+    res.status(200).json({ success: true, refunds });
+  } catch (err) {
+    console.error('MongoDB Admin Refunds Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to create a refund entry
+app.post('/api/admin/refund', async (req, res) => {
+  try {
+    const { refundType, bookingId, userName, userPhone, amount, paymentMethod, transactionId, reason } = req.body;
+    const refundId = 'REF-' + Date.now().toString().slice(-6);
+    const refund = new Refund({
+      refundId,
+      refundType: refundType || 'customer',
+      bookingId: bookingId || '',
+      userName: userName || '',
+      userPhone: userPhone || '',
+      amount: amount || '0',
+      paymentMethod: paymentMethod || 'Online / Razorpay',
+      transactionId: transactionId || ('TXN-' + Date.now().toString().slice(-6)),
+      reason: reason || 'Ride cancellation / fare dispute',
+      status: 'pending',
+      createdAt: new Date()
+    });
+    await refund.save();
+    res.status(200).json({ success: true, refund });
+  } catch (err) {
+    console.error('MongoDB Admin Create Refund Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to resolve a refund (processed or rejected)
+app.post('/api/admin/refund/resolve', async (req, res) => {
+  try {
+    const { refundId, status, processedBy } = req.body;
+    const refund = await Refund.findOne({ refundId });
+    if (!refund) return res.status(404).json({ success: false, message: 'Refund not found' });
+    refund.status = status || 'processed';
+    refund.processedBy = processedBy || 'Admin/Staff';
+    refund.processedAt = new Date();
+    await refund.save();
+    res.status(200).json({ success: true, refund });
+  } catch (err) {
+    console.error('MongoDB Admin Resolve Refund Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Helper to seed initial sample complaints and refunds for Admin/Staff console
+async function seedAdminSampleData() {
+  try {
+    const complaintCount = await Complaint.countDocuments();
+    if (complaintCount === 0) {
+      await Complaint.insertMany([
+        {
+          complaintId: 'CMP-104821',
+          type: 'miss_behave_with_pilot',
+          reportedByRole: 'partner',
+          reportedByName: 'Pilot Suresh',
+          reportedByPhone: '9876543210',
+          targetName: 'Rajesh Kumar',
+          targetPhone: '9123456789',
+          bookingId: 'BK-10928',
+          subject: 'Customer refused to wear helmet & used abusive language',
+          description: 'Customer booked a bike ride, insisted on triple riding without helmet and verbally abused pilot upon refusal.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 2)
+        },
+        {
+          complaintId: 'CMP-104822',
+          type: 'miss_behave_with_customer',
+          reportedByRole: 'customer',
+          reportedByName: 'Anita Sharma',
+          reportedByPhone: '9988776655',
+          targetName: 'Pilot Ramesh',
+          targetPhone: '9876500001',
+          bookingId: 'BK-10874',
+          subject: 'Pilot demanded extra cash over app fare & argued',
+          description: 'Pilot refused to start the trip unless paid ₹100 extra in cash outside the app and misbehaved when asked to stick to app fare.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 5)
+        },
+        {
+          complaintId: 'CMP-104823',
+          type: 'general_complaint',
+          reportedByRole: 'customer',
+          reportedByName: 'Vikram Reddy',
+          reportedByPhone: '9700112233',
+          targetName: 'StayDriv System',
+          targetPhone: '',
+          bookingId: 'BK-10765',
+          subject: 'App showed wrong pickup navigation point',
+          description: 'Map pin was placed on the opposite highway lane, causing 15 minutes delay.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 8)
+        }
+      ]);
+      console.log('Seeded sample admin complaints successfully');
+    }
+
+    const refundCount = await Refund.countDocuments();
+    if (refundCount === 0) {
+      await Refund.insertMany([
+        {
+          refundId: 'REF-801201',
+          refundType: 'customer',
+          bookingId: 'BK-10822',
+          userName: 'Priya Verma',
+          userPhone: '9811223344',
+          amount: '₹240',
+          paymentMethod: 'Razorpay UPI',
+          transactionId: 'TXN-RZP-9921',
+          reason: 'Pilot unable to reach pickup location due to puncture; auto-cancelled after customer paid.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 3)
+        },
+        {
+          refundId: 'REF-801202',
+          refundType: 'customer',
+          bookingId: 'BK-10780',
+          userName: 'Karthik Rao',
+          userPhone: '9822334455',
+          amount: '₹139',
+          paymentMethod: 'Online / Card',
+          transactionId: 'TXN-RZP-8832',
+          reason: 'Customer cancelled within 1 min of driver assignment, advance fee refund due.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 6)
+        },
+        {
+          refundId: 'REF-801203',
+          refundType: 'pilot',
+          bookingId: 'BK-10790',
+          userName: 'Mahender Rao (Pilot)',
+          userPhone: '9849012345',
+          amount: '₹50',
+          paymentMethod: 'Direct Wallet Credit',
+          transactionId: 'TXN-PLT-5512',
+          reason: 'Customer cancelled 7 minutes after pilot reached pickup point; cancellation compensation due to pilot.',
+          status: 'pending',
+          createdAt: new Date(Date.now() - 3600000 * 4)
+        }
+      ]);
+      console.log('Seeded sample admin refunds successfully');
+    }
+
+    // Ensure sample blocked pilot and sample blocked customer exist for demonstration
+    let sampleBlockedPilot = await User.findOne({ role: 'partner', isBlocked: true });
+    if (!sampleBlockedPilot) {
+      const pilotToBlock = await User.findOne({ role: 'partner', phone: { $ne: '9999999999' } });
+      if (pilotToBlock) {
+        pilotToBlock.isBlocked = true;
+        pilotToBlock.blockReason = 'Multiple customer complaints for reckless driving & rude behaviour';
+        pilotToBlock.blockedAt = new Date();
+        await pilotToBlock.save();
+      }
+    }
+
+    let sampleBlockedCust = await User.findOne({ role: 'customer', isBlocked: true });
+    if (!sampleBlockedCust) {
+      const custToBlock = await User.findOne({ role: 'customer' });
+      if (custToBlock) {
+        custToBlock.isBlocked = true;
+        custToBlock.blockReason = 'Repeated fake bookings and refusal to pay fare';
+        custToBlock.blockedAt = new Date();
+        await custToBlock.save();
+      }
+    }
+  } catch (err) {
+    console.error('Error seeding admin sample data:', err.message);
+  }
+}
+seedAdminSampleData();
 
 
 // Endpoint to create or update booking in MongoDB
