@@ -73,8 +73,8 @@ class _RazorpayGatewayState extends State<RazorpayGateway> {
   final TextEditingController _cardExpiryController = TextEditingController(text: '12/29');
   final TextEditingController _cardCvvController = TextEditingController(text: '123');
 
-  // Developer Sample Mode toggle for effortless testing
-  bool _isDeveloperSampleMode = true;
+  // Developer Sample Mode toggle (false = Real-Time Live Razorpay Gateway)
+  bool _isDeveloperSampleMode = false;
 
   @override
   void dispose() {
