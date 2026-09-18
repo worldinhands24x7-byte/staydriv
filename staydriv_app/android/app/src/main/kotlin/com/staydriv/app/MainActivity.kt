@@ -16,6 +16,52 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var screenWakeLock: PowerManager.WakeLock? = null
+    private var sharedLocationData: String? = null
+    private var locationShareChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        val type = intent.type
+
+        var extractedText: String? = null
+
+        if (Intent.ACTION_SEND == action) {
+            if (type != null && (type == "text/plain" || type.startsWith("text/"))) {
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT)
+                val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)
+                extractedText = if (!text.isNullOrBlank()) {
+                    if (!subject.isNullOrBlank() && !text.contains(subject)) {
+                        "$subject\n$text"
+                    } else {
+                        text
+                    }
+                } else {
+                    subject ?: intent.data?.toString()
+                }
+            }
+        } else if (Intent.ACTION_VIEW == action) {
+            extractedText = intent.data?.toString()
+        }
+
+        if (!extractedText.isNullOrBlank()) {
+            sharedLocationData = extractedText
+            runOnUiThread {
+                locationShareChannel?.invokeMethod("onLocationReceived", extractedText)
+            }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -54,6 +100,26 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // 3. Location Share Channel (Google Maps & System Share)
+        locationShareChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.staydriv.app/location_share").apply {
+            setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getInitialSharedLocation" -> {
+                        val data = sharedLocationData
+                        sharedLocationData = null
+                        result.success(data)
+                    }
+                    "clearSharedLocation" -> {
+                        sharedLocationData = null
+                        result.success(true)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
+
+        handleIntent(intent)
     }
 
     private fun acquireWakeLock() {

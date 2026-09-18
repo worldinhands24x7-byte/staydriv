@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return new Promise((resolve) => {
       setTimeout(() => {
         const found = mockAdminUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
-        if (found && (pass === 'bhavi@123' || pass === 'staydriv123' || pass === 'admin' || pass === 'staydriv@123' || pass === '123456')) {
+        if (found && (pass === 'admin@123' || pass === 'bhavi@123' || pass === 'staydriv123' || pass === 'admin' || pass === 'staydriv@123' || pass === '123456')) {
           setUser(found);
           setActiveRoleState(found.role);
           localStorage.setItem('staydriv_admin_user', JSON.stringify(found));

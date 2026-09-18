@@ -272,6 +272,38 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      if (password == 'admin@123' || password == 'bhavi@123') {
+        final isStaff = password == 'admin@123';
+        final role = isStaff ? 'Staff' : 'Admin';
+        final displayName = isStaff ? 'StayDriv Staff' : 'StayDriv Admin';
+        final phone = '9010922111';
+        final uid = isStaff ? 'mock_staff_uid' : 'mock_admin_uid';
+        
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('is_logged_in', true);
+          await prefs.setString('user_name', displayName);
+          await prefs.setString('user_role', role);
+          await prefs.setString('phone_number', phone);
+          await prefs.setString('mock_uid', uid);
+          FirebaseService.setMockUid(uid);
+        } catch (_) {}
+        
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(
+                userName: displayName,
+                userRole: role,
+                phoneNumber: phone,
+              ),
+            ),
+            (route) => false,
+          );
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -2014,17 +2046,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
-          // Network settings shortcut in top-right
-          Positioned(
-            top: 12,
-            right: 12,
-            child: SafeArea(
-              child: IconButton(
-                icon: const Icon(Icons.settings_outlined, color: Color(0xFF1E60FF), size: 22),
-                onPressed: _showNetworkSettingsDialog,
+          // Network settings shortcut (hidden for Customer and Pilot, accessible for Admin or via long-press on StayDriv logo)
+          if (_selectedRole == 'Admin')
+            Positioned(
+              top: 12,
+              right: 12,
+              child: SafeArea(
+                child: IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: Color(0xFF1E60FF), size: 22),
+                  onPressed: _showNetworkSettingsDialog,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

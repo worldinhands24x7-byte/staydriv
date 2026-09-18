@@ -30,6 +30,8 @@ import '../../live_tracking/screens/live_tracking_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/wake_lock_service.dart';
+import '../../../core/location_share_service.dart';
+import 'admin_pilot_registration_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final String userName;
@@ -83,6 +85,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   // Profile edit states
   late String _editableUserName;
+  late String _activeUserRole;
   String _emailAddress = 'Not Provided';
   String _dateOfBirth = 'Not Provided';
   String? _profilePhotoPath;
@@ -185,20 +188,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _activeUserRole = widget.userRole;
     _editableUserName = widget.userName;
+    if (_activeUserRole == 'Customer' && _editableUserName.toLowerCase().contains('pilot')) {
+      _editableUserName = 'StayDriv Customer';
+    }
     _driverMapCenter = BookingManager().driverLatLng;
     if (widget.selectedVehicle != null) {
       _selectedVehicle = widget.selectedVehicle!;
     }
-    if (widget.userRole == 'Driver' || widget.userRole == 'Customer') {
+    if (_activeUserRole == 'Driver' || _activeUserRole == 'Customer') {
       _loadCompletedRides();
       _loadProfileData();
     }
-    if (widget.userRole == 'Customer') {
+    if (_activeUserRole == 'Customer') {
       _startCustomerGpsTracking();
       _subscribeToCustomerBookingManager();
       BookingManager().restoreAndSyncActiveBooking();
     }
+    _initLocationSharing();
     if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {
       if (_isFirebaseInitialized) {
         _adminBookingsStream = FirebaseFirestore.instance
@@ -235,6 +243,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         });
       }
     });
+  }
+
+  void _initLocationSharing() {
+    LocationShareService.instance.init(
+      onLocationReceived: (SharedLocationResult loc) {
+        if (!mounted) return;
+        _handleIncomingSharedLocation(loc);
+      },
+    );
+  }
+
+  Future<void> _switchAppRole(String newRole) async {
+    if (_activeUserRole == newRole) return;
+    setState(() {
+      _activeUserRole = newRole;
+      if (newRole == 'Driver') {
+        _selectedVehicle = widget.selectedVehicle ?? _selectedVehicle;
+      }
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', newRole);
+    } catch (_) {}
+
+    if (newRole == 'Driver') {
+      _loadProfileData();
+    } else if (newRole == 'Customer') {
+      _startCustomerGpsTracking();
+      _subscribeToCustomerBookingManager();
+      BookingManager().restoreAndSyncActiveBooking();
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(newRole == 'Driver' ? Icons.two_wheeler_rounded : Icons.person, color: Colors.white),
+              const SizedBox(width: 8),
+              Text(
+                newRole == 'Driver' ? 'Switched to Pilot Partner Mode!' : 'Switched to Customer Mode!',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          backgroundColor: newRole == 'Driver' ? const Color(0xFF1B7C3E) : const Color(0xFF1D4ED8),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _handleIncomingSharedLocation(SharedLocationResult loc) {
+    LocationShareService.showSharedLocationPrompt(
+      context: context,
+      location: loc,
+      onLocationSelected: ({required bool isDrop}) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RideSelectionScreen(
+              serviceType: 'bike',
+              userName: widget.userName,
+              phoneNumber: widget.phoneNumber,
+              initialDropAddress: isDrop ? loc.title : null,
+              initialDropLatLng: isDrop ? loc.coordinates : null,
+              initialPickupAddress: !isDrop ? loc.title : null,
+              initialPickupLatLng: !isDrop ? loc.coordinates : null,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _startCustomerGpsTracking() async {
@@ -723,7 +804,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               _customerCancellationCharge = (data['pendingCancellationCharge'] as num).toDouble();
             }
             if (data['name'] != null && data['name'].toString().isNotEmpty) {
-              _editableUserName = data['name'];
+              final loadedName = data['name'].toString();
+              if (_activeUserRole == 'Customer' && loadedName.toLowerCase().contains('pilot')) {
+                _editableUserName = 'StayDriv Customer';
+              } else {
+                _editableUserName = loadedName;
+              }
             }
             if (data['email'] != null && data['email'].toString().isNotEmpty) {
               _emailAddress = data['email'];
@@ -816,7 +902,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['jpg', 'jpeg'],
+        allowedExtensions: ['jpg', 'jpeg', 'png'],
       );
 
       if (result == null || result.files.isEmpty) {
@@ -826,10 +912,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       final file = result.files.first;
       
       final ext = (file.extension ?? '').toLowerCase();
-      if (ext != 'jpg' && ext != 'jpeg') {
+      if (ext != 'jpg' && ext != 'jpeg' && ext != 'png') {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Invalid file type! Only .jpeg and .jpg formats are accepted.'),
+            content: Text('Invalid file type! Only .jpg, .jpeg, and .png formats are accepted.'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1195,9 +1281,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildDashboardView() {
-    if (widget.userRole == 'Driver') {
+    if (_activeUserRole == 'Driver') {
       return _buildDriverDashboardView();
-    } else if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {
+    } else if (_activeUserRole == 'Admin' || _activeUserRole == 'Staff') {
       return _buildAdminDashboardView();
     }
      return Stack(
@@ -1744,54 +1830,148 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _changeProfilePhoto() {
     showModalBottomSheet(
       context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) {
         return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.upload_file, color: AppTheme.primaryColor),
-                title: const Text('Upload JPG/JPEG Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickAndUploadImage('photo');
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Upload Mock Photo 1 (Professional)'),
-                onTap: () {
-                  setState(() {
-                    _profilePhotoPath = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
-                  });
-                  _updatePartnerProfileOnBackend(photo: _profilePhotoPath);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Upload Mock Photo 2 (Casual)'),
-                onTap: () {
-                  setState(() {
-                    _profilePhotoPath = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';
-                  });
-                  _updatePartnerProfileOnBackend(photo: _profilePhotoPath);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Remove Photo', style: const TextStyle(color: Colors.red)),
-                onTap: () {
-                  setState(() {
-                    _profilePhotoPath = null;
-                  });
-                  _updatePartnerProfileOnBackend(photo: '');
-                  Navigator.pop(context);
-                },
-              ),
-            ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  'Update Profile Photo',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryColor),
+                  ),
+                  title: Text('Take Photo / Choose File', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Select photo from Camera or Device (JPG, PNG)'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickAndUploadImage('photo');
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.account_circle, color: Colors.purple),
+                  ),
+                  title: Text('Set Official StayDriv Avatar', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Use verified official profile avatar'),
+                  onTap: () {
+                    setState(() {
+                      _profilePhotoPath = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+                    });
+                    _updatePartnerProfileOnBackend(photo: _profilePhotoPath);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile photo updated successfully!'), backgroundColor: Colors.green),
+                    );
+                  },
+                ),
+                if (_profilePhotoPath != null)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.delete_outline, color: Colors.red),
+                    ),
+                    title: Text('Remove Photo', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.red)),
+                    onTap: () {
+                      setState(() {
+                        _profilePhotoPath = null;
+                      });
+                      _updatePartnerProfileOnBackend(photo: '');
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Photo removed'), backgroundColor: Colors.orange),
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  void _showSingleFieldEditDialog(String label, String initialValue, Function(String) onSave) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Edit $label', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: label,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final val = controller.text.trim();
+                if (val.isNotEmpty) {
+                  onSave(val);
+                  final prefs = await SharedPreferences.getInstance();
+                  if (label == 'Full Name') {
+                    await prefs.setString('user_name', val);
+                    _updatePartnerProfileOnBackend(name: val);
+                  }
+                }
+                Navigator.pop(context);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('$label updated!'), backgroundColor: Colors.green),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Save'),
+            ),
+          ],
         );
       },
     );
@@ -1806,26 +1986,47 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Edit Profile Details', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Edit Personal Details', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Full Name'),
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email Address'),
+                  decoration: const InputDecoration(
+                    labelText: 'Email Address',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
                   keyboardType: TextInputType.emailAddress,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: dobController,
-                  decoration: const InputDecoration(labelText: 'Date of Birth (DD/MM/YYYY)', hintText: 'DD/MM/YYYY'),
-                  keyboardType: TextInputType.datetime,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Date of Birth',
+                    prefixIcon: Icon(Icons.calendar_today_outlined),
+                  ),
+                  onTap: () async {
+                    DateTime? picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime(2000, 1, 1),
+                      firstDate: DateTime(1940),
+                      lastDate: DateTime.now().subtract(const Duration(days: 365 * 16)),
+                    );
+                    if (picked != null) {
+                      dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+                    }
+                  },
                 ),
               ],
             ),
@@ -1836,14 +2037,32 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                final newName = nameController.text.trim().isNotEmpty ? nameController.text.trim() : _editableUserName;
+                final newEmail = emailController.text.trim().isNotEmpty ? emailController.text.trim() : 'Not Provided';
+                final newDob = dobController.text.trim().isNotEmpty ? dobController.text.trim() : 'Not Provided';
                 setState(() {
-                  _editableUserName = nameController.text.trim().isNotEmpty ? nameController.text.trim() : _editableUserName;
-                  _emailAddress = emailController.text.trim().isNotEmpty ? emailController.text.trim() : 'Not Provided';
-                  _dateOfBirth = dobController.text.trim().isNotEmpty ? dobController.text.trim() : 'Not Provided';
+                  _editableUserName = newName;
+                  _emailAddress = newEmail;
+                  _dateOfBirth = newDob;
                 });
                 Navigator.pop(context);
+
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setString('user_name', newName);
+                _updatePartnerProfileOnBackend(name: newName);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),
+                  );
+                }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
               child: const Text('Save'),
             ),
           ],
@@ -1852,22 +2071,329 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  void _showMobileNumberInfoDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.verified_user_rounded, color: Colors.green.shade700, size: 28),
+                ),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Registered Mobile', style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.bold)),
+                    Text('+91 ${widget.phoneNumber}', style: GoogleFonts.robotoMono(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_outlined, color: Color(0xFF1D4ED8), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'This number is OTP-verified. OTP notifications, driver live updates & trip receipts are linked to this mobile.',
+                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E60FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomerPaymentWalletSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: const Color(0xFFEFF5FF), borderRadius: BorderRadius.circular(14)),
+                  child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF1E60FF), size: 26),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Payment & Wallets', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),
+                      Text('UPI AutoPay, Cards & Cash on Delivery', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [Color(0xFF1E60FF), Color(0xFF1D4ED8)]),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('StayDriv Cash Balance', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Text('₹0.00', style: GoogleFonts.hankenGrotesk(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Add Money to StayDriv wallet via UPI is active.'), backgroundColor: Color(0xFF1E60FF)),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1E60FF),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    ),
+                    child: const Text('+ Add Money', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const Icon(Icons.check_circle_rounded, color: Colors.green),
+              title: Text('UPI AutoPay (Recommended)', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+              subtitle: Text('Verified for instant ride booking & seamless exit', style: GoogleFonts.inter(fontSize: 12)),
+              trailing: const Icon(Icons.verified, color: Colors.green, size: 20),
+              contentPadding: EdgeInsets.zero,
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.money_rounded, color: Colors.amber),
+              title: Text('Cash on Delivery', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+              subtitle: Text('Pay cash or QR directly to pilot at trip completion', style: GoogleFonts.inter(fontSize: 12)),
+              trailing: const Icon(Icons.chevron_right),
+              contentPadding: EdgeInsets.zero,
+              onTap: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Cash Payment mode is selected for your rides.'), backgroundColor: Colors.green),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSavedPlacesSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 18),
+            Text('Saved Places', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            ListTile(
+              leading: const Icon(Icons.home_rounded, color: Color(0xFF1E60FF)),
+              title: Text('Home Address', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Add your home address for 1-tap booking'),
+              trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF1E60FF)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showSingleFieldEditDialog('Home Address', '', (val) {});
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.work_rounded, color: Colors.orange),
+              title: Text('Work / Office', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+              subtitle: const Text('Add your workplace address'),
+              trailing: const Icon(Icons.add_circle_outline, color: Colors.orange),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showSingleFieldEditDialog('Workplace Address', '', (val) {});
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAppSettingsSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 18),
+              Text('App Preferences & Settings', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF1E60FF)),
+                title: Text('Push Notifications', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Receive ride arrival & trip alerts'),
+                value: true,
+                onChanged: (val) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(val ? 'Notifications enabled' : 'Notifications muted'), duration: const Duration(seconds: 1)),
+                  );
+                },
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.near_me_outlined, color: Colors.green),
+                title: Text('Precise GPS High-Accuracy', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Ensures closest driver matching'),
+                value: true,
+                onChanged: (val) {},
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.wifi_tethering, color: Colors.purple),
+                title: Text('Backend Server & Network', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Configure IP or Cloudflare tunnel'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _showNetworkSettingsDialog();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),
+            const SizedBox(width: 8),
+            Text('Confirm Logout', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text('Are you sure you want to log out of StayDriv?', style: GoogleFonts.inter(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Yes, Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('is_logged_in');
+      await prefs.remove('mock_uid');
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+          (route) => false,
+        );
+      }
+    }
+  }
+
   Widget _buildProfileView() {
+    final bool isPilotMode = (_activeUserRole == 'Driver');
+
     return Scaffold(
       appBar: AppBar(
         title: Text('My Profile', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryColor),
-            onPressed: _showNetworkSettingsDialog,
-          ),
+          if (isPilotMode || _activeUserRole == 'Admin')
+            IconButton(
+              icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryColor),
+              onPressed: _showNetworkSettingsDialog,
+            ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
         child: Column(
           children: [
+            // Circular Avatar with Camera Badge
             Stack(
               children: [
                 GestureDetector(
@@ -1896,42 +2422,215 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // User Name
             Text(
-              _editableUserName,
+              (!isPilotMode && _editableUserName.toLowerCase().contains('pilot'))
+                  ? 'StayDriv Customer'
+                  : _editableUserName,
               style: GoogleFonts.hankenGrotesk(fontSize: 22, fontWeight: FontWeight.bold),
             ),
-            Text(
-              widget.userRole == 'Driver' ? 'Pilot' : 'Customer',
-              style: GoogleFonts.robotoMono(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Personal Information',
-                  style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
-                ),
-                TextButton.icon(
-                  onPressed: _showEditProfileDialog,
-                  icon: const Icon(Icons.edit, size: 14),
-                  label: Text('Edit', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
-                ),
-              ],
-            ),
             const SizedBox(height: 8),
-            _buildProfileTile(Icons.person_outline, 'Full Name', _editableUserName),
-            _buildProfileTile(Icons.phone, 'Mobile Number', '+91 ${widget.phoneNumber}'),
-            _buildProfileTile(Icons.email, 'Email Address', _emailAddress),
-            _buildProfileTile(Icons.calendar_today, 'Date of Birth', _dateOfBirth),
-            if (widget.userRole == 'Driver') ...[
+
+            // Dedicated Role Badge (No toggle switcher between Customer and Pilot)
+            if (!isPilotMode)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFF5FF),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFBFDBFE)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.person, size: 15, color: Color(0xFF1D4ED8)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Customer',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1D4ED8),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFA5D6A7)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.two_wheeler_rounded, size: 15, color: Color(0xFF1B7C3E)),
+                    const SizedBox(width: 6),
+                    Text(
+                      'StayDriv Pilot Partner',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF1B7C3E),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 20),
+
+            // Personal Information Heading (Edit button removed as users edit inline)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Personal Information',
+                style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Tappable Profile Information Fields
+            _buildProfileTile(
+              Icons.person_outline,
+              'Full Name',
+              (!isPilotMode && _editableUserName.toLowerCase().contains('pilot'))
+                  ? 'StayDriv Customer'
+                  : _editableUserName,
+              onTap: () => _showSingleFieldEditDialog(
+                'Full Name',
+                (!isPilotMode && _editableUserName.toLowerCase().contains('pilot')) ? 'StayDriv Customer' : _editableUserName,
+                (val) => setState(() => _editableUserName = val),
+              ),
+            ),
+            _buildProfileTile(
+              Icons.phone_outlined,
+              'Mobile Number',
+              '+91 ${widget.phoneNumber}',
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.green.shade300),
+                ),
+                child: Text(
+                  'VERIFIED',
+                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                ),
+              ),
+              onTap: _showMobileNumberInfoDialog,
+            ),
+            _buildProfileTile(
+              Icons.email_outlined,
+              'Email Address',
+              _emailAddress,
+              onTap: () => _showSingleFieldEditDialog(
+                'Email Address',
+                _emailAddress == 'Not Provided' ? '' : _emailAddress,
+                (val) => setState(() => _emailAddress = val.isNotEmpty ? val : 'Not Provided'),
+              ),
+            ),
+            _buildProfileTile(
+              Icons.calendar_today_outlined,
+              'Date of Birth',
+              _dateOfBirth,
+              onTap: () async {
+                DateTime? picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime(2000, 1, 1),
+                  firstDate: DateTime(1940),
+                  lastDate: DateTime.now().subtract(const Duration(days: 365 * 16)),
+                );
+                if (picked != null) {
+                  setState(() {
+                    _dateOfBirth = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
+                  });
+                }
+              },
+            ),
+
+            // Pilot Specific Console (Visible when Pilot Partner mode is active)
+            if (isPilotMode) ...[
               const Divider(height: 32),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Verification Documents',
+                    'Vehicle & Duty Console',
+                    style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _isOnline ? Colors.green.shade100 : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _isOnline ? 'DUTY ONLINE' : 'DUTY OFFLINE',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _isOnline ? Colors.green.shade800 : Colors.grey.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _buildProfileTile(
+                Icons.directions_car_rounded,
+                'Assigned Vehicle Type',
+                '$_selectedVehicle (TS 09 SD 1234)',
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (ctx) => SafeArea(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: ['Bike', 'Auto', 'Car', 'Mini Truck', 'Heavy Truck'].map((v) {
+                          return ListTile(
+                            leading: Icon(
+                              v == 'Bike' ? Icons.two_wheeler : (v == 'Auto' ? Icons.electric_rickshaw : Icons.directions_car),
+                              color: AppTheme.primaryColor,
+                            ),
+                            title: Text(v, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                            trailing: _selectedVehicle == v ? const Icon(Icons.check, color: Colors.green) : null,
+                            onTap: () {
+                              setState(() => _selectedVehicle = v);
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Vehicle updated to $v'), backgroundColor: Colors.green),
+                              );
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              _buildProfileTile(
+                Icons.account_balance_wallet_outlined,
+                'Pilot Salary & Earnings',
+                '₹${_pilotSalary.toStringAsFixed(2)} | Tap to withdraw advance',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Salary advance withdrawal initiated to linked bank account!'), backgroundColor: Colors.green),
+                  );
+                },
+              ),
+              const Divider(height: 32),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Pilot Documents',
                     style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
                   ),
                 ],
@@ -1951,51 +2650,82 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   _buildDocUploadTile('Vehicle Permit', _permit, 'permit', _permitName, _permitSize),
                 ],
               ],
-            ],
-            const Divider(height: 32),
-            if (widget.userRole == 'Driver')
-              _buildProfileTile(Icons.account_balance_wallet, 'Pilot Salary Balance', '₹${_pilotSalary.toStringAsFixed(2)}')
-            else
+            ] else ...[
+              // Customer Specific Console: Payment Wallet Only
+              const Divider(height: 32),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Payments',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
+                ),
+              ),
+              const SizedBox(height: 12),
               _buildProfileTile(
-                Icons.account_balance_wallet, 
-                'Payment Wallet', 
+                Icons.account_balance_wallet_outlined,
+                'Payment Wallet',
                 _customerCancellationCharge > 0 
                     ? 'UPI linked | Prev Penalty: ₹${_customerCancellationCharge.toStringAsFixed(0)}' 
-                    : 'UPI linked'
+                    : 'UPI linked | Tap to manage payment methods',
+                onTap: _showCustomerPaymentWalletSheet,
               ),
-            _buildProfileTile(Icons.settings, 'Settings', 'Preferences & Notifications'),
+            ],
+
+            if (isPilotMode) ...[
+              const Divider(height: 32),
+              _buildProfileTile(
+                Icons.settings_outlined,
+                'App Settings',
+                'Preferences, Map Style & Notifications',
+                onTap: _showAppSettingsSheet,
+              ),
+            ],
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => LoginScreen()),
-                  (route) => false,
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.errorColor,
-                minimumSize: const Size(120, 45),
+
+            // Logout Button - Elevated, high-visibility, 100% accessible above nav bar
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _handleLogout,
+                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDC2626),
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                label: Text(
+                  'Logout',
+                  style: GoogleFonts.hankenGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
-              child: const Text('Logout', style: TextStyle(color: Colors.white)),
             ),
+            const SizedBox(height: 30),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildProfileTile(IconData icon, String title, String subtitle) {
+  Widget _buildProfileTile(IconData icon, String title, String subtitle, {VoidCallback? onTap, Widget? trailing}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: AppTheme.surfaceContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: ListTile(
-        leading: Icon(icon, color: AppTheme.primaryColor),
-        title: Text(title, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: GoogleFonts.inter()),
-        trailing: const Icon(Icons.chevron_right, color: AppTheme.outlineColor),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: ListTile(
+            leading: Icon(icon, color: AppTheme.primaryColor),
+            title: Text(title, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),
+            subtitle: Text(subtitle, style: GoogleFonts.inter()),
+            trailing: trailing ?? const Icon(Icons.chevron_right, color: AppTheme.outlineColor),
+          ),
+        ),
       ),
     );
   }
@@ -5341,6 +6071,59 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       ),
 
                       const SizedBox(height: 16),
+
+                      // "New Registration" Button matching Image 1
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AdminPilotRegistrationScreen(
+                                  isStaff: isStaff,
+                                  onSuccess: () async {
+                                    await _fetchAdminDataOnce();
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppTheme.onSurfaceColor,
+                            elevation: 0,
+                            side: BorderSide(
+                              color: AppTheme.outlineVariant.withOpacity(0.5),
+                              width: 1.2,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.person_add_alt_1_rounded,
+                                color: AppTheme.primaryColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'New Registration',
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.onSurfaceColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
 
                       // 8 Bento Action Cards with red border indicator matching user image
                       GridView.count(

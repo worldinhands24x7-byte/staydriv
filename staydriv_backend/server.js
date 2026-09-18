@@ -127,6 +127,10 @@ const userSchema = new mongoose.Schema({
   licenseBack: String,
   rcFront: String,
   rcBack: String,
+  panFront: String,
+  panBack: String,
+  ownerPhone: String,
+  driverPhone: String,
   fitness: String,
   permit: String,
   salary: { type: Number, default: 5000 },
@@ -295,7 +299,8 @@ app.post('/api/partner/update', async (req, res) => {
   try {
     const {
       uid, online, lat, lng, vehicleType, vehiclePlate, vehicleModelColor, approved,
-      photo, aadhaarFront, aadhaarBack, licenseFront, licenseBack, rcFront, rcBack, fitness, permit
+      photo, aadhaarFront, aadhaarBack, licenseFront, licenseBack, rcFront, rcBack,
+      panFront, panBack, ownerPhone, driverPhone, fitness, permit
     } = req.body;
     console.log(`Updating partner status in MongoDB: uid=${uid}, online=${online}, vehicleType=${vehicleType}, lat=${lat}, lng=${lng}, approved=${approved}`);
     let user = await User.findOne({ uid });
@@ -334,6 +339,10 @@ app.post('/api/partner/update', async (req, res) => {
     if (licenseBack !== undefined) user.licenseBack = licenseBack;
     if (rcFront !== undefined) user.rcFront = rcFront;
     if (rcBack !== undefined) user.rcBack = rcBack;
+    if (panFront !== undefined) user.panFront = panFront;
+    if (panBack !== undefined) user.panBack = panBack;
+    if (ownerPhone !== undefined) user.ownerPhone = ownerPhone;
+    if (driverPhone !== undefined) user.driverPhone = driverPhone;
     if (fitness !== undefined) user.fitness = fitness;
     if (permit !== undefined) user.permit = permit;
     user.lastActive = new Date();
@@ -341,6 +350,80 @@ app.post('/api/partner/update', async (req, res) => {
     res.status(200).json({ success: true, message: 'Partner status updated in MongoDB', user });
   } catch (err) {
     console.error('MongoDB Partner Update Error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Direct register endpoint for Pilot, Admin, Staff, and Customer
+app.post(['/api/register', '/api/user/register'], async (req, res) => {
+  try {
+    const { uid, name, phone, role, vehicleType, vehiclePlate, vehicleModelColor, isApproved, isDocumentVerified, status, panFront, panBack, ownerPhone, driverPhone } = req.body;
+    let user = await User.findOne({ uid });
+    if (!user && phone) {
+      user = await User.findOne({ phone, role });
+    }
+    if (!user) {
+      user = new User({
+        uid: uid || `mock_uid_${phone}_${role || 'partner'}`,
+        name: name || 'User',
+        phone: phone || '',
+        role: role || 'partner',
+        vehicleType: vehicleType || 'Bike',
+        vehiclePlate: vehiclePlate || '',
+        vehicleModelColor: vehicleModelColor || 'Standard',
+        approved: isApproved !== undefined ? isApproved : true,
+        panFront,
+        panBack,
+        ownerPhone,
+        driverPhone,
+        lastActive: new Date()
+      });
+    } else {
+      if (name) user.name = name;
+      if (vehicleType) user.vehicleType = vehicleType;
+      if (vehiclePlate) user.vehiclePlate = vehiclePlate;
+      if (vehicleModelColor) user.vehicleModelColor = vehicleModelColor;
+      if (isApproved !== undefined) user.approved = isApproved;
+      if (panFront) user.panFront = panFront;
+      if (panBack) user.panBack = panBack;
+      if (ownerPhone) user.ownerPhone = ownerPhone;
+      if (driverPhone) user.driverPhone = driverPhone;
+      user.lastActive = new Date();
+    }
+    await user.save();
+    res.status(200).json({ success: true, message: 'User registered successfully', user });
+  } catch (err) {
+    console.error('Registration error:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Endpoint to replace or update driver details for an existing vehicle/pilot
+app.post('/api/partner/replace-driver', async (req, res) => {
+  try {
+    const { uid, ownerPhone, driverPhone, licenseFront, licenseBack, photo } = req.body;
+    let user = await User.findOne({ uid });
+    if (!user && ownerPhone) {
+      user = await User.findOne({ phone: ownerPhone, role: 'partner' }) || await User.findOne({ ownerPhone, role: 'partner' });
+    }
+    if (!user) {
+      user = new User({
+        uid: uid || `mock_uid_${ownerPhone || driverPhone}_pilot`,
+        role: 'partner',
+        phone: ownerPhone || driverPhone,
+        approved: true,
+        lastActive: new Date()
+      });
+    }
+    if (driverPhone) user.driverPhone = driverPhone;
+    if (licenseFront) user.licenseFront = licenseFront;
+    if (licenseBack) user.licenseBack = licenseBack;
+    if (photo) user.photo = photo;
+    user.lastActive = new Date();
+    await user.save();
+    res.status(200).json({ success: true, message: 'Driver details replaced/updated successfully', user });
+  } catch (err) {
+    console.error('Replace driver error:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });

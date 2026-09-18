@@ -49,12 +49,20 @@ class RideSelectionScreen extends StatefulWidget {
   final String serviceType;
   final String userName;
   final String phoneNumber;
+  final String? initialDropAddress;
+  final LatLng? initialDropLatLng;
+  final String? initialPickupAddress;
+  final LatLng? initialPickupLatLng;
   
   const RideSelectionScreen({
     super.key,
     required this.serviceType,
     this.userName = 'Customer',
     this.phoneNumber = '9999999999',
+    this.initialDropAddress,
+    this.initialDropLatLng,
+    this.initialPickupAddress,
+    this.initialPickupLatLng,
   });
 
   @override
@@ -324,9 +332,52 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     if (widget.serviceType == 'heavy_truck') {
       _initHeavyTruckDateTime();
     }
+    _applyInitialLocations();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _detectCurrentLocation();
+      _handleInitialStartup();
     });
+  }
+
+  void _applyInitialLocations() {
+    if (widget.initialDropAddress != null && widget.initialDropAddress!.isNotEmpty) {
+      _dropController.text = widget.initialDropAddress!;
+      _dropQuery = widget.initialDropAddress!;
+      _dropLatLng = widget.initialDropLatLng;
+    }
+    if (widget.initialPickupAddress != null && widget.initialPickupAddress!.isNotEmpty) {
+      _pickupController.text = widget.initialPickupAddress!;
+      _pickupQuery = widget.initialPickupAddress!;
+      _pickupLatLng = widget.initialPickupLatLng;
+    }
+  }
+
+  Future<void> _handleInitialStartup() async {
+    // 1. If drop coordinates are missing but drop address is provided, resolve them
+    if (_dropLatLng == null && _dropController.text.isNotEmpty) {
+      final geo = await _geocodeAddress(_dropController.text);
+      if (geo != null && mounted) {
+        setState(() {
+          _dropLatLng = geo;
+        });
+      }
+    }
+
+    // 2. If pickup was provided without coordinates, resolve it
+    if (_pickupController.text.isNotEmpty && _pickupLatLng == null) {
+      final geo = await _geocodeAddress(_pickupController.text);
+      if (geo != null && mounted) {
+        setState(() {
+          _pickupLatLng = geo;
+        });
+      }
+    }
+
+    // 3. If pickup is not provided, detect current location
+    if (_pickupController.text.isEmpty) {
+      await _detectCurrentLocation();
+    } else if (mounted && _pickupLatLng != null && _dropLatLng != null) {
+      _checkAndCalculateRoute();
+    }
   }
 
   DateTime? _getSlotDateTime(DateTime? date, String? slot) {
@@ -1544,10 +1595,10 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                   // Row 1: FROM (Pickup Location)
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: _isPickupActive ? const Color(0xFFF0FDF4) : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: _isPickupActive ? Colors.green.shade600 : Colors.grey.shade300,
                         width: _isPickupActive ? 1.8 : 1.0,
@@ -1562,7 +1613,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                           children: [
                             // Green FROM pill
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600,
                                 borderRadius: BorderRadius.circular(6),
@@ -1571,7 +1622,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                 'FROM',
                                 style: GoogleFonts.inter(
                                   color: Colors.white,
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                   letterSpacing: 0.5,
                                 ),
@@ -1586,7 +1637,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                   Text(
                                     'PICKUP LOCATION',
                                     style: GoogleFonts.inter(
-                                      fontSize: 10,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       color: _isPickupActive ? Colors.green.shade800 : Colors.grey.shade600,
                                       letterSpacing: 0.4,
@@ -1597,7 +1648,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                     controller: _pickupController,
                                     focusNode: _pickupFocusNode,
                                     style: GoogleFonts.inter(
-                                      fontSize: 14,
+                                      fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                       color: Colors.black87,
                                     ),
@@ -1618,12 +1669,12 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                       hintText: 'Enter pickup spot or use current location',
                                       hintStyle: GoogleFonts.inter(
                                         color: Colors.grey.shade400,
-                                        fontSize: 13,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.normal,
                                       ),
                                       border: InputBorder.none,
-                                      isDense: true,
-                                      contentPadding: EdgeInsets.zero,
+                                      isDense: false,
+                                      contentPadding: const EdgeInsets.symmetric(vertical: 6),
                                     ),
                                   ),
                                 ],
@@ -1631,8 +1682,8 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                             ),
                             if (_pickupController.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.cancel, size: 18, color: Colors.grey),
-                                splashRadius: 18,
+                                icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),
+                                splashRadius: 20,
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                                 onPressed: () {
@@ -1646,8 +1697,8 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                               )
                             else
                               IconButton(
-                                icon: Icon(Icons.my_location, size: 18, color: Colors.green.shade700),
-                                splashRadius: 18,
+                                icon: Icon(Icons.my_location, size: 20, color: Colors.green.shade700),
+                                splashRadius: 20,
                                 tooltip: 'Detect current location',
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
@@ -1655,26 +1706,27 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                               ),
                           ],
                         ),
-                        // Dedicated House / Flat / Residency input for exact door pickup
-                        const SizedBox(height: 6),
+                        // Dedicated House / Flat / Residency input with spacious comfortable typing space
+                        const SizedBox(height: 10),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(10),
                             border: Border.all(
-                              color: _isPickupActive ? Colors.green.shade300 : Colors.grey.shade300,
+                              color: _isPickupActive ? Colors.green.shade400 : Colors.grey.shade300,
+                              width: 1.2,
                             ),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.home_work_outlined, size: 15, color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600),
-                              const SizedBox(width: 6),
+                              Icon(Icons.home_work_outlined, size: 18, color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600),
+                              const SizedBox(width: 8),
                               Expanded(
                                 child: TextField(
                                   controller: _pickupHouseController,
                                   style: GoogleFonts.inter(
-                                    fontSize: 12,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: Colors.black87,
                                   ),
@@ -1682,12 +1734,12 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                     hintText: 'House / Flat / Residency (e.g. House No -84, Rishipranavam)',
                                     hintStyle: GoogleFonts.inter(
                                       color: Colors.grey.shade400,
-                                      fontSize: 11,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.normal,
                                     ),
                                     border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
+                                    isDense: false,
+                                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
                                   ),
                                 ),
                               ),
@@ -1699,8 +1751,8 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                     });
                                   },
                                   child: const Padding(
-                                    padding: EdgeInsets.all(2.0),
-                                    child: Icon(Icons.clear, size: 14, color: Colors.grey),
+                                    padding: EdgeInsets.all(4.0),
+                                    child: Icon(Icons.clear, size: 16, color: Colors.grey),
                                   ),
                                 ),
                             ],
@@ -1712,7 +1764,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
 
                   // Middle Connector with Swap Button
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0),
+                    padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),
                     child: Row(
                       children: [
                         const SizedBox(width: 16),
@@ -1728,7 +1780,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                           onTap: _swapLocations,
                           borderRadius: BorderRadius.circular(16),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
@@ -1763,13 +1815,13 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                     ),
                   ),
 
-                  // Row 2: TO (Drop Destination)
+                  // Row 2: TO (Drop Destination) with spacious comfortable typing space
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                     decoration: BoxDecoration(
                       color: !_isPickupActive ? const Color(0xFFFFF7ED) : Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: !_isPickupActive ? Colors.orange.shade700 : Colors.grey.shade300,
                         width: !_isPickupActive ? 1.8 : 1.0,
@@ -1780,7 +1832,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                       children: [
                         // Orange TO pill
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: !_isPickupActive ? Colors.orange.shade800 : Colors.grey.shade600,
                             borderRadius: BorderRadius.circular(6),
@@ -1789,7 +1841,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                             'TO',
                             style: GoogleFonts.inter(
                               color: Colors.white,
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w800,
                               letterSpacing: 0.5,
                             ),
@@ -1804,18 +1856,18 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                               Text(
                                 'DROP DESTINATION',
                                 style: GoogleFonts.inter(
-                                  fontSize: 10,
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: !_isPickupActive ? Colors.orange.shade800 : Colors.grey.shade600,
                                   letterSpacing: 0.4,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
                               TextField(
                                 controller: _dropController,
                                 focusNode: _dropFocusNode,
                                 style: GoogleFonts.inter(
-                                  fontSize: 14,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.black87,
                                 ),
@@ -1830,12 +1882,12 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                   hintText: 'Where are you going? (e.g. Secunderabad)',
                                   hintStyle: GoogleFonts.inter(
                                     color: Colors.grey.shade400,
-                                    fontSize: 13,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.normal,
                                   ),
                                   border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
+                                  isDense: false,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 6),
                                 ),
                               ),
                             ],
@@ -1843,8 +1895,8 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                         ),
                         if (_dropController.text.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.cancel, size: 18, color: Colors.grey),
-                            splashRadius: 18,
+                            icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),
+                            splashRadius: 20,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                             onPressed: () {

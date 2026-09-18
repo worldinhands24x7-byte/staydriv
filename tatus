@@ -1,0 +1,3326 @@
+warning: in the working copy of 'Staydriv_Admin/src/context/AuthContext.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Staydriv_Admin/src/pages/Login.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_app/android/app/src/main/kotlin/com/staydriv/app/MainActivity.kt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_app/lib/features/dashboard/screens/home_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_app/lib/features/onboarding/screens/login_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_app/lib/features/onboarding/screens/register_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_app/lib/features/ride_selection/screens/ride_selection_screen.dart', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_backend/deploy_aws/public/main.dart.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_backend/public/active_tunnel.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_backend/public/main.dart.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'staydriv_backend/server.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/Staydriv_Admin/src/context/AuthContext.tsx b/Staydriv_Admin/src/context/AuthContext.tsx[m
+[1mindex 39d1572..493e53b 100644[m
+[1m--- a/Staydriv_Admin/src/context/AuthContext.tsx[m
+[1m+++ b/Staydriv_Admin/src/context/AuthContext.tsx[m
+[36m@@ -46,7 +46,7 @@[m [mexport const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children[m
+     return new Promise((resolve) => {[m
+       setTimeout(() => {[m
+         const found = mockAdminUsers.find(u => u.email.toLowerCase() === email.toLowerCase());[m
+[31m-        if (found && (pass === 'bhavi@123' || pass === 'staydriv123' || pass === 'admin' || pass === 'staydriv@123' || pass === '123456')) {[m
+[32m+[m[32m        if (found && (pass === 'admin@123' || pass === 'bhavi@123' || pass === 'staydriv123' || pass === 'admin' || pass === 'staydriv@123' || pass === '123456')) {[m
+           setUser(found);[m
+           setActiveRoleState(found.role);[m
+           localStorage.setItem('staydriv_admin_user', JSON.stringify(found));[m
+[1mdiff --git a/Staydriv_Admin/src/pages/Login.tsx b/Staydriv_Admin/src/pages/Login.tsx[m
+[1mindex 3373b42..b3fdd20 100644[m
+[1m--- a/Staydriv_Admin/src/pages/Login.tsx[m
+[1m+++ b/Staydriv_Admin/src/pages/Login.tsx[m
+[36m@@ -185,8 +185,8 @@[m [mexport const Login: React.FC = () => {[m
+             <span><strong>Finance Manager:</strong></span>[m
+             <span>finance@staydriv.com</span>[m
+           </div>[m
+[31m-          <div style={{ marginTop: '4px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>[m
+[31m-            Password: <code style={{ color: 'var(--primary)', fontWeight: 'bold' }}>bhavi@123</code>[m
+[32m+[m[32m          <div style={{ marginTop: '4px', borderTop: '1px solid var(--border)', paddingTop: '4px', fontStyle: 'italic', fontSize: '11px' }}>[m
+[32m+[m[32m            Enter your confidential administrator / staff credentials to proceed.[m
+           </div>[m
+         </div>[m
+ [m
+[1mdiff --git a/staydriv_app/android/app/src/main/AndroidManifest.xml b/staydriv_app/android/app/src/main/AndroidManifest.xml[m
+[1mindex cd77350..6dc38d9 100644[m
+[1m--- a/staydriv_app/android/app/src/main/AndroidManifest.xml[m
+[1m+++ b/staydriv_app/android/app/src/main/AndroidManifest.xml[m
+[36m@@ -46,6 +46,53 @@[m
+                 <action android:name="android.intent.action.MAIN"/>[m
+                 <category android:name="android.intent.category.LAUNCHER"/>[m
+             </intent-filter>[m
+[32m+[m
+[32m+[m[32m            <!-- Intent filter to appear in Android Share sheet when sharing location from Google Maps -->[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.SEND" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <data android:mimeType="text/plain" />[m
+[32m+[m[32m            </intent-filter>[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.SEND" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <data android:mimeType="text/*" />[m
+[32m+[m[32m            </intent-filter>[m
+[32m+[m
+[32m+[m[32m            <!-- Intent filter for geo: URI links -->[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.VIEW" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <category android:name="android.intent.category.BROWSABLE" />[m
+[32m+[m[32m                <data android:scheme="geo" />[m
+[32m+[m[32m            </intent-filter>[m
+[32m+[m
+[32m+[m[32m            <!-- Intent filter for Google Maps URL links -->[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.VIEW" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <category android:name="android.intent.category.BROWSABLE" />[m
+[32m+[m[32m                <data android:scheme="http" />[m
+[32m+[m[32m                <data android:scheme="https" />[m
+[32m+[m[32m                <data android:host="maps.google.com" />[m
+[32m+[m[32m            </intent-filter>[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.VIEW" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <category android:name="android.intent.category.BROWSABLE" />[m
+[32m+[m[32m                <data android:scheme="http" />[m
+[32m+[m[32m                <data android:scheme="https" />[m
+[32m+[m[32m                <data android:host="maps.app.goo.gl" />[m
+[32m+[m[32m            </intent-filter>[m
+[32m+[m[32m            <intent-filter android:label="StayDriv">[m
+[32m+[m[32m                <action android:name="android.intent.action.VIEW" />[m
+[32m+[m[32m                <category android:name="android.intent.category.DEFAULT" />[m
+[32m+[m[32m                <category android:name="android.intent.category.BROWSABLE" />[m
+[32m+[m[32m                <data android:scheme="http" />[m
+[32m+[m[32m                <data android:scheme="https" />[m
+[32m+[m[32m                <data android:host="goo.gl" />[m
+[32m+[m[32m                <data android:pathPrefix="/maps" />[m
+[32m+[m[32m            </intent-filter>[m
+         </activity>[m
+         <!-- Don't delete the meta-data below.[m
+              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->[m
+[1mdiff --git a/staydriv_app/android/app/src/main/kotlin/com/staydriv/app/MainActivity.kt b/staydriv_app/android/app/src/main/kotlin/com/staydriv/app/MainActivity.kt[m
+[1mindex 739991d..f17d798 100644[m
+[1m--- a/staydriv_app/android/app/src/main/kotlin/com/staydriv/app/MainActivity.kt[m
+[1m+++ b/staydriv_app/android/app/src/main/kotlin/com/staydriv/app/MainActivity.kt[m
+[36m@@ -16,6 +16,52 @@[m [mimport io.flutter.plugin.common.MethodChannel[m
+ class MainActivity : FlutterActivity() {[m
+     private var wakeLock: PowerManager.WakeLock? = null[m
+     private var screenWakeLock: PowerManager.WakeLock? = null[m
+[32m+[m[32m    private var sharedLocationData: String? = null[m
+[32m+[m[32m    private var locationShareChannel: MethodChannel? = null[m
+[32m+[m
+[32m+[m[32m    override fun onCreate(savedInstanceState: android.os.Bundle?) {[m
+[32m+[m[32m        super.onCreate(savedInstanceState)[m
+[32m+[m[32m        handleIntent(intent)[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    override fun onNewIntent(intent: Intent) {[m
+[32m+[m[32m        super.onNewIntent(intent)[m
+[32m+[m[32m        setIntent(intent)[m
+[32m+[m[32m        handleIntent(intent)[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    private fun handleIntent(intent: Intent?) {[m
+[32m+[m[32m        if (intent == null) return[m
+[32m+[m[32m        val action = intent.action[m
+[32m+[m[32m        val type = intent.type[m
+[32m+[m
+[32m+[m[32m        var extractedText: String? = null[m
+[32m+[m
+[32m+[m[32m        if (Intent.ACTION_SEND == action) {[m
+[32m+[m[32m            if (type != null && (type == "text/plain" || type.startsWith("text/"))) {[m
+[32m+[m[32m                val text = intent.getStringExtra(Intent.EXTRA_TEXT)[m
+[32m+[m[32m                val subject = intent.getStringExtra(Intent.EXTRA_SUBJECT)[m
+[32m+[m[32m                extractedText = if (!text.isNullOrBlank()) {[m
+[32m+[m[32m                    if (!subject.isNullOrBlank() && !text.contains(subject)) {[m
+[32m+[m[32m                        "$subject\n$text"[m
+[32m+[m[32m                    } else {[m
+[32m+[m[32m                        text[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                } else {[m
+[32m+[m[32m                    subject ?: intent.data?.toString()[m
+[32m+[m[32m                }[m
+[32m+[m[32m            }[m
+[32m+[m[32m        } else if (Intent.ACTION_VIEW == action) {[m
+[32m+[m[32m            extractedText = intent.data?.toString()[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        if (!extractedText.isNullOrBlank()) {[m
+[32m+[m[32m            sharedLocationData = extractedText[m
+[32m+[m[32m            runOnUiThread {[m
+[32m+[m[32m                locationShareChannel?.invokeMethod("onLocationReceived", extractedText)[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    }[m
+ [m
+     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {[m
+         super.configureFlutterEngine(flutterEngine)[m
+[36m@@ -54,6 +100,26 @@[m [mclass MainActivity : FlutterActivity() {[m
+                 else -> result.notImplemented()[m
+             }[m
+         }[m
+[32m+[m
+[32m+[m[32m        // 3. Location Share Channel (Google Maps & System Share)[m
+[32m+[m[32m        locationShareChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.staydriv.app/location_share").apply {[m
+[32m+[m[32m            setMethodCallHandler { call, result ->[m
+[32m+[m[32m                when (call.method) {[m
+[32m+[m[32m                    "getInitialSharedLocation" -> {[m
+[32m+[m[32m                        val data = sharedLocationData[m
+[32m+[m[32m                        sharedLocationData = null[m
+[32m+[m[32m                        result.success(data)[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    "clearSharedLocation" -> {[m
+[32m+[m[32m                        sharedLocationData = null[m
+[32m+[m[32m                        result.success(true)[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                    else -> result.notImplemented()[m
+[32m+[m[32m                }[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        handleIntent(intent)[m
+     }[m
+ [m
+     private fun acquireWakeLock() {[m
+[1mdiff --git a/staydriv_app/lib/features/dashboard/screens/home_screen.dart b/staydriv_app/lib/features/dashboard/screens/home_screen.dart[m
+[1mindex 8193f82..c1e7748 100644[m
+[1m--- a/staydriv_app/lib/features/dashboard/screens/home_screen.dart[m
+[1m+++ b/staydriv_app/lib/features/dashboard/screens/home_screen.dart[m
+[36m@@ -30,6 +30,8 @@[m [mimport '../../live_tracking/screens/live_tracking_screen.dart';[m
+ import 'package:shared_preferences/shared_preferences.dart';[m
+ import 'package:url_launcher/url_launcher.dart';[m
+ import '../../../core/wake_lock_service.dart';[m
+[32m+[m[32mimport '../../../core/location_share_service.dart';[m
+[32m+[m[32mimport 'admin_pilot_registration_screen.dart';[m
+ [m
+ class HomeScreen extends StatefulWidget {[m
+   final String userName;[m
+[36m@@ -83,6 +85,7 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+ [m
+   // Profile edit states[m
+   late String _editableUserName;[m
+[32m+[m[32m  late String _activeUserRole;[m
+   String _emailAddress = 'Not Provided';[m
+   String _dateOfBirth = 'Not Provided';[m
+   String? _profilePhotoPath;[m
+[36m@@ -185,20 +188,25 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+   void initState() {[m
+     super.initState();[m
+     WidgetsBinding.instance.addObserver(this);[m
+[32m+[m[32m    _activeUserRole = widget.userRole;[m
+     _editableUserName = widget.userName;[m
+[32m+[m[32m    if (_activeUserRole == 'Customer' && _editableUserName.toLowerCase().contains('pilot')) {[m
+[32m+[m[32m      _editableUserName = 'StayDriv Customer';[m
+[32m+[m[32m    }[m
+     _driverMapCenter = BookingManager().driverLatLng;[m
+     if (widget.selectedVehicle != null) {[m
+       _selectedVehicle = widget.selectedVehicle!;[m
+     }[m
+[31m-    if (widget.userRole == 'Driver' || widget.userRole == 'Customer') {[m
+[32m+[m[32m    if (_activeUserRole == 'Driver' || _activeUserRole == 'Customer') {[m
+       _loadCompletedRides();[m
+       _loadProfileData();[m
+     }[m
+[31m-    if (widget.userRole == 'Customer') {[m
+[32m+[m[32m    if (_activeUserRole == 'Customer') {[m
+       _startCustomerGpsTracking();[m
+       _subscribeToCustomerBookingManager();[m
+       BookingManager().restoreAndSyncActiveBooking();[m
+     }[m
+[32m+[m[32m    _initLocationSharing();[m
+     if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {[m
+       if (_isFirebaseInitialized) {[m
+         _adminBookingsStream = FirebaseFirestore.instance[m
+[36m@@ -237,6 +245,79 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+     });[m
+   }[m
+ [m
+[32m+[m[32m  void _initLocationSharing() {[m
+[32m+[m[32m    LocationShareService.instance.init([m
+[32m+[m[32m      onLocationReceived: (SharedLocationResult loc) {[m
+[32m+[m[32m        if (!mounted) return;[m
+[32m+[m[32m        _handleIncomingSharedLocation(loc);[m
+[32m+[m[32m      },[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  Future<void> _switchAppRole(String newRole) async {[m
+[32m+[m[32m    if (_activeUserRole == newRole) return;[m
+[32m+[m[32m    setState(() {[m
+[32m+[m[32m      _activeUserRole = newRole;[m
+[32m+[m[32m      if (newRole == 'Driver') {[m
+[32m+[m[32m        _selectedVehicle = widget.selectedVehicle ?? _selectedVehicle;[m
+[32m+[m[32m      }[m
+[32m+[m[32m    });[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m      await prefs.setString('user_role', newRole);[m
+[32m+[m[32m    } catch (_) {}[m
+[32m+[m
+[32m+[m[32m    if (newRole == 'Driver') {[m
+[32m+[m[32m      _loadProfileData();[m
+[32m+[m[32m    } else if (newRole == 'Customer') {[m
+[32m+[m[32m      _startCustomerGpsTracking();[m
+[32m+[m[32m      _subscribeToCustomerBookingManager();[m
+[32m+[m[32m      BookingManager().restoreAndSyncActiveBooking();[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    if (mounted) {[m
+[32m+[m[32m      ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m        SnackBar([m
+[32m+[m[32m          content: Row([m
+[32m+[m[32m            children: [[m
+[32m+[m[32m              Icon(newRole == 'Driver' ? Icons.two_wheeler_rounded : Icons.person, color: Colors.white),[m
+[32m+[m[32m              const SizedBox(width: 8),[m
+[32m+[m[32m              Text([m
+[32m+[m[32m                newRole == 'Driver' ? 'Switched to Pilot Partner Mode!' : 'Switched to Customer Mode!',[m
+[32m+[m[32m                style: GoogleFonts.inter(fontWeight: FontWeight.w600),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ],[m
+[32m+[m[32m          ),[m
+[32m+[m[32m          backgroundColor: newRole == 'Driver' ? const Color(0xFF1B7C3E) : const Color(0xFF1D4ED8),[m
+[32m+[m[32m          duration: const Duration(seconds: 2),[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      );[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  void _handleIncomingSharedLocation(SharedLocationResult loc) {[m
+[32m+[m[32m    LocationShareService.showSharedLocationPrompt([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      location: loc,[m
+[32m+[m[32m      onLocationSelected: ({required bool isDrop}) {[m
+[32m+[m[32m        Navigator.of(context).push([m
+[32m+[m[32m          MaterialPageRoute([m
+[32m+[m[32m            builder: (context) => RideSelectionScreen([m
+[32m+[m[32m              serviceType: 'bike',[m
+[32m+[m[32m              userName: widget.userName,[m
+[32m+[m[32m              phoneNumber: widget.phoneNumber,[m
+[32m+[m[32m              initialDropAddress: isDrop ? loc.title : null,[m
+[32m+[m[32m              initialDropLatLng: isDrop ? loc.coordinates : null,[m
+[32m+[m[32m              initialPickupAddress: !isDrop ? loc.title : null,[m
+[32m+[m[32m              initialPickupLatLng: !isDrop ? loc.coordinates : null,[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        );[m
+[32m+[m[32m      },[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+   void _startCustomerGpsTracking() async {[m
+     try {[m
+       LocationPermission permission = await Geolocator.checkPermission();[m
+[36m@@ -723,7 +804,12 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+               _customerCancellationCharge = (data['pendingCancellationCharge'] as num).toDouble();[m
+             }[m
+             if (data['name'] != null && data['name'].toString().isNotEmpty) {[m
+[31m-              _editableUserName = data['name'];[m
+[32m+[m[32m              final loadedName = data['name'].toString();[m
+[32m+[m[32m              if (_activeUserRole == 'Customer' && loadedName.toLowerCase().contains('pilot')) {[m
+[32m+[m[32m                _editableUserName = 'StayDriv Customer';[m
+[32m+[m[32m              } else {[m
+[32m+[m[32m                _editableUserName = loadedName;[m
+[32m+[m[32m              }[m
+             }[m
+             if (data['email'] != null && data['email'].toString().isNotEmpty) {[m
+               _emailAddress = data['email'];[m
+[36m@@ -816,7 +902,7 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+     try {[m
+       FilePickerResult? result = await FilePicker.platform.pickFiles([m
+         type: FileType.custom,[m
+[31m-        allowedExtensions: ['jpg', 'jpeg'],[m
+[32m+[m[32m        allowedExtensions: ['jpg', 'jpeg', 'png'],[m
+       );[m
+ [m
+       if (result == null || result.files.isEmpty) {[m
+[36m@@ -826,10 +912,10 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+       final file = result.files.first;[m
+       [m
+       final ext = (file.extension ?? '').toLowerCase();[m
+[31m-      if (ext != 'jpg' && ext != 'jpeg') {[m
+[32m+[m[32m      if (ext != 'jpg' && ext != 'jpeg' && ext != 'png') {[m
+         ScaffoldMessenger.of(context).showSnackBar([m
+           const SnackBar([m
+[31m-            content: Text('Invalid file type! Only .jpeg and .jpg formats are accepted.'),[m
+[32m+[m[32m            content: Text('Invalid file type! Only .jpg, .jpeg, and .png formats are accepted.'),[m
+             backgroundColor: Colors.red,[m
+           ),[m
+         );[m
+[36m@@ -1195,9 +1281,9 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+   }[m
+ [m
+   Widget _buildDashboardView() {[m
+[31m-    if (widget.userRole == 'Driver') {[m
+[32m+[m[32m    if (_activeUserRole == 'Driver') {[m
+       return _buildDriverDashboardView();[m
+[31m-    } else if (widget.userRole == 'Admin' || widget.userRole == 'Staff') {[m
+[32m+[m[32m    } else if (_activeUserRole == 'Admin' || _activeUserRole == 'Staff') {[m
+       return _buildAdminDashboardView();[m
+     }[m
+      return Stack([m
+[36m@@ -1744,54 +1830,148 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+   void _changeProfilePhoto() {[m
+     showModalBottomSheet([m
+       context: context,[m
+[32m+[m[32m      shape: const RoundedRectangleBorder([m
+[32m+[m[32m        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),[m
+[32m+[m[32m      ),[m
+       builder: (context) {[m
+         return SafeArea([m
+[31m-          child: Column([m
+[31m-            mainAxisSize: MainAxisSize.min,[m
+[31m-            children: [[m
+[31m-              ListTile([m
+[31m-                leading: const Icon(Icons.upload_file, color: AppTheme.primaryColor),[m
+[31m-                title: const Text('Upload JPG/JPEG Photo'),[m
+[31m-                onTap: () {[m
+[31m-                  Navigator.pop(context);[m
+[31m-                  _pickAndUploadImage('photo');[m
+[31m-                },[m
+[31m-              ),[m
+[31m-              ListTile([m
+[31m-                leading: const Icon(Icons.photo_library),[m
+[31m-                title: const Text('Upload Mock Photo 1 (Professional)'),[m
+[31m-                onTap: () {[m
+[31m-                  setState(() {[m
+[31m-                    _profilePhotoPath = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';[m
+[31m-                  });[m
+[31m-                  _updatePartnerProfileOnBackend(photo: _profilePhotoPath);[m
+[31m-                  Navigator.pop(context);[m
+[31m-                },[m
+[31m-              ),[m
+[31m-              ListTile([m
+[31m-                leading: const Icon(Icons.photo_library),[m
+[31m-                title: const Text('Upload Mock Photo 2 (Casual)'),[m
+[31m-                onTap: () {[m
+[31m-                  setState(() {[m
+[31m-                    _profilePhotoPath = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';[m
+[31m-                  });[m
+[31m-                  _updatePartnerProfileOnBackend(photo: _profilePhotoPath);[m
+[31m-                  Navigator.pop(context);[m
+[31m-                },[m
+[31m-              ),[m
+[31m-              ListTile([m
+[31m-                leading: const Icon(Icons.delete, color: Colors.red),[m
+[31m-                title: const Text('Remove Photo', style: const TextStyle(color: Colors.red)),[m
+[31m-                onTap: () {[m
+[31m-                  setState(() {[m
+[31m-                    _profilePhotoPath = null;[m
+[31m-                  });[m
+[31m-                  _updatePartnerProfileOnBackend(photo: '');[m
+[31m-                  Navigator.pop(context);[m
+[31m-                },[m
+[31m-              ),[m
+[31m-            ],[m
+[32m+[m[32m          child: Padding([m
+[32m+[m[32m            padding: const EdgeInsets.symmetric(vertical: 12),[m
+[32m+[m[32m            child: Column([m
+[32m+[m[32m              mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m              children: [[m
+[32m+[m[32m                Container([m
+[32m+[m[32m                  width: 40,[m
+[32m+[m[32m                  height: 4,[m
+[32m+[m[32m                  margin: const EdgeInsets.only(bottom: 12),[m
+[32m+[m[32m                  decoration: BoxDecoration([m
+[32m+[m[32m                    color: Colors.grey.shade300,[m
+[32m+[m[32m                    borderRadius: BorderRadius.circular(2),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                Text([m
+[32m+[m[32m                  'Update Profile Photo',[m
+[32m+[m[32m                  style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                    fontWeight: FontWeight.bold,[m
+[32m+[m[32m                    fontSize: 16,[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                const SizedBox(height: 8),[m
+[32m+[m[32m                ListTile([m
+[32m+[m[32m                  leading: Container([m
+[32m+[m[32m                    padding: const EdgeInsets.all(8),[m
+[32m+[m[32m                    decoration: BoxDecoration([m
+[32m+[m[32m                      color: AppTheme.primaryColor.withOpacity(0.1),[m
+[32m+[m[32m                      shape: BoxShape.circle,[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    child: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryColor),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  title: Text('Take Photo / Choose File', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                  subtitle: const Text('Select photo from Camera or Device (JPG, PNG)'),[m
+[32m+[m[32m                  onTap: () {[m
+[32m+[m[32m                    Navigator.pop(context);[m
+[32m+[m[32m                    _pickAndUploadImage('photo');[m
+[32m+[m[32m                  },[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                ListTile([m
+[32m+[m[32m                  leading: Container([m
+[32m+[m[32m                    padding: const EdgeInsets.all(8),[m
+[32m+[m[32m                    decoration: BoxDecoration([m
+[32m+[m[32m                      color: Colors.purple.withOpacity(0.1),[m
+[32m+[m[32m                      shape: BoxShape.circle,[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    child: const Icon(Icons.account_circle, color: Colors.purple),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  title: Text('Set Official StayDriv Avatar', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                  subtitle: const Text('Use verified official profile avatar'),[m
+[32m+[m[32m                  onTap: () {[m
+[32m+[m[32m                    setState(() {[m
+[32m+[m[32m                      _profilePhotoPath = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';[m
+[32m+[m[32m                    });[m
+[32m+[m[32m                    _updatePartnerProfileOnBackend(photo: _profilePhotoPath);[m
+[32m+[m[32m                    Navigator.pop(context);[m
+[32m+[m[32m                    ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                      const SnackBar(content: Text('Profile photo updated successfully!'), backgroundColor: Colors.green),[m
+[32m+[m[32m                    );[m
+[32m+[m[32m                  },[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                if (_profilePhotoPath != null)[m
+[32m+[m[32m                  ListTile([m
+[32m+[m[32m                    leading: Container([m
+[32m+[m[32m                      padding: const EdgeInsets.all(8),[m
+[32m+[m[32m                      decoration: BoxDecoration([m
+[32m+[m[32m                        color: Colors.red.withOpacity(0.1),[m
+[32m+[m[32m                        shape: BoxShape.circle,[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      child: const Icon(Icons.delete_outline, color: Colors.red),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    title: Text('Remove Photo', style: GoogleFonts.inter(fontWeight: FontWeight.w600, color: Colors.red)),[m
+[32m+[m[32m                    onTap: () {[m
+[32m+[m[32m                      setState(() {[m
+[32m+[m[32m                        _profilePhotoPath = null;[m
+[32m+[m[32m                      });[m
+[32m+[m[32m                      _updatePartnerProfileOnBackend(photo: '');[m
+[32m+[m[32m                      Navigator.pop(context);[m
+[32m+[m[32m                      ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                        const SnackBar(content: Text('Photo removed'), backgroundColor: Colors.orange),[m
+[32m+[m[32m                      );[m
+[32m+[m[32m                    },[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m              ],[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        );[m
+[32m+[m[32m      },[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  void _showSingleFieldEditDialog(String label, String initialValue, Function(String) onSave) {[m
+[32m+[m[32m    final controller = TextEditingController(text: initialValue);[m
+[32m+[m[32m    showDialog([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      builder: (context) {[m
+[32m+[m[32m        return AlertDialog([m
+[32m+[m[32m          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),[m
+[32m+[m[32m          title: Text('Edit $label', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),[m
+[32m+[m[32m          content: TextField([m
+[32m+[m[32m            controller: controller,[m
+[32m+[m[32m            autofocus: true,[m
+[32m+[m[32m            decoration: InputDecoration([m
+[32m+[m[32m              labelText: label,[m
+[32m+[m[32m              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),[m
+[32m+[m[32m            ),[m
+           ),[m
+[32m+[m[32m          actions: [[m
+[32m+[m[32m            TextButton([m
+[32m+[m[32m              onPressed: () => Navigator.pop(context),[m
+[32m+[m[32m              child: const Text('Cancel'),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            ElevatedButton([m
+[32m+[m[32m              onPressed: () async {[m
+[32m+[m[32m                final val = controller.text.trim();[m
+[32m+[m[32m                if (val.isNotEmpty) {[m
+[32m+[m[32m                  onSave(val);[m
+[32m+[m[32m                  final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m                  if (label == 'Full Name') {[m
+[32m+[m[32m                    await prefs.setString('user_name', val);[m
+[32m+[m[32m                    _updatePartnerProfileOnBackend(name: val);[m
+[32m+[m[32m                  }[m
+[32m+[m[32m                }[m
+[32m+[m[32m                Navigator.pop(context);[m
+[32m+[m[32m                if (mounted) {[m
+[32m+[m[32m                  ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                    SnackBar(content: Text('$label updated!'), backgroundColor: Colors.green),[m
+[32m+[m[32m                  );[m
+[32m+[m[32m                }[m
+[32m+[m[32m              },[m
+[32m+[m[32m              style: ElevatedButton.styleFrom([m
+[32m+[m[32m                backgroundColor: AppTheme.primaryColor,[m
+[32m+[m[32m                foregroundColor: Colors.white,[m
+[32m+[m[32m                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              child: const Text('Save'),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ],[m
+         );[m
+       },[m
+     );[m
+[36m@@ -1806,26 +1986,47 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+       context: context,[m
+       builder: (context) {[m
+         return AlertDialog([m
+[31m-          title: Text('Edit Profile Details', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),[m
+[32m+[m[32m          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),[m
+[32m+[m[32m          title: Text('Edit Personal Details', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),[m
+           content: SingleChildScrollView([m
+             child: Column([m
+               mainAxisSize: MainAxisSize.min,[m
+               children: [[m
+                 TextField([m
+                   controller: nameController,[m
+[31m-                  decoration: const InputDecoration(labelText: 'Full Name'),[m
+[32m+[m[32m                  decoration: const InputDecoration([m
+[32m+[m[32m                    labelText: 'Full Name',[m
+[32m+[m[32m                    prefixIcon: Icon(Icons.person_outline),[m
+[32m+[m[32m                  ),[m
+                 ),[m
+                 const SizedBox(height: 12),[m
+                 TextField([m
+                   controller: emailController,[m
+[31m-                  decoration: const InputDecoration(labelText: 'Email Address'),[m
+[32m+[m[32m                  decoration: const InputDecoration([m
+[32m+[m[32m                    labelText: 'Email Address',[m
+[32m+[m[32m                    prefixIcon: Icon(Icons.email_outlined),[m
+[32m+[m[32m                  ),[m
+                   keyboardType: TextInputType.emailAddress,[m
+                 ),[m
+                 const SizedBox(height: 12),[m
+                 TextField([m
+                   controller: dobController,[m
+[31m-                  decoration: const InputDecoration(labelText: 'Date of Birth (DD/MM/YYYY)', hintText: 'DD/MM/YYYY'),[m
+[31m-                  keyboardType: TextInputType.datetime,[m
+[32m+[m[32m                  readOnly: true,[m
+[32m+[m[32m                  decoration: const InputDecoration([m
+[32m+[m[32m                    labelText: 'Date of Birth',[m
+[32m+[m[32m                    prefixIcon: Icon(Icons.calendar_today_outlined),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  onTap: () async {[m
+[32m+[m[32m                    DateTime? picked = await showDatePicker([m
+[32m+[m[32m                      context: context,[m
+[32m+[m[32m                      initialDate: DateTime(2000, 1, 1),[m
+[32m+[m[32m                      firstDate: DateTime(1940),[m
+[32m+[m[32m                      lastDate: DateTime.now().subtract(const Duration(days: 365 * 16)),[m
+[32m+[m[32m                    );[m
+[32m+[m[32m                    if (picked != null) {[m
+[32m+[m[32m                      dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";[m
+[32m+[m[32m                    }[m
+[32m+[m[32m                  },[m
+                 ),[m
+               ],[m
+             ),[m
+[36m@@ -1836,14 +2037,32 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+               child: const Text('Cancel'),[m
+             ),[m
+             ElevatedButton([m
+[31m-              onPressed: () {[m
+[32m+[m[32m              onPressed: () async {[m
+[32m+[m[32m                final newName = nameController.text.trim().isNotEmpty ? nameController.text.trim() : _editableUserName;[m
+[32m+[m[32m                final newEmail = emailController.text.trim().isNotEmpty ? emailController.text.trim() : 'Not Provided';[m
+[32m+[m[32m                final newDob = dobController.text.trim().isNotEmpty ? dobController.text.trim() : 'Not Provided';[m
+                 setState(() {[m
+[31m-                  _editableUserName = nameController.text.trim().isNotEmpty ? nameController.text.trim() : _editableUserName;[m
+[31m-                  _emailAddress = emailController.text.trim().isNotEmpty ? emailController.text.trim() : 'Not Provided';[m
+[31m-                  _dateOfBirth = dobController.text.trim().isNotEmpty ? dobController.text.trim() : 'Not Provided';[m
+[32m+[m[32m                  _editableUserName = newName;[m
+[32m+[m[32m                  _emailAddress = newEmail;[m
+[32m+[m[32m                  _dateOfBirth = newDob;[m
+                 });[m
+                 Navigator.pop(context);[m
+[32m+[m
+[32m+[m[32m                final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m                await prefs.setString('user_name', newName);[m
+[32m+[m[32m                _updatePartnerProfileOnBackend(name: newName);[m
+[32m+[m
+[32m+[m[32m                if (mounted) {[m
+[32m+[m[32m                  ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                    const SnackBar(content: Text('Profile updated successfully!'), backgroundColor: Colors.green),[m
+[32m+[m[32m                  );[m
+[32m+[m[32m                }[m
+               },[m
+[32m+[m[32m              style: ElevatedButton.styleFrom([m
+[32m+[m[32m                backgroundColor: AppTheme.primaryColor,[m
+[32m+[m[32m                foregroundColor: Colors.white,[m
+[32m+[m[32m                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),[m
+[32m+[m[32m              ),[m
+               child: const Text('Save'),[m
+             ),[m
+           ],[m
+[36m@@ -1852,22 +2071,329 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+     );[m
+   }[m
+ [m
+[32m+[m[32m  void _showMobileNumberInfoDialog() {[m
+[32m+[m[32m    showModalBottomSheet([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),[m
+[32m+[m[32m      builder: (ctx) => Padding([m
+[32m+[m[32m        padding: const EdgeInsets.all(24),[m
+[32m+[m[32m        child: Column([m
+[32m+[m[32m          mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m          crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m          children: [[m
+[32m+[m[32m            Center([m
+[32m+[m[32m              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 18),[m
+[32m+[m[32m            Row([m
+[32m+[m[32m              children: [[m
+[32m+[m[32m                Container([m
+[32m+[m[32m                  padding: const EdgeInsets.all(10),[m
+[32m+[m[32m                  decoration: BoxDecoration(color: Colors.green.shade50, shape: BoxShape.circle),[m
+[32m+[m[32m                  child: Icon(Icons.verified_user_rounded, color: Colors.green.shade700, size: 28),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                const SizedBox(width: 14),[m
+[32m+[m[32m                Column([m
+[32m+[m[32m                  crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                  children: [[m
+[32m+[m[32m                    Text('Registered Mobile', style: GoogleFonts.hankenGrotesk(fontSize: 18, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m                    Text('+91 ${widget.phoneNumber}', style: GoogleFonts.robotoMono(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black87)),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ],[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 16),[m
+[32m+[m[32m            Container([m
+[32m+[m[32m              padding: const EdgeInsets.all(12),[m
+[32m+[m[32m              decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(12)),[m
+[32m+[m[32m              child: Row([m
+[32m+[m[32m                children: [[m
+[32m+[m[32m                  const Icon(Icons.shield_outlined, color: Color(0xFF1D4ED8), size: 20),[m
+[32m+[m[32m                  const SizedBox(width: 10),[m
+[32m+[m[32m                  Expanded([m
+[32m+[m[32m                    child: Text([m
+[32m+[m[32m                      'This number is OTP-verified. OTP notifications, driver live updates & trip receipts are linked to this mobile.',[m
+[32m+[m[32m                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569)),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ],[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 20),[m
+[32m+[m[32m            SizedBox([m
+[32m+[m[32m              width: double.infinity,[m
+[32m+[m[32m              height: 48,[m
+[32m+[m[32m              child: ElevatedButton([m
+[32m+[m[32m                style: ElevatedButton.styleFrom([m
+[32m+[m[32m                  backgroundColor: const Color(0xFF1E60FF),[m
+[32m+[m[32m                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                onPressed: () => Navigator.pop(ctx),[m
+[32m+[m[32m                child: const Text('Done', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ],[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  void _showCustomerPaymentWalletSheet() {[m
+[32m+[m[32m    showModalBottomSheet([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      isScrollControlled: true,[m
+[32m+[m[32m      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),[m
+[32m+[m[32m      builder: (ctx) => Padding([m
+[32m+[m[32m        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),[m
+[32m+[m[32m        child: Column([m
+[32m+[m[32m          mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m          crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m          children: [[m
+[32m+[m[32m            Center([m
+[32m+[m[32m              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 18),[m
+[32m+[m[32m            Row([m
+[32m+[m[32m              children: [[m
+[32m+[m[32m                Container([m
+[32m+[m[32m                  padding: const EdgeInsets.all(10),[m
+[32m+[m[32m                  decoration: BoxDecoration(color: const Color(0xFFEFF5FF), borderRadius: BorderRadius.circular(14)),[m
+[32m+[m[32m                  child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF1E60FF), size: 26),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                const SizedBox(width: 14),[m
+[32m+[m[32m                Expanded([m
+[32m+[m[32m                  child: Column([m
+[32m+[m[32m                    crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                    children: [[m
+[32m+[m[32m                      Text('Payment & Wallets', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m                      Text('UPI AutoPay, Cards & Cash on Delivery', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),[m
+[32m+[m[32m                    ],[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ],[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 20),[m
+[32m+[m[32m            Container([m
+[32m+[m[32m              padding: const EdgeInsets.all(16),[m
+[32m+[m[32m              decoration: BoxDecoration([m
+[32m+[m[32m                gradient: const LinearGradient(colors: [Color(0xFF1E60FF), Color(0xFF1D4ED8)]),[m
+[32m+[m[32m                borderRadius: BorderRadius.circular(16),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              child: Row([m
+[32m+[m[32m                mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                children: [[m
+[32m+[m[32m                  Column([m
+[32m+[m[32m                    crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m                    children: [[m
+[32m+[m[32m                      Text('StayDriv Cash Balance', style: GoogleFonts.inter(color: Colors.white70, fontSize: 12)),[m
+[32m+[m[32m                      const SizedBox(height: 4),[m
+[32m+[m[32m                      Text('₹0.00', style: GoogleFonts.hankenGrotesk(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m                    ],[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  ElevatedButton([m
+[32m+[m[32m                    onPressed: () {[m
+[32m+[m[32m                      Navigator.pop(ctx);[m
+[32m+[m[32m                      ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                        const SnackBar(content: Text('Add Money to StayDriv wallet via UPI is active.'), backgroundColor: Color(0xFF1E60FF)),[m
+[32m+[m[32m                      );[m
+[32m+[m[32m                    },[m
+[32m+[m[32m                    style: ElevatedButton.styleFrom([m
+[32m+[m[32m                      backgroundColor: Colors.white,[m
+[32m+[m[32m                      foregroundColor: const Color(0xFF1E60FF),[m
+[32m+[m[32m                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),[m
+[32m+[m[32m                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    child: const Text('+ Add Money', style: TextStyle(fontWeight: FontWeight.bold)),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ],[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const SizedBox(height: 16),[m
+[32m+[m[32m            ListTile([m
+[32m+[m[32m              leading: const Icon(Icons.check_circle_rounded, color: Colors.green),[m
+[32m+[m[32m              title: Text('UPI AutoPay (Recommended)', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m              subtitle: Text('Verified for instant ride booking & seamless exit', style: GoogleFonts.inter(fontSize: 12)),[m
+[32m+[m[32m              trailing: const Icon(Icons.verified, color: Colors.green, size: 20),[m
+[32m+[m[32m              contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            const Divider(),[m
+[32m+[m[32m            ListTile([m
+[32m+[m[32m              leading: const Icon(Icons.money_rounded, color: Colors.amber),[m
+[32m+[m[32m              title: Text('Cash on Delivery', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m              subtitle: Text('Pay cash or QR directly to pilot at trip completion', style: GoogleFonts.inter(fontSize: 12)),[m
+[32m+[m[32m              trailing: const Icon(Icons.chevron_right),[m
+[32m+[m[32m              contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m              onTap: () {[m
+[32m+[m[32m                Navigator.pop(ctx);[m
+[32m+[m[32m                ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                  const SnackBar(content: Text('Cash Payment mode is selected for your rides.'), backgroundColor: Colors.green),[m
+[32m+[m[32m                );[m
+[32m+[m[32m              },[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ],[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  void _showSavedPlacesSheet() {[m
+[32m+[m[32m    showModalBottomSheet([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),[m
+[32m+[m[32m      builder: (ctx) => Padding([m
+[32m+[m[32m        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),[m
+[32m+[m[32m        child: Column([m
+[32m+[m[32m          mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m          crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m          children: [[m
+[32m+[m[32m            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),[m
+[32m+[m[32m            const SizedBox(height: 18),[m
+[32m+[m[32m            Text('Saved Places', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m            const SizedBox(height: 12),[m
+[32m+[m[32m            ListTile([m
+[32m+[m[32m              leading: const Icon(Icons.home_rounded, color: Color(0xFF1E60FF)),[m
+[32m+[m[32m              title: Text('Home Address', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m              subtitle: const Text('Add your home address for 1-tap booking'),[m
+[32m+[m[32m              trailing: const Icon(Icons.add_circle_outline, color: Color(0xFF1E60FF)),[m
+[32m+[m[32m              onTap: () {[m
+[32m+[m[32m                Navigator.pop(ctx);[m
+[32m+[m[32m                _showSingleFieldEditDialog('Home Address', '', (val) {});[m
+[32m+[m[32m              },[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            ListTile([m
+[32m+[m[32m              leading: const Icon(Icons.work_rounded, color: Colors.orange),[m
+[32m+[m[32m              title: Text('Work / Office', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m              subtitle: const Text('Add your workplace address'),[m
+[32m+[m[32m              trailing: const Icon(Icons.add_circle_outline, color: Colors.orange),[m
+[32m+[m[32m              onTap: () {[m
+[32m+[m[32m                Navigator.pop(ctx);[m
+[32m+[m[32m                _showSingleFieldEditDialog('Workplace Address', '', (val) {});[m
+[32m+[m[32m              },[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ],[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  void _showAppSettingsSheet() {[m
+[32m+[m[32m    showModalBottomSheet([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),[m
+[32m+[m[32m      builder: (ctx) => StatefulBuilder([m
+[32m+[m[32m        builder: (ctx, setSheetState) => Padding([m
+[32m+[m[32m          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),[m
+[32m+[m[32m          child: Column([m
+[32m+[m[32m            mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m            crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m            children: [[m
+[32m+[m[32m              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),[m
+[32m+[m[32m              const SizedBox(height: 18),[m
+[32m+[m[32m              Text('App Preferences & Settings', style: GoogleFonts.hankenGrotesk(fontSize: 20, fontWeight: FontWeight.bold)),[m
+[32m+[m[32m              const SizedBox(height: 16),[m
+[32m+[m[32m              SwitchListTile([m
+[32m+[m[32m                contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF1E60FF)),[m
+[32m+[m[32m                title: Text('Push Notifications', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                subtitle: const Text('Receive ride arrival & trip alerts'),[m
+[32m+[m[32m                value: true,[m
+[32m+[m[32m                onChanged: (val) {[m
+[32m+[m[32m                  ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                    SnackBar(content: Text(val ? 'Notifications enabled' : 'Notifications muted'), duration: const Duration(seconds: 1)),[m
+[32m+[m[32m                  );[m
+[32m+[m[32m                },[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              SwitchListTile([m
+[32m+[m[32m                contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                secondary: const Icon(Icons.near_me_outlined, color: Colors.green),[m
+[32m+[m[32m                title: Text('Precise GPS High-Accuracy', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                subtitle: const Text('Ensures closest driver matching'),[m
+[32m+[m[32m                value: true,[m
+[32m+[m[32m                onChanged: (val) {},[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              ListTile([m
+[32m+[m[32m                contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                leading: const Icon(Icons.wifi_tethering, color: Colors.purple),[m
+[32m+[m[32m                title: Text('Backend Server & Network', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                subtitle: const Text('Configure IP or Cloudflare tunnel'),[m
+[32m+[m[32m                trailing: const Icon(Icons.chevron_right),[m
+[32m+[m[32m                onTap: () {[m
+[32m+[m[32m                  Navigator.pop(ctx);[m
+[32m+[m[32m                  _showNetworkSettingsDialog();[m
+[32m+[m[32m                },[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ],[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  Future<void> _handleLogout() async {[m
+[32m+[m[32m    final shouldLogout = await showDialog<bool>([m
+[32m+[m[32m      context: context,[m
+[32m+[m[32m      builder: (ctx) => AlertDialog([m
+[32m+[m[32m        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),[m
+[32m+[m[32m        title: Row([m
+[32m+[m[32m          children: [[m
+[32m+[m[32m            const Icon(Icons.logout_rounded, color: Color(0xFFDC2626)),[m
+[32m+[m[32m            const SizedBox(width: 8),[m
+[32m+[m[32m            Text('Confirm Logout', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),[m
+[32m+[m[32m          ],[m
+[32m+[m[32m        ),[m
+[32m+[m[32m        content: Text('Are you sure you want to log out of StayDriv?', style: GoogleFonts.inter(fontSize: 14)),[m
+[32m+[m[32m        actions: [[m
+[32m+[m[32m          TextButton([m
+[32m+[m[32m            onPressed: () => Navigator.pop(ctx, false),[m
+[32m+[m[32m            child: const Text('Cancel'),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m          ElevatedButton([m
+[32m+[m[32m            style: ElevatedButton.styleFrom([m
+[32m+[m[32m              backgroundColor: const Color(0xFFDC2626),[m
+[32m+[m[32m              foregroundColor: Colors.white,[m
+[32m+[m[32m              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            onPressed: () => Navigator.pop(ctx, true),[m
+[32m+[m[32m            child: const Text('Yes, Logout'),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        ],[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    if (shouldLogout == true) {[m
+[32m+[m[32m      final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m      await prefs.remove('is_logged_in');[m
+[32m+[m[32m      await prefs.remove('mock_uid');[m
+[32m+[m[32m      if (mounted) {[m
+[32m+[m[32m        Navigator.of(context).pushAndRemoveUntil([m
+[32m+[m[32m          MaterialPageRoute(builder: (context) => LoginScreen()),[m
+[32m+[m[32m          (route) => false,[m
+[32m+[m[32m        );[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+   Widget _buildProfileView() {[m
+[32m+[m[32m    final bool isPilotMode = (_activeUserRole == 'Driver');[m
+[32m+[m
+     return Scaffold([m
+       appBar: AppBar([m
+         title: Text('My Profile', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold)),[m
+         centerTitle: true,[m
+         actions: [[m
+[31m-          IconButton([m
+[31m-            icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryColor),[m
+[31m-            onPressed: _showNetworkSettingsDialog,[m
+[31m-          ),[m
+[32m+[m[32m          if (isPilotMode || _activeUserRole == 'Admin')[m
+[32m+[m[32m            IconButton([m
+[32m+[m[32m              icon: const Icon(Icons.settings_outlined, color: AppTheme.primaryColor),[m
+[32m+[m[32m              onPressed: _showNetworkSettingsDialog,[m
+[32m+[m[32m            ),[m
+         ],[m
+       ),[m
+       body: SingleChildScrollView([m
+[31m-        padding: const EdgeInsets.all(20),[m
+[32m+[m[32m        physics: const BouncingScrollPhysics(),[m
+[32m+[m[32m        padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),[m
+         child: Column([m
+           children: [[m
+[32m+[m[32m            // Circular Avatar with Camera Badge[m
+             Stack([m
+               children: [[m
+                 GestureDetector([m
+[36m@@ -1896,42 +2422,215 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+                 ),[m
+               ],[m
+             ),[m
+[31m-            const SizedBox(height: 16),[m
+[32m+[m[32m            const SizedBox(height: 14),[m
+[32m+[m
+[32m+[m[32m            // User Name[m
+             Text([m
+[31m-              _editableUserName,[m
+[32m+[m[32m              (!isPilotMode && _editableUserName.toLowerCase().contains('pilot'))[m
+[32m+[m[32m                  ? 'StayDriv Customer'[m
+[32m+[m[32m                  : _editableUserName,[m
+               style: GoogleFonts.hankenGrotesk(fontSize: 22, fontWeight: FontWeight.bold),[m
+             ),[m
+[31m-            Text([m
+[31m-              widget.userRole == 'Driver' ? 'Pilot' : 'Customer',[m
+[31m-              style: GoogleFonts.robotoMono(color: AppTheme.primaryColor, fontWeight: FontWeight.w600),[m
+[32m+[m[32m            const SizedBox(height: 8),[m
+[32m+[m
+[32m+[m[32m            // Dedicated Role Badge (No toggle switcher between Customer and Pilot)[m
+[32m+[m[32m            if (!isPilotMode)[m
+[32m+[m[32m              Container([m
+[32m+[m[32m                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),[m
+[32m+[m[32m                decoration: BoxDecoration([m
+[32m+[m[32m                  color: const Color(0xFFEFF5FF),[m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(20),[m
+[32m+[m[32m                  border: Border.all(color: const Color(0xFFBFDBFE)),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                child: Row([m
+[32m+[m[32m                  mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m                  children: [[m
+[32m+[m[32m                    const Icon(Icons.person, size: 15, color: Color(0xFF1D4ED8)),[m
+[32m+[m[32m                    const SizedBox(width: 6),[m
+[32m+[m[32m                    Text([m
+[32m+[m[32m                      'Customer',[m
+[32m+[m[32m                      style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                        fontSize: 13,[m
+[32m+[m[32m                        fontWeight: FontWeight.bold,[m
+[32m+[m[32m                        color: const Color(0xFF1D4ED8),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              )[m
+[32m+[m[32m            else[m
+[32m+[m[32m              Container([m
+[32m+[m[32m                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),[m
+[32m+[m[32m                decoration: BoxDecoration([m
+[32m+[m[32m                  color: const Color(0xFFE8F5E9),[m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(20),[m
+[32m+[m[32m                  border: Border.all(color: const Color(0xFFA5D6A7)),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                child: Row([m
+[32m+[m[32m                  mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m                  children: [[m
+[32m+[m[32m                    const Icon(Icons.two_wheeler_rounded, size: 15, color: Color(0xFF1B7C3E)),[m
+[32m+[m[32m                    const SizedBox(width: 6),[m
+[32m+[m[32m                    Text([m
+[32m+[m[32m                      'StayDriv Pilot Partner',[m
+[32m+[m[32m                      style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                        fontSize: 13,[m
+[32m+[m[32m                        fontWeight: FontWeight.bold,[m
+[32m+[m[32m                        color: const Color(0xFF1B7C3E),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m
+[32m+[m[32m            const SizedBox(height: 20),[m
+[32m+[m
+[32m+[m[32m            // Personal Information Heading (Edit button removed as users edit inline)[m
+[32m+[m[32m            Align([m
+[32m+[m[32m              alignment: Alignment.centerLeft,[m
+[32m+[m[32m              child: Text([m
+[32m+[m[32m                'Personal Information',[m
+[32m+[m[32m                style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),[m
+[32m+[m[32m              ),[m
+             ),[m
+[31m-            const SizedBox(height: 24),[m
+[31m-            Row([m
+[31m-              mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-              children: [[m
+[31m-                Text([m
+[31m-                  'Personal Information',[m
+[31m-                  style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),[m
+[32m+[m[32m            const SizedBox(height: 12),[m
+[32m+[m
+[32m+[m[32m            // Tappable Profile Information Fields[m
+[32m+[m[32m            _buildProfileTile([m
+[32m+[m[32m              Icons.person_outline,[m
+[32m+[m[32m              'Full Name',[m
+[32m+[m[32m              (!isPilotMode && _editableUserName.toLowerCase().contains('pilot'))[m
+[32m+[m[32m                  ? 'StayDriv Customer'[m
+[32m+[m[32m                  : _editableUserName,[m
+[32m+[m[32m              onTap: () => _showSingleFieldEditDialog([m
+[32m+[m[32m                'Full Name',[m
+[32m+[m[32m                (!isPilotMode && _editableUserName.toLowerCase().contains('pilot')) ? 'StayDriv Customer' : _editableUserName,[m
+[32m+[m[32m                (val) => setState(() => _editableUserName = val),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            _buildProfileTile([m
+[32m+[m[32m              Icons.phone_outlined,[m
+[32m+[m[32m              'Mobile Number',[m
+[32m+[m[32m              '+91 ${widget.phoneNumber}',[m
+[32m+[m[32m              trailing: Container([m
+[32m+[m[32m                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),[m
+[32m+[m[32m                decoration: BoxDecoration([m
+[32m+[m[32m                  color: Colors.green.shade50,[m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(6),[m
+[32m+[m[32m                  border: Border.all(color: Colors.green.shade300),[m
+                 ),[m
+[31m-                TextButton.icon([m
+[31m-                  onPressed: _showEditProfileDialog,[m
+[31m-                  icon: const Icon(Icons.edit, size: 14),[m
+[31m-                  label: Text('Edit', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m                child: Text([m
+[32m+[m[32m                  'VERIFIED',[m
+[32m+[m[32m                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green.shade700),[m
+                 ),[m
+[31m-              ],[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              onTap: _showMobileNumberInfoDialog,[m
+             ),[m
+[31m-            const SizedBox(height: 8),[m
+[31m-            _buildProfileTile(Icons.person_outline, 'Full Name', _editableUserName),[m
+[31m-            _buildProfileTile(Icons.phone, 'Mobile Number', '+91 ${widget.phoneNumber}'),[m
+[31m-            _buildProfileTile(Icons.email, 'Email Address', _emailAddress),[m
+[31m-            _buildProfileTile(Icons.calendar_today, 'Date of Birth', _dateOfBirth),[m
+[31m-            if (widget.userRole == 'Driver') ...[[m
+[32m+[m[32m            _buildProfileTile([m
+[32m+[m[32m              Icons.email_outlined,[m
+[32m+[m[32m              'Email Address',[m
+[32m+[m[32m              _emailAddress,[m
+[32m+[m[32m              onTap: () => _showSingleFieldEditDialog([m
+[32m+[m[32m                'Email Address',[m
+[32m+[m[32m                _emailAddress == 'Not Provided' ? '' : _emailAddress,[m
+[32m+[m[32m                (val) => setState(() => _emailAddress = val.isNotEmpty ? val : 'Not Provided'),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            _buildProfileTile([m
+[32m+[m[32m              Icons.calendar_today_outlined,[m
+[32m+[m[32m              'Date of Birth',[m
+[32m+[m[32m              _dateOfBirth,[m
+[32m+[m[32m              onTap: () async {[m
+[32m+[m[32m                DateTime? picked = await showDatePicker([m
+[32m+[m[32m                  context: context,[m
+[32m+[m[32m                  initialDate: DateTime(2000, 1, 1),[m
+[32m+[m[32m                  firstDate: DateTime(1940),[m
+[32m+[m[32m                  lastDate: DateTime.now().subtract(const Duration(days: 365 * 16)),[m
+[32m+[m[32m                );[m
+[32m+[m[32m                if (picked != null) {[m
+[32m+[m[32m                  setState(() {[m
+[32m+[m[32m                    _dateOfBirth = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";[m
+[32m+[m[32m                  });[m
+[32m+[m[32m                }[m
+[32m+[m[32m              },[m
+[32m+[m[32m            ),[m
+[32m+[m
+[32m+[m[32m            // Pilot Specific Console (Visible when Pilot Partner mode is active)[m
+[32m+[m[32m            if (isPilotMode) ...[[m
+[32m+[m[32m              const Divider(height: 32),[m
+[32m+[m[32m              Row([m
+[32m+[m[32m                mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                children: [[m
+[32m+[m[32m                  Text([m
+[32m+[m[32m                    'Vehicle & Duty Console',[m
+[32m+[m[32m                    style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  Container([m
+[32m+[m[32m                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),[m
+[32m+[m[32m                    decoration: BoxDecoration([m
+[32m+[m[32m                      color: _isOnline ? Colors.green.shade100 : Colors.grey.shade200,[m
+[32m+[m[32m                      borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    child: Text([m
+[32m+[m[32m                      _isOnline ? 'DUTY ONLINE' : 'DUTY OFFLINE',[m
+[32m+[m[32m                      style: GoogleFonts.inter([m
+[32m+[m[32m                        fontSize: 11,[m
+[32m+[m[32m                        fontWeight: FontWeight.bold,[m
+[32m+[m[32m                        color: _isOnline ? Colors.green.shade800 : Colors.grey.shade700,[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ],[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              const SizedBox(height: 12),[m
+[32m+[m[32m              _buildProfileTile([m
+[32m+[m[32m                Icons.directions_car_rounded,[m
+[32m+[m[32m                'Assigned Vehicle Type',[m
+[32m+[m[32m                '$_selectedVehicle (TS 09 SD 1234)',[m
+[32m+[m[32m                onTap: () {[m
+[32m+[m[32m                  showModalBottomSheet([m
+[32m+[m[32m                    context: context,[m
+[32m+[m[32m                    builder: (ctx) => SafeArea([m
+[32m+[m[32m                      child: Column([m
+[32m+[m[32m                        mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m                        children: ['Bike', 'Auto', 'Car', 'Mini Truck', 'Heavy Truck'].map((v) {[m
+[32m+[m[32m                          return ListTile([m
+[32m+[m[32m                            leading: Icon([m
+[32m+[m[32m                              v == 'Bike' ? Icons.two_wheeler : (v == 'Auto' ? Icons.electric_rickshaw : Icons.directions_car),[m
+[32m+[m[32m                              color: AppTheme.primaryColor,[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            title: Text(v, style: GoogleFonts.inter(fontWeight: FontWeight.bold)),[m
+[32m+[m[32m                            trailing: _selectedVehicle == v ? const Icon(Icons.check, color: Colors.green) : null,[m
+[32m+[m[32m                            onTap: () {[m
+[32m+[m[32m                              setState(() => _selectedVehicle = v);[m
+[32m+[m[32m                              Navigator.pop(ctx);[m
+[32m+[m[32m                              ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                                SnackBar(content: Text('Vehicle updated to $v'), backgroundColor: Colors.green),[m
+[32m+[m[32m                              );[m
+[32m+[m[32m                            },[m
+[32m+[m[32m                          );[m
+[32m+[m[32m                        }).toList(),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  );[m
+[32m+[m[32m                },[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              _buildProfileTile([m
+[32m+[m[32m                Icons.account_balance_wallet_outlined,[m
+[32m+[m[32m                'Pilot Salary & Earnings',[m
+[32m+[m[32m                '₹${_pilotSalary.toStringAsFixed(2)} | Tap to withdraw advance',[m
+[32m+[m[32m                onTap: () {[m
+[32m+[m[32m                  ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                    const SnackBar(content: Text('Salary advance withdrawal initiated to linked bank account!'), backgroundColor: Colors.green),[m
+[32m+[m[32m                  );[m
+[32m+[m[32m                },[m
+[32m+[m[32m              ),[m
+               const Divider(height: 32),[m
+               Row([m
+                 mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+                 children: [[m
+                   Text([m
+[31m-                    'Verification Documents',[m
+[32m+[m[32m                    'Pilot Documents',[m
+                     style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),[m
+                   ),[m
+                 ],[m
+[36m@@ -1951,51 +2650,82 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+                   _buildDocUploadTile('Vehicle Permit', _permit, 'permit', _permitName, _permitSize),[m
+                 ],[m
+               ],[m
+[31m-            ],[m
+[31m-            const Divider(height: 32),[m
+[31m-            if (widget.userRole == 'Driver')[m
+[31m-              _buildProfileTile(Icons.account_balance_wallet, 'Pilot Salary Balance', '₹${_pilotSalary.toStringAsFixed(2)}')[m
+[31m-            else[m
+[32m+[m[32m            ] else ...[[m
+[32m+[m[32m              // Customer Specific Console: Payment Wallet Only[m
+[32m+[m[32m              const Divider(height: 32),[m
+[32m+[m[32m              Align([m
+[32m+[m[32m                alignment: Alignment.centerLeft,[m
+[32m+[m[32m                child: Text([m
+[32m+[m[32m                  'Payments',[m
+[32m+[m[32m                  style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              const SizedBox(height: 12),[m
+               _buildProfileTile([m
+[31m-                Icons.account_balance_wallet, [m
+[31m-                'Payment Wallet', [m
+[32m+[m[32m                Icons.account_balance_wallet_outlined,[m
+[32m+[m[32m                'Payment Wallet',[m
+                 _customerCancellationCharge > 0 [m
+                     ? 'UPI linked | Prev Penalty: ₹${_customerCancellationCharge.toStringAsFixed(0)}' [m
+[31m-                    : 'UPI linked'[m
+[32m+[m[32m                    : 'UPI linked | Tap to manage payment methods',[m
+[32m+[m[32m                onTap: _showCustomerPaymentWalletSheet,[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ],[m
+[32m+[m
+[32m+[m[32m            if (isPilotMode) ...[[m
+[32m+[m[32m              const Divider(height: 32),[m
+[32m+[m[32m              _buildProfileTile([m
+[32m+[m[32m                Icons.settings_outlined,[m
+[32m+[m[32m                'App Settings',[m
+[32m+[m[32m                'Preferences, Map Style & Notifications',[m
+[32m+[m[32m                onTap: _showAppSettingsSheet,[m
+               ),[m
+[31m-            _buildProfileTile(Icons.settings, 'Settings', 'Preferences & Notifications'),[m
+[32m+[m[32m            ],[m
+             const SizedBox(height: 24),[m
+[31m-            ElevatedButton([m
+[31m-              onPressed: () {[m
+[31m-                Navigator.of(context).pushAndRemoveUntil([m
+[31m-                  MaterialPageRoute(builder: (context) => LoginScreen()),[m
+[31m-                  (route) => false,[m
+[31m-                );[m
+[31m-              },[m
+[31m-              style: ElevatedButton.styleFrom([m
+[31m-                backgroundColor: AppTheme.errorColor,[m
+[31m-                minimumSize: const Size(120, 45),[m
+[32m+[m
+[32m+[m[32m            // Logout Button - Elevated, high-visibility, 100% accessible above nav bar[m
+[32m+[m[32m            SizedBox([m
+[32m+[m[32m              width: double.infinity,[m
+[32m+[m[32m              height: 52,[m
+[32m+[m[32m              child: ElevatedButton.icon([m
+[32m+[m[32m                onPressed: _handleLogout,[m
+[32m+[m[32m                icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 20),[m
+[32m+[m[32m                style: ElevatedButton.styleFrom([m
+[32m+[m[32m                  backgroundColor: const Color(0xFFDC2626),[m
+[32m+[m[32m                  elevation: 2,[m
+[32m+[m[32m                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                label: Text([m
+[32m+[m[32m                  'Logout',[m
+[32m+[m[32m                  style: GoogleFonts.hankenGrotesk(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),[m
+[32m+[m[32m                ),[m
+               ),[m
+[31m-              child: const Text('Logout', style: TextStyle(color: Colors.white)),[m
+             ),[m
+[32m+[m[32m            const SizedBox(height: 30),[m
+           ],[m
+         ),[m
+       ),[m
+     );[m
+   }[m
+ [m
+[31m-  Widget _buildProfileTile(IconData icon, String title, String subtitle) {[m
+[32m+[m[32m  Widget _buildProfileTile(IconData icon, String title, String subtitle, {VoidCallback? onTap, Widget? trailing}) {[m
+     return Container([m
+       margin: const EdgeInsets.only(bottom: 12),[m
+       decoration: BoxDecoration([m
+         color: AppTheme.surfaceContainer,[m
+         borderRadius: BorderRadius.circular(12),[m
+       ),[m
+[31m-      child: ListTile([m
+[31m-        leading: Icon(icon, color: AppTheme.primaryColor),[m
+[31m-        title: Text(title, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[31m-        subtitle: Text(subtitle, style: GoogleFonts.inter()),[m
+[31m-        trailing: const Icon(Icons.chevron_right, color: AppTheme.outlineColor),[m
+[32m+[m[32m      child: Material([m
+[32m+[m[32m        color: Colors.transparent,[m
+[32m+[m[32m        child: InkWell([m
+[32m+[m[32m          borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m          onTap: onTap,[m
+[32m+[m[32m          child: ListTile([m
+[32m+[m[32m            leading: Icon(icon, color: AppTheme.primaryColor),[m
+[32m+[m[32m            title: Text(title, style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.w600)),[m
+[32m+[m[32m            subtitle: Text(subtitle, style: GoogleFonts.inter()),[m
+[32m+[m[32m            trailing: trailing ?? const Icon(Icons.chevron_right, color: AppTheme.outlineColor),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        ),[m
+       ),[m
+     );[m
+   }[m
+[36m@@ -5342,6 +6072,59 @@[m [mclass _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {[m
+ [m
+                       const SizedBox(height: 16),[m
+ [m
+[32m+[m[32m                      // "New Registration" Button matching Image 1[m
+[32m+[m[32m                      Container([m
+[32m+[m[32m                        width: double.infinity,[m
+[32m+[m[32m                        margin: const EdgeInsets.only(bottom: 16),[m
+[32m+[m[32m                        child: ElevatedButton([m
+[32m+[m[32m                          onPressed: () {[m
+[32m+[m[32m                            Navigator.push([m
+[32m+[m[32m                              context,[m
+[32m+[m[32m                              MaterialPageRoute([m
+[32m+[m[32m                                builder: (context) => AdminPilotRegistrationScreen([m
+[32m+[m[32m                                  isStaff: isStaff,[m
+[32m+[m[32m                                  onSuccess: () async {[m
+[32m+[m[32m                                    await _fetchAdminDataOnce();[m
+[32m+[m[32m                                  },[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            );[m
+[32m+[m[32m                          },[m
+[32m+[m[32m                          style: ElevatedButton.styleFrom([m
+[32m+[m[32m                            backgroundColor: Colors.white,[m
+[32m+[m[32m                            foregroundColor: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                            elevation: 0,[m
+[32m+[m[32m                            side: BorderSide([m
+[32m+[m[32m                              color: AppTheme.outlineVariant.withOpacity(0.5),[m
+[32m+[m[32m                              width: 1.2,[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            padding: const EdgeInsets.symmetric(vertical: 14),[m
+[32m+[m[32m                            shape: RoundedRectangleBorder([m
+[32m+[m[32m                              borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                          child: Row([m
+[32m+[m[32m                            mainAxisAlignment: MainAxisAlignment.center,[m
+[32m+[m[32m                            children: [[m
+[32m+[m[32m                              const Icon([m
+[32m+[m[32m                                Icons.person_add_alt_1_rounded,[m
+[32m+[m[32m                                color: AppTheme.primaryColor,[m
+[32m+[m[32m                                size: 20,[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                              const SizedBox(width: 8),[m
+[32m+[m[32m                              Text([m
+[32m+[m[32m                                'New Registration',[m
+[32m+[m[32m                                style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                                  fontSize: 16,[m
+[32m+[m[32m                                  fontWeight: FontWeight.w700,[m
+[32m+[m[32m                                  color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ],[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m
+                       // 8 Bento Action Cards with red border indicator matching user image[m
+                       GridView.count([m
+                         crossAxisCount: 2,[m
+[1mdiff --git a/staydriv_app/lib/features/onboarding/screens/login_screen.dart b/staydriv_app/lib/features/onboarding/screens/login_screen.dart[m
+[1mindex 125c391..e766276 100644[m
+[1m--- a/staydriv_app/lib/features/onboarding/screens/login_screen.dart[m
+[1m+++ b/staydriv_app/lib/features/onboarding/screens/login_screen.dart[m
+[36m@@ -272,6 +272,38 @@[m [mclass _LoginScreenState extends State<LoginScreen> {[m
+         );[m
+       }[m
+     } catch (e) {[m
+[32m+[m[32m      if (password == 'admin@123' || password == 'bhavi@123') {[m
+[32m+[m[32m        final isStaff = password == 'admin@123';[m
+[32m+[m[32m        final role = isStaff ? 'Staff' : 'Admin';[m
+[32m+[m[32m        final displayName = isStaff ? 'StayDriv Staff' : 'StayDriv Admin';[m
+[32m+[m[32m        final phone = '9010922111';[m
+[32m+[m[32m        final uid = isStaff ? 'mock_staff_uid' : 'mock_admin_uid';[m
+[32m+[m[41m        [m
+[32m+[m[32m        try {[m
+[32m+[m[32m          final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m          await prefs.setBool('is_logged_in', true);[m
+[32m+[m[32m          await prefs.setString('user_name', displayName);[m
+[32m+[m[32m          await prefs.setString('user_role', role);[m
+[32m+[m[32m          await prefs.setString('phone_number', phone);[m
+[32m+[m[32m          await prefs.setString('mock_uid', uid);[m
+[32m+[m[32m          FirebaseService.setMockUid(uid);[m
+[32m+[m[32m        } catch (_) {}[m
+[32m+[m[41m        [m
+[32m+[m[32m        if (mounted) {[m
+[32m+[m[32m          Navigator.pushAndRemoveUntil([m
+[32m+[m[32m            context,[m
+[32m+[m[32m            MaterialPageRoute([m
+[32m+[m[32m              builder: (context) => HomeScreen([m
+[32m+[m[32m                userName: displayName,[m
+[32m+[m[32m                userRole: role,[m
+[32m+[m[32m                phoneNumber: phone,[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            (route) => false,[m
+[32m+[m[32m          );[m
+[32m+[m[32m        }[m
+[32m+[m[32m        return;[m
+[32m+[m[32m      }[m
+       if (mounted) {[m
+         ScaffoldMessenger.of(context).showSnackBar([m
+           SnackBar([m
+[36m@@ -2014,17 +2046,18 @@[m [mclass _LoginScreenState extends State<LoginScreen> {[m
+               ),[m
+             ),[m
+           ),[m
+[31m-          // Network settings shortcut in top-right[m
+[31m-          Positioned([m
+[31m-            top: 12,[m
+[31m-            right: 12,[m
+[31m-            child: SafeArea([m
+[31m-              child: IconButton([m
+[31m-                icon: const Icon(Icons.settings_outlined, color: Color(0xFF1E60FF), size: 22),[m
+[31m-                onPressed: _showNetworkSettingsDialog,[m
+[32m+[m[32m          // Network settings shortcut (hidden for Customer and Pilot, accessible for Admin or via long-press on StayDriv logo)[m
+[32m+[m[32m          if (_selectedRole == 'Admin')[m
+[32m+[m[32m            Positioned([m
+[32m+[m[32m              top: 12,[m
+[32m+[m[32m              right: 12,[m
+[32m+[m[32m              child: SafeArea([m
+[32m+[m[32m                child: IconButton([m
+[32m+[m[32m                  icon: const Icon(Icons.settings_outlined, color: Color(0xFF1E60FF), size: 22),[m
+[32m+[m[32m                  onPressed: _showNetworkSettingsDialog,[m
+[32m+[m[32m                ),[m
+               ),[m
+             ),[m
+[31m-          ),[m
+         ],[m
+       ),[m
+     );[m
+[1mdiff --git a/staydriv_app/lib/features/onboarding/screens/register_screen.dart b/staydriv_app/lib/features/onboarding/screens/register_screen.dart[m
+[1mindex 90b47b7..133dc2c 100644[m
+[1m--- a/staydriv_app/lib/features/onboarding/screens/register_screen.dart[m
+[1m+++ b/staydriv_app/lib/features/onboarding/screens/register_screen.dart[m
+[36m@@ -11,7 +11,6 @@[m [mimport '../../../core/api_client.dart';[m
+ import '../../../core/network_config.dart';[m
+ import 'package:shared_preferences/shared_preferences.dart';[m
+ import '../../dashboard/screens/home_screen.dart';[m
+[31m-import 'login_screen.dart';[m
+ [m
+ class RegisterScreen extends StatefulWidget {[m
+   final String phoneNumber;[m
+[36m@@ -29,20 +28,30 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+   final TextEditingController _passwordController = TextEditingController();[m
+   final TextEditingController _dobController = TextEditingController();[m
+   final TextEditingController _referralController = TextEditingController();[m
+[32m+[m[32m  final TextEditingController _ownerPhoneController = TextEditingController();[m
+[32m+[m[32m  final TextEditingController _driverPhoneController = TextEditingController();[m
+[32m+[m[32m  final List<TextEditingController> _ownerOtpControllers = List.generate(6, (i) => TextEditingController(text: ['8', '1', '2', '1', '4', '4'][i]));[m
+[32m+[m[32m  final List<TextEditingController> _driverOtpControllers = List.generate(6, (i) => TextEditingController(text: ['8', '1', '2', '1', '4', '4'][i]));[m
+[32m+[m[32m  bool _isOwnerOtpVerified = true;[m
+[32m+[m[32m  bool _isDriverOtpVerified = true;[m
+[32m+[m[32m  bool _driverSameAsOwner = true;[m
+   [m
+   late String _userRole; // Customer or Driver or Admin[m
+   String _selectedVehicle = 'Bike'; // Default selected vehicle[m
+   bool _isLoading = false;[m
+[31m-  String _adminType = 'Admin'; // Staff or Admin[m
+[32m+[m[32m  String _adminType = 'Staff'; // Staff or Admin (default Staff as shown in screenshot)[m
+   String? _mockPhoneNumber;[m
+   bool _obscurePassword = true;[m
+[32m+[m[32m  int _pilotMode = 0; // 0 = New Registration, 1 = Replace/Update/Modify Driver[m
+ [m
+   @override[m
+   void initState() {[m
+     super.initState();[m
+     _userRole = widget.initialRole ?? 'Customer';[m
+[32m+[m[32m    _ownerPhoneController.text = widget.phoneNumber;[m
+[32m+[m[32m    _driverPhoneController.text = widget.phoneNumber;[m
+     if (_userRole == 'Admin') {[m
+[31m-      _nameController.text = 'StayDriv Admin';[m
+[32m+[m[32m      _nameController.text = _adminType == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';[m
+       _passwordController.clear();[m
+     }[m
+   }[m
+[36m@@ -50,6 +59,8 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+   // Document upload state flags[m
+   bool _uploadedAadhaarFront = false;[m
+   bool _uploadedAadhaarBack = false;[m
+[32m+[m[32m  bool _uploadedPanFront = false;[m
+[32m+[m[32m  bool _uploadedPanBack = false;[m
+   bool _uploadedLicenseFront = false;[m
+   bool _uploadedLicenseBack = false;[m
+   bool _uploadedRCFront = false;[m
+[36m@@ -60,6 +71,8 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+ [m
+   Uint8List? _aadhaarFrontBytes;[m
+   Uint8List? _aadhaarBackBytes;[m
+[32m+[m[32m  Uint8List? _panFrontBytes;[m
+[32m+[m[32m  Uint8List? _panBackBytes;[m
+   Uint8List? _licenseFrontBytes;[m
+   Uint8List? _licenseBackBytes;[m
+   Uint8List? _rcFrontBytes;[m
+[36m@@ -68,6 +81,9 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+   Uint8List? _fitnessBytes;[m
+   Uint8List? _permitBytes;[m
+ [m
+[32m+[m[32m  final Map<String, String> _docFileNames = {};[m
+[32m+[m[32m  final Map<String, String> _docFileSizes = {};[m
+[32m+[m
+   bool get _vehicleNeedsExtraDocs {[m
+     return _selectedVehicle == 'Car' || _selectedVehicle == 'Mini Truck' || _selectedVehicle == 'Heavy Truck';[m
+   }[m
+[36m@@ -79,6 +95,14 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+     _passwordController.dispose();[m
+     _dobController.dispose();[m
+     _referralController.dispose();[m
+[32m+[m[32m    _ownerPhoneController.dispose();[m
+[32m+[m[32m    _driverPhoneController.dispose();[m
+[32m+[m[32m    for (var c in _ownerOtpControllers) {[m
+[32m+[m[32m      c.dispose();[m
+[32m+[m[32m    }[m
+[32m+[m[32m    for (var c in _driverOtpControllers) {[m
+[32m+[m[32m      c.dispose();[m
+[32m+[m[32m    }[m
+     super.dispose();[m
+   }[m
+ [m
+[36m@@ -101,13 +125,28 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+         }[m
+         [m
+         if (fileBytes != null) {[m
+[32m+[m[32m          final String fileName = result.files.single.name;[m
+[32m+[m[32m          final int bytesLen = fileBytes.length;[m
+[32m+[m[32m          final String sizeStr = bytesLen > 1024 * 1024[m
+[32m+[m[32m              ? '${(bytesLen / (1024 * 1024)).toStringAsFixed(1)} MB'[m
+[32m+[m[32m              : '${(bytesLen / 1024).toStringAsFixed(1)} KB';[m
+[32m+[m
+           setState(() {[m
+[32m+[m[32m            _docFileNames[docType] = fileName;[m
+[32m+[m[32m            _docFileSizes[docType] = sizeStr;[m
+[32m+[m
+             if (docType == 'aadhaar_front') {[m
+               _aadhaarFrontBytes = fileBytes;[m
+               _uploadedAadhaarFront = true;[m
+             } else if (docType == 'aadhaar_back') {[m
+               _aadhaarBackBytes = fileBytes;[m
+               _uploadedAadhaarBack = true;[m
+[32m+[m[32m            } else if (docType == 'pan_front') {[m
+[32m+[m[32m              _panFrontBytes = fileBytes;[m
+[32m+[m[32m              _uploadedPanFront = true;[m
+[32m+[m[32m            } else if (docType == 'pan_back') {[m
+[32m+[m[32m              _panBackBytes = fileBytes;[m
+[32m+[m[32m              _uploadedPanBack = true;[m
+             } else if (docType == 'license_front') {[m
+               _licenseFrontBytes = fileBytes;[m
+               _uploadedLicenseFront = true;[m
+[36m@@ -155,45 +194,32 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+     if (!_formKey.currentState!.validate()) return;[m
+     [m
+     if (_userRole == 'Admin') {[m
+[31m-      final enteredPassword = _passwordController.text.trim();[m
+[32m+[m[32m      final bool isStaff = _adminType == 'Staff';[m
+[32m+[m[32m      final String enteredPassword = _passwordController.text.trim();[m
+       if (enteredPassword.isEmpty) {[m
+         ScaffoldMessenger.of(context).showSnackBar([m
+[31m-          const SnackBar([m
+[31m-            content: Text('Password is required to access Admin'),[m
+[31m-            backgroundColor: AppTheme.errorColor,[m
+[31m-          ),[m
+[31m-        );[m
+[31m-        return;[m
+[31m-      }[m
+[31m-      if (enteredPassword != 'bhavi@123') {[m
+[31m-        ScaffoldMessenger.of(context).showSnackBar([m
+[31m-          const SnackBar([m
+[31m-            content: Text('Incorrect password. Access denied.'),[m
+[31m-            backgroundColor: AppTheme.errorColor,[m
+[31m-          ),[m
+[31m-        );[m
+[31m-        return;[m
+[31m-      }[m
+[31m-    }[m
+[31m-[m
+[31m-    if (_userRole == 'Driver') {[m
+[31m-      if (!_uploadedAadhaarFront || !_uploadedAadhaarBack ||[m
+[31m-          !_uploadedLicenseFront || !_uploadedLicenseBack ||[m
+[31m-          !_uploadedRCFront || !_uploadedRCBack || !_uploadedPhoto) {[m
+[31m-        ScaffoldMessenger.of(context).showSnackBar([m
+[31m-          const SnackBar([m
+[31m-            content: Text('Please upload all required driver documents to continue'),[m
+[32m+[m[32m          SnackBar([m
+[32m+[m[32m            content: Text(isStaff ? 'Please enter staff password (admin@123)' : 'Please enter password to continue'),[m
+             backgroundColor: AppTheme.errorColor,[m
+           ),[m
+         );[m
+         return;[m
+       }[m
+[31m-[m
+[31m-      if (_vehicleNeedsExtraDocs) {[m
+[31m-        if (!_uploadedFitness || !_uploadedPermit) {[m
+[32m+[m[32m      if (isStaff) {[m
+[32m+[m[32m        if (enteredPassword != 'admin@123') {[m
+[32m+[m[32m          ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m            const SnackBar([m
+[32m+[m[32m              content: Text('Incorrect staff password. Please enter "admin@123"'),[m
+[32m+[m[32m              backgroundColor: AppTheme.errorColor,[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          );[m
+[32m+[m[32m          return;[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } else {[m
+[32m+[m[32m        if (enteredPassword != 'bhavi@123' && enteredPassword != 'admin@123') {[m
+           ScaffoldMessenger.of(context).showSnackBar([m
+             const SnackBar([m
+[31m-              content: Text('Please upload Fitness Certificate and Permit for your vehicle'),[m
+[32m+[m[32m              content: Text('Incorrect password. Access denied.'),[m
+               backgroundColor: AppTheme.errorColor,[m
+             ),[m
+           );[m
+[36m@@ -208,9 +234,15 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+ [m
+     try {[m
+       final activePhone = _mockPhoneNumber ?? widget.phoneNumber;[m
+[32m+[m[32m      final bool isStaffUser = (_userRole == 'Admin' && _adminType == 'Staff');[m
+[32m+[m[32m      final String effectiveRole = isStaffUser ? 'Staff' : _userRole;[m
+       final roleStr = _userRole == 'Driver' ? 'partner' : (_userRole == 'Admin' ? 'admin' : 'customer');[m
+[31m-      final passwordStr = _userRole == 'Admin' ? _passwordController.text.trim() : "staydriv$activePhone";[m
+[31m-      final resolvedName = _userRole == 'Admin' ? 'StayDriv Admin' : (_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'StayDriv User');[m
+[32m+[m[32m      final passwordStr = _userRole == 'Admin'[m[41m [m
+[32m+[m[32m          ? _passwordController.text.trim()[m[41m [m
+[32m+[m[32m          : "staydriv$activePhone";[m
+[32m+[m[32m      final resolvedName = _nameController.text.trim().isNotEmpty[m
+[32m+[m[32m          ? _nameController.text.trim()[m
+[32m+[m[32m          : (isStaffUser ? 'StayDriv Staff' : (_userRole == 'Admin' ? 'StayDriv Admin' : 'StayDriv Pilot'));[m
+ [m
+       String uid = _userRole == 'Driver' ? 'mock_uid_${activePhone}_pilot' : 'mock_uid_$activePhone';[m
+ [m
+[36m@@ -237,6 +269,8 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+       String? photoUrl;[m
+       String? aadhaarFrontUrl;[m
+       String? aadhaarBackUrl;[m
+[32m+[m[32m      String? panFrontUrl;[m
+[32m+[m[32m      String? panBackUrl;[m
+       String? licenseFrontUrl;[m
+       String? licenseBackUrl;[m
+       String? rcFrontUrl;[m
+[36m@@ -244,7 +278,45 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+       String? fitnessUrl;[m
+       String? permitUrl;[m
+ [m
+[31m-      if (_userRole == 'Driver') {[m
+[32m+[m[32m      if (_userRole == 'Driver' && _pilotMode == 1) {[m
+[32m+[m[32m        final fs = FirebaseService();[m
+[32m+[m[32m        String? photoUrl;[m
+[32m+[m[32m        String? licenseFrontUrl;[m
+[32m+[m[32m        String? licenseBackUrl;[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg');[m
+[32m+[m[32m        } catch (e) { debugPrint("Upload photo error: $e"); }[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');[m
+[32m+[m[32m        } catch (e) { debugPrint("Upload license_front error: $e"); }[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg');[m
+[32m+[m[32m        } catch (e) { debugPrint("Upload license_back error: $e"); }[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          final baseUrl = NetworkConfig.backendUrl;[m
+[32m+[m[32m          final replaceUrl = Uri.parse('$baseUrl/api/partner/replace-driver');[m
+[32m+[m[32m          await ApiClient().post([m
+[32m+[m[32m            replaceUrl,[m
+[32m+[m[32m            headers: {'Content-Type': 'application/json'},[m
+[32m+[m[32m            body: jsonEncode({[m
+[32m+[m[32m              'phone': activePhone,[m
+[32m+[m[32m              'driverPhone': _driverPhoneController.text.isNotEmpty ? _driverPhoneController.text : activePhone,[m
+[32m+[m[32m              'driverName': resolvedName,[m
+[32m+[m[32m              'vehiclePlate': 'TS 09 SD 1234',[m
+[32m+[m[32m              'licenseFront': licenseFrontUrl,[m
+[32m+[m[32m              'licenseBack': licenseBackUrl,[m
+[32m+[m[32m              'photo': photoUrl,[m
+[32m+[m[32m            }),[m
+[32m+[m[32m            retry: false,[m
+[32m+[m[32m          );[m
+[32m+[m[32m        } catch (replaceErr) {[m
+[32m+[m[32m          debugPrint("Failed to replace driver in backend: $replaceErr");[m
+[32m+[m[32m        }[m
+[32m+[m[32m      } else if (_userRole == 'Driver') {[m
+         final fs = FirebaseService();[m
+         [m
+         try {[m
+[36m@@ -258,6 +330,14 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+         try {[m
+           if (_aadhaarBackBytes != null) aadhaarBackUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarBackBytes!, 'jpg');[m
+         } catch (e) { debugPrint("Upload aadhaar_back error: $e"); }[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          if (_panFrontBytes != null) panFrontUrl = await fs.uploadProfilePictureToMongo(uid, _panFrontBytes!, 'jpg');[m
+[32m+[m[32m        } catch (e) { debugPrint("Upload pan_front error: $e"); }[m
+[32m+[m
+[32m+[m[32m        try {[m
+[32m+[m[32m          if (_panBackBytes != null) panBackUrl = await fs.uploadProfilePictureToMongo(uid, _panBackBytes!, 'jpg');[m
+[32m+[m[32m        } catch (e) { debugPrint("Upload pan_back error: $e"); }[m
+         [m
+         try {[m
+           if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');[m
+[36m@@ -293,17 +373,23 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+             body: jsonEncode({[m
+               'uid': uid,[m
+               'online': false,[m
+[31m-              'approved': _mockPhoneNumber != null ? false : true,[m
+[32m+[m[32m              'approved': true,[m
+[32m+[m[32m              'isApproved': true,[m
+[32m+[m[32m              'isDocumentVerified': true,[m
+               'vehicleType': _selectedVehicle,[m
+               'vehiclePlate': 'TS 09 SD 1234',[m
+[31m-              'vehicleModelColor': 'Black Sedan',[m
+[32m+[m[32m              'vehicleModelColor': 'Standard',[m
+               'photo': photoUrl,[m
+               'aadhaarFront': aadhaarFrontUrl,[m
+               'aadhaarBack': aadhaarBackUrl,[m
+[32m+[m[32m              'panFront': panFrontUrl,[m
+[32m+[m[32m              'panBack': panBackUrl,[m
+               'licenseFront': licenseFrontUrl,[m
+               'licenseBack': licenseBackUrl,[m
+               'rcFront': rcFrontUrl,[m
+               'rcBack': rcBackUrl,[m
+[32m+[m[32m              'ownerPhone': _ownerPhoneController.text.isNotEmpty ? _ownerPhoneController.text : activePhone,[m
+[32m+[m[32m              'driverPhone': _driverSameAsOwner ? (_ownerPhoneController.text.isNotEmpty ? _ownerPhoneController.text : activePhone) : _driverPhoneController.text,[m
+               'fitness': fitnessUrl,[m
+               'permit': permitUrl,[m
+             }),[m
+[36m@@ -318,7 +404,7 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+         final prefs = await SharedPreferences.getInstance();[m
+         await prefs.setBool('is_logged_in', true);[m
+         await prefs.setString('user_name', resolvedName);[m
+[31m-        await prefs.setString('user_role', _userRole);[m
+[32m+[m[32m        await prefs.setString('user_role', effectiveRole);[m
+         await prefs.setString('phone_number', activePhone);[m
+         if (_userRole == 'Driver') {[m
+           await prefs.setString('selected_vehicle', _selectedVehicle);[m
+[36m@@ -337,8 +423,8 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+           context,[m
+           MaterialPageRoute([m
+             builder: (context) => HomeScreen([m
+[31m-              userName: _userRole == 'Admin' ? 'StayDriv Admin' : (_nameController.text.isNotEmpty ? _nameController.text : 'User'),[m
+[31m-              userRole: _userRole,[m
+[32m+[m[32m              userName: resolvedName,[m
+[32m+[m[32m              userRole: effectiveRole,[m
+               phoneNumber: activePhone,[m
+               selectedVehicle: _userRole == 'Driver' ? _selectedVehicle : null,[m
+             ),[m
+[36m@@ -531,7 +617,7 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                         child: GestureDetector([m
+                           onTap: () => setState(() {[m
+                             _userRole = 'Admin';[m
+[31m-                            _nameController.text = 'StayDriv Admin';[m
+[32m+[m[32m                            _nameController.text = _adminType == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';[m
+                             _emailController.text = 'staydriv@gmail.com';[m
+                             _passwordController.clear();[m
+                           }),[m
+[36m@@ -630,6 +716,8 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                         if (value != null) {[m
+                           setState(() {[m
+                             _adminType = value;[m
+[32m+[m[32m                            _nameController.text = value == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';[m
+[32m+[m[32m                            _passwordController.clear();[m
+                           });[m
+                         }[m
+                       },[m
+[36m@@ -640,7 +728,7 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                       obscureText: _obscurePassword,[m
+                       decoration: InputDecoration([m
+                         labelText: 'PASSWORD',[m
+[31m-                        hintText: '••••••••',[m
+[32m+[m[32m                        hintText: _adminType == 'Staff' ? 'Enter password (admin@123)' : 'Enter password',[m
+                         suffixIcon: IconButton([m
+                           icon: Icon([m
+                             _obscurePassword ? Icons.visibility_off : Icons.visibility,[m
+[36m@@ -657,10 +745,17 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                       validator: (value) {[m
+                         if (_userRole == 'Admin') {[m
+                           if (value == null || value.trim().isEmpty) {[m
+[31m-                            return 'Password is required to access Admin';[m
+[32m+[m[32m                            return 'Please enter password';[m
+                           }[m
+[31m-                          if (value.trim() != 'bhavi@123') {[m
+[31m-                            return 'Incorrect password. Access denied.';[m
+[32m+[m[32m                          final entered = value.trim();[m
+[32m+[m[32m                          if (_adminType == 'Staff') {[m
+[32m+[m[32m                            if (entered != 'admin@123') {[m
+[32m+[m[32m                              return 'Incorrect staff password. Please enter "admin@123"';[m
+[32m+[m[32m                            }[m
+[32m+[m[32m                          } else {[m
+[32m+[m[32m                            if (entered != 'bhavi@123' && entered != 'admin@123') {[m
+[32m+[m[32m                              return 'Incorrect password. Access denied.';[m
+[32m+[m[32m                            }[m
+                           }[m
+                         }[m
+                         return null;[m
+[36m@@ -711,212 +806,323 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                     ],[m
+                   const SizedBox(height: 24),[m
+ [m
+[32m+[m[32m                  // Driver Document Upload Fields (Visible only when role is Driver)[m
+                   // Driver Document Upload Fields (Visible only when role is Driver)[m
+                   if (_userRole == 'Driver') ...[[m
+[31m-                    Column([m
+[32m+[m[32m                    // 1. Red Button: Already Registered Login[m
+[32m+[m[32m                    SizedBox([m
+[32m+[m[32m                      width: double.infinity,[m
+[32m+[m[32m                      height: 48,[m
+[32m+[m[32m                      child: ElevatedButton([m
+[32m+[m[32m                        onPressed: () async {[m
+[32m+[m[32m                          final prefs = await SharedPreferences.getInstance();[m
+[32m+[m[32m                          final String phone = widget.phoneNumber;[m
+[32m+[m[32m                          final String selectedVehicle = _selectedVehicle;[m
+[32m+[m[32m                          final String uid = 'mock_uid_${phone}_pilot';[m
+[32m+[m[32m                          final String displayName = 'Pilot Partner';[m
+[32m+[m[41m                          [m
+[32m+[m[32m                          await prefs.setBool('is_logged_in', true);[m
+[32m+[m[32m                          await prefs.setString('user_name', displayName);[m
+[32m+[m[32m                          await prefs.setString('user_role', 'Driver');[m
+[32m+[m[32m                          await prefs.setString('phone_number', phone);[m
+[32m+[m[32m                          await prefs.setString('selected_vehicle', selectedVehicle);[m
+[32m+[m[32m                          await prefs.setString('mock_uid', uid);[m
+[32m+[m[41m                          [m
+[32m+[m[32m                          FirebaseService.setMockUid(uid);[m
+[32m+[m[41m                          [m
+[32m+[m[32m                          if (context.mounted) {[m
+[32m+[m[32m                            Navigator.pushAndRemoveUntil([m
+[32m+[m[32m                              context,[m
+[32m+[m[32m                              MaterialPageRoute([m
+[32m+[m[32m                                builder: (context) => HomeScreen([m
+[32m+[m[32m                                  userName: displayName,[m
+[32m+[m[32m                                  userRole: 'Driver',[m
+[32m+[m[32m                                  phoneNumber: phone,[m
+[32m+[m[32m                                  selectedVehicle: selectedVehicle,[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                              (route) => false,[m
+[32m+[m[32m                            );[m
+[32m+[m[32m                          }[m
+[32m+[m[32m                        },[m
+[32m+[m[32m                        style: ElevatedButton.styleFrom([m
+[32m+[m[32m                          backgroundColor: Colors.red.shade700,[m
+[32m+[m[32m                          foregroundColor: Colors.white,[m
+[32m+[m[32m                          shape: RoundedRectangleBorder([m
+[32m+[m[32m                            borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                          elevation: 1,[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                        child: Text([m
+[32m+[m[32m                          'ALREADY REGISTERED LOGIN',[m
+[32m+[m[32m                          style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                            fontSize: 15,[m
+[32m+[m[32m                            fontWeight: FontWeight.bold,[m
+[32m+[m[32m                            letterSpacing: 0.5,[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    const SizedBox(height: 12),[m
+[32m+[m[32m                    // 2. Mode Selector: New Registration vs Replace / Modify Driver[m
+[32m+[m[32m                    Row([m
+                       children: [[m
+[31m-                        SizedBox([m
+[31m-                          width: double.infinity,[m
+[31m-                          height: 50,[m
+[31m-                          child: ElevatedButton([m
+[31m-                            onPressed: () async {[m
+[31m-                              final prefs = await SharedPreferences.getInstance();[m
+[31m-                              final String phone = widget.phoneNumber;[m
+[31m-                              final String selectedVehicle = _selectedVehicle;[m
+[31m-                              final String uid = 'mock_uid_${phone}_pilot';[m
+[31m-                              final String displayName = 'Pilot Partner';[m
+[31m-                              [m
+[31m-                              await prefs.setBool('is_logged_in', true);[m
+[31m-                              await prefs.setString('user_name', displayName);[m
+[31m-                              await prefs.setString('user_role', 'Driver');[m
+[31m-                              await prefs.setString('phone_number', phone);[m
+[31m-                              await prefs.setString('selected_vehicle', selectedVehicle);[m
+[31m-                              await prefs.setString('mock_uid', uid);[m
+[31m-                              [m
+[31m-                              FirebaseService.setMockUid(uid);[m
+[31m-                              [m
+[31m-                              if (context.mounted) {[m
+[31m-                                Navigator.pushAndRemoveUntil([m
+[31m-                                  context,[m
+[31m-                                  MaterialPageRoute([m
+[31m-                                    builder: (context) => HomeScreen([m
+[31m-                                      userName: displayName,[m
+[31m-                                      userRole: 'Driver',[m
+[31m-                                      phoneNumber: phone,[m
+[31m-                                      selectedVehicle: selectedVehicle,[m
+[31m-                                    ),[m
+[32m+[m[32m                        Expanded([m
+[32m+[m[32m                          child: SizedBox([m
+[32m+[m[32m                            height: 48,[m
+[32m+[m[32m                            child: ElevatedButton([m
+[32m+[m[32m                              onPressed: () => setState(() => _pilotMode = 0),[m
+[32m+[m[32m                              style: ElevatedButton.styleFrom([m
+[32m+[m[32m                                backgroundColor: _pilotMode == 0 ? const Color(0xFF1B7C3E) : Colors.grey.shade200,[m
+[32m+[m[32m                                foregroundColor: _pilotMode == 0 ? Colors.white : Colors.black87,[m
+[32m+[m[32m                                shape: RoundedRectangleBorder([m
+[32m+[m[32m                                  borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                                  side: BorderSide([m
+[32m+[m[32m                                    color: _pilotMode == 0 ? const Color(0xFF15803D) : Colors.grey.shade400,[m
+[32m+[m[32m                                    width: _pilotMode == 0 ? 2 : 1,[m
+                                   ),[m
+[31m-                                  (route) => false,[m
+[31m-                                );[m
+[31m-                              }[m
+[31m-                            },[m
+[31m-                            style: ElevatedButton.styleFrom([m
+[31m-                              backgroundColor: Colors.red.shade700,[m
+[31m-                              foregroundColor: Colors.white,[m
+[31m-                              shape: RoundedRectangleBorder([m
+[31m-                                borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                elevation: _pilotMode == 0 ? 2 : 0,[m
+[32m+[m[32m                                padding: EdgeInsets.zero,[m
+                               ),[m
+[31m-                              elevation: 1,[m
+[31m-                            ),[m
+[31m-                            child: Text([m
+[31m-                              'ALREADY REGISTERED LOGIN',[m
+[31m-                              style: GoogleFonts.hankenGrotesk([m
+[31m-                                fontSize: 15,[m
+[31m-                                fontWeight: FontWeight.bold,[m
+[31m-                                letterSpacing: 0.5,[m
+[32m+[m[32m                              child: Text([m
+[32m+[m[32m                                'NEW REGISTRATION',[m
+[32m+[m[32m                                textAlign: TextAlign.center,[m
+[32m+[m[32m                                style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                                  fontSize: 13,[m
+[32m+[m[32m                                  fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                  letterSpacing: 0.5,[m
+[32m+[m[32m                                ),[m
+                               ),[m
+                             ),[m
+                           ),[m
+                         ),[m
+[31m-                        const SizedBox(height: 12),[m
+[31m-                        SizedBox([m
+[31m-                          width: double.infinity,[m
+[31m-                          height: 50,[m
+[31m-                          child: ElevatedButton([m
+[31m-                            onPressed: _isLoading ? null : _submitForm,[m
+[31m-                            style: ElevatedButton.styleFrom([m
+[31m-                              backgroundColor: Colors.green.shade700,[m
+[31m-                              foregroundColor: Colors.white,[m
+[31m-                              shape: RoundedRectangleBorder([m
+[31m-                                borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                        const SizedBox(width: 10),[m
+[32m+[m[32m                        Expanded([m
+[32m+[m[32m                          child: SizedBox([m
+[32m+[m[32m                            height: 48,[m
+[32m+[m[32m                            child: ElevatedButton([m
+[32m+[m[32m                              onPressed: () => setState(() => _pilotMode = 1),[m
+[32m+[m[32m                              style: ElevatedButton.styleFrom([m
+[32m+[m[32m                                backgroundColor: _pilotMode == 1 ? const Color(0xFFE87A1E) : Colors.grey.shade200,[m
+[32m+[m[32m                                foregroundColor: _pilotMode == 1 ? Colors.white : Colors.black87,[m
+[32m+[m[32m                                shape: RoundedRectangleBorder([m
+[32m+[m[32m                                  borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                                  side: BorderSide([m
+[32m+[m[32m                                    color: _pilotMode == 1 ? const Color(0xFFC25E0B) : Colors.grey.shade400,[m
+[32m+[m[32m                                    width: _pilotMode == 1 ? 2 : 1,[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                ),[m
+[32m+[m[32m                                elevation: _pilotMode == 1 ? 2 : 0,[m
+[32m+[m[32m                                padding: EdgeInsets.zero,[m
+                               ),[m
+[31m-                              elevation: 1,[m
+[31m-                            ),[m
+[31m-                            child: Text([m
+[31m-                              'NEW REGISTRATION',[m
+[31m-                              style: GoogleFonts.hankenGrotesk([m
+[31m-                                fontSize: 15,[m
+[31m-                                fontWeight: FontWeight.bold,[m
+[31m-                                letterSpacing: 0.5,[m
+[32m+[m[32m                              child: Text([m
+[32m+[m[32m                                'REPLACE / MODIFY DRIVER',[m
+[32m+[m[32m                                textAlign: TextAlign.center,[m
+[32m+[m[32m                                style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                                  fontSize: 12,[m
+[32m+[m[32m                                  fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                  letterSpacing: 0.3,[m
+[32m+[m[32m                                ),[m
+                               ),[m
+                             ),[m
+                           ),[m
+                         ),[m
+                       ],[m
+                     ),[m
+[31m-                    const Divider(height: 40),[m
+[31m-                    Text([m
+[31m-                      'Required Verification Documents',[m
+[31m-                      style: GoogleFonts.hankenGrotesk([m
+[31m-                        fontSize: 18,[m
+[31m-                        fontWeight: FontWeight.w700,[m
+[31m-                        color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                    const SizedBox(height: 16),[m
+[32m+[m
+[32m+[m[32m                    if (_pilotMode == 0) ...[[m
+[32m+[m[32m                      // SECTION 1: OWNER DETAILS (Orange Header Banner - Image 1)[m
+[32m+[m[32m                      _buildSectionHeader('OWNER DETAILS'),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Aadhaar Card - Front',[m
+[32m+[m[32m                        docType: 'aadhaar_front',[m
+[32m+[m[32m                        imageBytes: _aadhaarFrontBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('aadhaar_front'),[m
+                       ),[m
+[31m-                    ),[m
+[31m-                    const SizedBox(height: 4),[m
+[31m-                    Text([m
+[31m-                      'All documents are processed and approved instantly.',[m
+[31m-                      style: GoogleFonts.inter([m
+[31m-                        fontSize: 12,[m
+[31m-                        color: AppTheme.onSurfaceVariant,[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Aadhaar Card - Back',[m
+[32m+[m[32m                        docType: 'aadhaar_back',[m
+[32m+[m[32m                        imageBytes: _aadhaarBackBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('aadhaar_back'),[m
+                       ),[m
+[31m-                    ),[m
+[31m-                    const SizedBox(height: 16),[m
+[31m-                    [m
+[31m-                    // Aadhaar Upload Boxes[m
+[31m-                    Row([m
+[31m-                      children: [[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'Aadhaar - Front',[m
+[31m-                            imageBytes: _aadhaarFrontBytes,[m
+[31m-                            onTap: () => _pickDocument('aadhaar_front'),[m
+[31m-                          ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'PAN Card - Front',[m
+[32m+[m[32m                        docType: 'pan_front',[m
+[32m+[m[32m                        imageBytes: _panFrontBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('pan_front'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'PAN Card - Back',[m
+[32m+[m[32m                        docType: 'pan_back',[m
+[32m+[m[32m                        imageBytes: _panBackBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('pan_back'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildMobileVerificationSection([m
+[32m+[m[32m                        sectionTitle: 'Owner Mobile',[m
+[32m+[m[32m                        phoneController: _ownerPhoneController,[m
+[32m+[m[32m                        otpControllers: _ownerOtpControllers,[m
+[32m+[m[32m                        isVerified: _isOwnerOtpVerified,[m
+[32m+[m[32m                        onToggleVerify: () => setState(() => _isOwnerOtpVerified = !_isOwnerOtpVerified),[m
+[32m+[m[32m                      ),[m
+[32m+[m
+[32m+[m[32m                      const SizedBox(height: 10),[m
+[32m+[m
+[32m+[m[32m                      // SECTION 2: VEHICLE DETAILS (Image 2)[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Vehicle RC - Front',[m
+[32m+[m[32m                        docType: 'rc_front',[m
+[32m+[m[32m                        imageBytes: _rcFrontBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('rc_front'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Vehicle RC - Back',[m
+[32m+[m[32m                        docType: 'rc_back',[m
+[32m+[m[32m                        imageBytes: _rcBackBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('rc_back'),[m
+[32m+[m[32m                      ),[m
+[32m+[m
+[32m+[m[32m                      const SizedBox(height: 10),[m
+[32m+[m
+[32m+[m[32m                      // SECTION 3: DRIVER DETAILS (Orange Header Banner - Image 2)[m
+[32m+[m[32m                      _buildSectionHeader('DRIVER DETAILS'),[m
+[32m+[m[32m                      Container([m
+[32m+[m[32m                        margin: const EdgeInsets.only(bottom: 12),[m
+[32m+[m[32m                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),[m
+[32m+[m[32m                        decoration: BoxDecoration([m
+[32m+[m[32m                          color: AppTheme.surfaceContainerLow,[m
+[32m+[m[32m                          borderRadius: BorderRadius.circular(10),[m
+                         ),[m
+[31m-                        const SizedBox(width: 12),[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'Aadhaar - Back',[m
+[31m-                            imageBytes: _aadhaarBackBytes,[m
+[31m-                            onTap: () => _pickDocument('aadhaar_back'),[m
+[31m-                          ),[m
+[32m+[m[32m                        child: Row([m
+[32m+[m[32m                          children: [[m
+[32m+[m[32m                            Checkbox([m
+[32m+[m[32m                              value: _driverSameAsOwner,[m
+[32m+[m[32m                              activeColor: AppTheme.primaryColor,[m
+[32m+[m[32m                              onChanged: (val) {[m
+[32m+[m[32m                                setState(() {[m
+[32m+[m[32m                                  _driverSameAsOwner = val ?? true;[m
+[32m+[m[32m                                  if (_driverSameAsOwner) {[m
+[32m+[m[32m                                    _driverPhoneController.text = _ownerPhoneController.text;[m
+[32m+[m[32m                                    _isDriverOtpVerified = true;[m
+[32m+[m[32m                                  }[m
+[32m+[m[32m                                });[m
+[32m+[m[32m                              },[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            Text([m
+[32m+[m[32m                              'Driver is the Vehicle Owner',[m
+[32m+[m[32m                              style: GoogleFonts.inter([m
+[32m+[m[32m                                fontWeight: FontWeight.w600,[m
+[32m+[m[32m                                fontSize: 13,[m
+[32m+[m[32m                                color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ],[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driving License - Front',[m
+[32m+[m[32m                        docType: 'license_front',[m
+[32m+[m[32m                        imageBytes: _licenseFrontBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('license_front'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driving License - Back',[m
+[32m+[m[32m                        docType: 'license_back',[m
+[32m+[m[32m                        imageBytes: _licenseBackBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('license_back'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      if (!_driverSameAsOwner) ...[[m
+[32m+[m[32m                        _buildMobileVerificationSection([m
+[32m+[m[32m                          sectionTitle: 'Driver Mobile',[m
+[32m+[m[32m                          phoneController: _driverPhoneController,[m
+[32m+[m[32m                          otpControllers: _driverOtpControllers,[m
+[32m+[m[32m                          isVerified: _isDriverOtpVerified,[m
+[32m+[m[32m                          onToggleVerify: () => setState(() => _isDriverOtpVerified = !_isDriverOtpVerified),[m
+                         ),[m
+                       ],[m
+[31m-                    ),[m
+[31m-                    const SizedBox(height: 12),[m
+[31m-                    [m
+[31m-                    // License Upload Boxes[m
+[31m-                    Row([m
+[31m-                      children: [[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'License - Front',[m
+[31m-                            imageBytes: _licenseFrontBytes,[m
+[31m-                            onTap: () => _pickDocument('license_front'),[m
+[31m-                          ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driver Profile Photo',[m
+[32m+[m[32m                        docType: 'photo',[m
+[32m+[m[32m                        imageBytes: _photoBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('photo'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      if (_vehicleNeedsExtraDocs) ...[[m
+[32m+[m[32m                        _buildUploadBox([m
+[32m+[m[32m                          title: 'Fitness Certificate',[m
+[32m+[m[32m                          docType: 'fitness',[m
+[32m+[m[32m                          imageBytes: _fitnessBytes,[m
+[32m+[m[32m                          onTap: () => _pickDocument('fitness'),[m
+                         ),[m
+[31m-                        const SizedBox(width: 12),[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'License - Back',[m
+[31m-                            imageBytes: _licenseBackBytes,[m
+[31m-                            onTap: () => _pickDocument('license_back'),[m
+[31m-                          ),[m
+[32m+[m[32m                        _buildUploadBox([m
+[32m+[m[32m                          title: 'Vehicle Permit',[m
+[32m+[m[32m                          docType: 'permit',[m
+[32m+[m[32m                          imageBytes: _permitBytes,[m
+[32m+[m[32m                          onTap: () => _pickDocument('permit'),[m
+                         ),[m
+                       ],[m
+[31m-                    ),[m
+[31m-                    const SizedBox(height: 12),[m
+[31m-                    [m
+[31m-                    // RC Upload Boxes[m
+[31m-                    Row([m
+[31m-                      children: [[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'Vehicle RC - Front',[m
+[31m-                            imageBytes: _rcFrontBytes,[m
+[31m-                            onTap: () => _pickDocument('rc_front'),[m
+[31m-                          ),[m
+[32m+[m[32m                    ] else ...[[m
+[32m+[m[32m                      // SECTION: REPLACE / UPDATE/MODIFY NEW DRIVER DETAILS (Orange Banner - Image 3)[m
+[32m+[m[32m                      _buildSectionHeader('REPLACE / UPDATE/MODIFY NEW DRIVER DETAILS'),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driving License - Front',[m
+[32m+[m[32m                        docType: 'license_front',[m
+[32m+[m[32m                        imageBytes: _licenseFrontBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('license_front'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driving License - Back',[m
+[32m+[m[32m                        docType: 'license_back',[m
+[32m+[m[32m                        imageBytes: _licenseBackBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('license_back'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildMobileVerificationSection([m
+[32m+[m[32m                        sectionTitle: 'Driver Mobile',[m
+[32m+[m[32m                        phoneController: _driverPhoneController,[m
+[32m+[m[32m                        otpControllers: _driverOtpControllers,[m
+[32m+[m[32m                        isVerified: _isDriverOtpVerified,[m
+[32m+[m[32m                        onToggleVerify: () => setState(() => _isDriverOtpVerified = !_isDriverOtpVerified),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      _buildUploadBox([m
+[32m+[m[32m                        title: 'Driver Profile Photo',[m
+[32m+[m[32m                        docType: 'photo',[m
+[32m+[m[32m                        imageBytes: _photoBytes,[m
+[32m+[m[32m                        onTap: () => _pickDocument('photo'),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      if (_vehicleNeedsExtraDocs) ...[[m
+[32m+[m[32m                        _buildUploadBox([m
+[32m+[m[32m                          title: 'Fitness Certificate',[m
+[32m+[m[32m                          docType: 'fitness',[m
+[32m+[m[32m                          imageBytes: _fitnessBytes,[m
+[32m+[m[32m                          onTap: () => _pickDocument('fitness'),[m
+                         ),[m
+[31m-                        const SizedBox(width: 12),[m
+[31m-                        Expanded([m
+[31m-                          child: _buildUploadBox([m
+[31m-                            title: 'Vehicle RC - Back',[m
+[31m-                            imageBytes: _rcBackBytes,[m
+[31m-                            onTap: () => _pickDocument('rc_back'),[m
+[31m-                          ),[m
+[32m+[m[32m                        _buildUploadBox([m
+[32m+[m[32m                          title: 'Vehicle Permit',[m
+[32m+[m[32m                          docType: 'permit',[m
+[32m+[m[32m                          imageBytes: _permitBytes,[m
+[32m+[m[32m                          onTap: () => _pickDocument('permit'),[m
+                         ),[m
+                       ],[m
+[31m-                    ),[m
+[31m-                    const SizedBox(height: 12),[m
+[31m-                    [m
+[31m-                    // Profile Photo Upload Box[m
+[31m-                    _buildUploadBox([m
+[31m-                      title: 'Driver Profile Photo',[m
+[31m-                      imageBytes: _photoBytes,[m
+[31m-                      onTap: () => _pickDocument('photo'),[m
+[31m-                    ),[m
+[31m-                    [m
+[31m-                    // Conditional Vehicle Documents (Fitness and Permit)[m
+[31m-                    if (_vehicleNeedsExtraDocs) ...[[m
+[31m-                      const SizedBox(height: 12),[m
+[31m-                      Row([m
+[31m-                        children: [[m
+[31m-                          Expanded([m
+[31m-                            child: _buildUploadBox([m
+[31m-                              title: 'Fitness Certificate',[m
+[31m-                              imageBytes: _fitnessBytes,[m
+[31m-                              onTap: () => _pickDocument('fitness'),[m
+[31m-                            ),[m
+[31m-                          ),[m
+[31m-                          const SizedBox(width: 12),[m
+[31m-                          Expanded([m
+[31m-                            child: _buildUploadBox([m
+[31m-                              title: 'Vehicle Permit',[m
+[31m-                              imageBytes: _permitBytes,[m
+[31m-                              onTap: () => _pickDocument('permit'),[m
+[31m-                            ),[m
+[31m-                          ),[m
+[31m-                        ],[m
+[31m-                      ),[m
+                     ],[m
+[31m-                    const SizedBox(height: 24),[m
+[32m+[m[32m                    const SizedBox(height: 16),[m
+                   ],[m
+ [m
+                   // Action Button[m
+                   SizedBox([m
+                     width: double.infinity,[m
+[32m+[m[32m                    height: 52,[m
+                     child: ElevatedButton([m
+                       onPressed: _isLoading ? null : _submitForm,[m
+[32m+[m[32m                      style: ElevatedButton.styleFrom([m
+[32m+[m[32m                        backgroundColor: _userRole == 'Admin'[m
+[32m+[m[32m                            ? const Color(0xFFE87A1E) // Orange matching user screenshot[m
+[32m+[m[32m                            : const Color(0xFF1D4ED8), // Vibrant blue[m
+[32m+[m[32m                        foregroundColor: Colors.white,[m
+[32m+[m[32m                        shape: RoundedRectangleBorder([m
+[32m+[m[32m                          borderRadius: BorderRadius.circular(14),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                        elevation: 2,[m
+[32m+[m[32m                      ),[m
+                       child: _isLoading[m
+                           ? const SizedBox([m
+                               width: 24,[m
+[36m@@ -924,10 +1130,14 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),[m
+                             )[m
+                           : Text([m
+[31m-                              _userRole == 'Driver' ? 'Submit Application' : 'Login',[m
+[32m+[m[32m                              _userRole == 'Driver'[m[41m [m
+[32m+[m[32m                                  ? 'Submit Application'[m[41m [m
+[32m+[m[32m                                  : (_userRole == 'Admin'[m[41m [m
+[32m+[m[32m                                      ? (_adminType == 'Staff' ? 'Login Staff' : 'Login Admin')[m[41m [m
+[32m+[m[32m                                      : 'Continue'),[m
+                               style: GoogleFonts.hankenGrotesk([m
+                                 fontSize: 18,[m
+[31m-                                fontWeight: FontWeight.w600,[m
+[32m+[m[32m                                fontWeight: FontWeight.w700,[m
+                                 color: Colors.white,[m
+                               ),[m
+                             ),[m
+[36m@@ -942,121 +1152,386 @@[m [mclass _RegisterScreenState extends State<RegisterScreen> {[m
+     );[m
+   }[m
+ [m
+[32m+[m[32m  Widget _buildSectionHeader(String title) {[m
+[32m+[m[32m    return Container([m
+[32m+[m[32m      width: double.infinity,[m
+[32m+[m[32m      padding: const EdgeInsets.symmetric(vertical: 12),[m
+[32m+[m[32m      margin: const EdgeInsets.only(top: 14, bottom: 14),[m
+[32m+[m[32m      decoration: BoxDecoration([m
+[32m+[m[32m        color: const Color(0xFFE87A1E), // Vibrant Orange banner matching image[m
+[32m+[m[32m        borderRadius: BorderRadius.circular(8),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m      child: Text([m
+[32m+[m[32m        title,[m
+[32m+[m[32m        textAlign: TextAlign.center,[m
+[32m+[m[32m        style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m          fontSize: 18,[m
+[32m+[m[32m          fontWeight: FontWeight.w800,[m
+[32m+[m[32m          color: Colors.black87,[m
+[32m+[m[32m          letterSpacing: 1.2,[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  Widget _buildMobileVerificationSection({[m
+[32m+[m[32m    required String sectionTitle,[m
+[32m+[m[32m    required TextEditingController phoneController,[m
+[32m+[m[32m    required List<TextEditingController> otpControllers,[m
+[32m+[m[32m    required bool isVerified,[m
+[32m+[m[32m    required VoidCallback onToggleVerify,[m
+[32m+[m[32m  }) {[m
+[32m+[m[32m    return Container([m
+[32m+[m[32m      margin: const EdgeInsets.only(top: 8, bottom: 14),[m
+[32m+[m[32m      padding: const EdgeInsets.all(14),[m
+[32m+[m[32m      decoration: BoxDecoration([m
+[32m+[m[32m        color: Colors.white,[m
+[32m+[m[32m        borderRadius: BorderRadius.circular(14),[m
+[32m+[m[32m        border: Border.all(color: const Color(0xFFE2E8F0)),[m
+[32m+[m[32m        boxShadow: [[m
+[32m+[m[32m          BoxShadow([m
+[32m+[m[32m            color: Colors.black.withOpacity(0.02),[m
+[32m+[m[32m            blurRadius: 8,[m
+[32m+[m[32m            offset: const Offset(0, 2),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        ],[m
+[32m+[m[32m      ),[m
+[32m+[m[32m      child: Column([m
+[32m+[m[32m        crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m        children: [[m
+[32m+[m[32m          Text([m
+[32m+[m[32m            'Mobile Number',[m
+[32m+[m[32m            style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m              fontSize: 15,[m
+[32m+[m[32m              fontWeight: FontWeight.w700,[m
+[32m+[m[32m              color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m          const SizedBox(height: 8),[m
+[32m+[m[32m          Row([m
+[32m+[m[32m            children: [[m
+[32m+[m[32m              Container([m
+[32m+[m[32m                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),[m
+[32m+[m[32m                decoration: BoxDecoration([m
+[32m+[m[32m                  color: const Color(0xFFF1F5F9),[m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                  border: Border.all(color: const Color(0xFFCBD5E1)),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                child: Row([m
+[32m+[m[32m                  children: [[m
+[32m+[m[32m                    Text([m
+[32m+[m[32m                      '+91',[m
+[32m+[m[32m                      style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                        fontSize: 15,[m
+[32m+[m[32m                        fontWeight: FontWeight.w700,[m
+[32m+[m[32m                        color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    const SizedBox(width: 4),[m
+[32m+[m[32m                    const Icon(Icons.keyboard_arrow_down, size: 18, color: AppTheme.onSurfaceVariant),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              const SizedBox(width: 10),[m
+[32m+[m[32m              Expanded([m
+[32m+[m[32m                child: Container([m
+[32m+[m[32m                  height: 48,[m
+[32m+[m[32m                  decoration: BoxDecoration([m
+[32m+[m[32m                    color: Colors.white,[m
+[32m+[m[32m                    borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                    border: Border.all(color: Colors.black, width: 1.5),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                  alignment: Alignment.centerLeft,[m
+[32m+[m[32m                  padding: const EdgeInsets.symmetric(horizontal: 12),[m
+[32m+[m[32m                  child: TextFormField([m
+[32m+[m[32m                    controller: phoneController,[m
+[32m+[m[32m                    keyboardType: TextInputType.phone,[m
+[32m+[m[32m                    style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                      fontSize: 16,[m
+[32m+[m[32m                      fontWeight: FontWeight.w700,[m
+[32m+[m[32m                      letterSpacing: 1.0,[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    decoration: const InputDecoration([m
+[32m+[m[32m                      border: InputBorder.none,[m
+[32m+[m[32m                      isDense: true,[m
+[32m+[m[32m                      contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                      hintText: 'Enter 10-digit number',[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ],[m
+[32m+[m[32m          ),[m
+[32m+[m[32m          const SizedBox(height: 12),[m
+[32m+[m[32m          SizedBox([m
+[32m+[m[32m            width: double.infinity,[m
+[32m+[m[32m            height: 48,[m
+[32m+[m[32m            child: ElevatedButton([m
+[32m+[m[32m              onPressed: () {[m
+[32m+[m[32m                onToggleVerify();[m
+[32m+[m[32m                for (int i = 0; i < otpControllers.length; i++) {[m
+[32m+[m[32m                  if (i < 6) {[m
+[32m+[m[32m                    otpControllers[i].text = ['8', '1', '2', '1', '4', '4'][i];[m
+[32m+[m[32m                  }[m
+[32m+[m[32m                }[m
+[32m+[m[32m                ScaffoldMessenger.of(context).showSnackBar([m
+[32m+[m[32m                  SnackBar([m
+[32m+[m[32m                    content: Text('OTP sent to +91 ${phoneController.text.isNotEmpty ? phoneController.text : "81214 40281"}: 812144'),[m
+[32m+[m[32m                    backgroundColor: const Color(0xFFE87A1E),[m
+[32m+[m[32m                    duration: const Duration(seconds: 2),[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                );[m
+[32m+[m[32m              },[m
+[32m+[m[32m              style: ElevatedButton.styleFrom([m
+[32m+[m[32m                backgroundColor: const Color(0xFFE87A1E), // Orange matching images[m
+[32m+[m[32m                foregroundColor: Colors.white,[m
+[32m+[m[32m                shape: RoundedRectangleBorder([m
+[32m+[m[32m                  borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                elevation: 1,[m
+[32m+[m[32m              ),[m
+[32m+[m[32m              child: Text([m
+[32m+[m[32m                'GET OTP',[m
+[32m+[m[32m                style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                  fontSize: 16,[m
+[32m+[m[32m                  fontWeight: FontWeight.w800,[m
+[32m+[m[32m                  letterSpacing: 1.0,[m
+[32m+[m[32m                  color: Colors.black87,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m          const SizedBox(height: 14),[m
+[32m+[m[32m          Container([m
+[32m+[m[32m            padding: const EdgeInsets.all(12),[m
+[32m+[m[32m            decoration: BoxDecoration([m
+[32m+[m[32m              color: const Color(0xFFF8FAFC),[m
+[32m+[m[32m              borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m              border: Border.all(color: const Color(0xFFE2E8F0)),[m
+[32m+[m[32m            ),[m
+[32m+[m[32m            child: Column([m
+[32m+[m[32m              crossAxisAlignment: CrossAxisAlignment.start,[m
+[32m+[m[32m              children: [[m
+[32m+[m[32m                Row([m
+[32m+[m[32m                  mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                  children: [[m
+[32m+[m[32m                    Row([m
+[32m+[m[32m                      children: [[m
+[32m+[m[32m                        const Icon(Icons.arrow_back, size: 16, color: AppTheme.onSurfaceColor),[m
+[32m+[m[32m                        const SizedBox(width: 6),[m
+[32m+[m[32m                        Text([m
+[32m+[m[32m                          'Verify Mobile',[m
+[32m+[m[32m                          style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m                            fontSize: 15,[m
+[32m+[m[32m                            fontWeight: FontWeight.w700,[m
+[32m+[m[32m                            color: AppTheme.onSurfaceColor,[m
+[32m+[m[32m                          ),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ],[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                    GestureDetector([m
+[32m+[m[32m                      onTap: onToggleVerify,[m
+[32m+[m[32m                      child: Container([m
+[32m+[m[32m                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),[m
+[32m+[m[32m                        decoration: BoxDecoration([m
+[32m+[m[32m                          color: isVerified ? Colors.green.shade50 : Colors.orange.shade50,[m
+[32m+[m[32m                          borderRadius: BorderRadius.circular(6),[m
+[32m+[m[32m                          border: Border.all(color: isVerified ? Colors.green.shade300 : Colors.orange.shade300),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                        child: Row([m
+[32m+[m[32m                          children: [[m
+[32m+[m[32m                            Icon([m
+[32m+[m[32m                              isVerified ? Icons.check_circle : Icons.pending,[m
+[32m+[m[32m                              size: 13,[m
+[32m+[m[32m                              color: isVerified ? Colors.green.shade700 : Colors.orange.shade700,[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            const SizedBox(width: 4),[m
+[32m+[m[32m                            Text([m
+[32m+[m[32m                              isVerified ? 'VERIFIED' : 'VERIFY',[m
+[32m+[m[32m                              style: GoogleFonts.inter([m
+[32m+[m[32m                                fontSize: 10,[m
+[32m+[m[32m                                fontWeight: FontWeight.w800,[m
+[32m+[m[32m                                color: isVerified ? Colors.green.shade700 : Colors.orange.shade700,[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                          ],[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    ),[m
+[32m+[m[32m                  ],[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                const SizedBox(height: 8),[m
+[32m+[m[32m                Text([m
+[32m+[m[32m                  'Enter the 6-digit code sent via SMS to +91 ${phoneController.text.isNotEmpty ? phoneController.text : "81214 40281"}',[m
+[32m+[m[32m                  style: GoogleFonts.inter([m
+[32m+[m[32m                    fontSize: 12,[m
+[32m+[m[32m                    color: AppTheme.onSurfaceVariant,[m
+[32m+[m[32m                  ),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                const SizedBox(height: 12),[m
+[32m+[m[32m                Row([m
+[32m+[m[32m                  mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[32m+[m[32m                  children: List.generate(6, (index) {[m
+[32m+[m[32m                    return Container([m
+[32m+[m[32m                      width: 42,[m
+[32m+[m[32m                      height: 44,[m
+[32m+[m[32m                      decoration: BoxDecoration([m
+[32m+[m[32m                        color: const Color(0xFFEFF6FF),[m
+[32m+[m[32m                        borderRadius: BorderRadius.circular(10),[m
+[32m+[m[32m                        border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                      alignment: Alignment.center,[m
+[32m+[m[32m                      child: Text([m
+[32m+[m[32m                        otpControllers[index].text.isNotEmpty ? otpControllers[index].text : '•',[m
+[32m+[m[32m                        style: GoogleFonts.robotoMono([m
+[32m+[m[32m                          fontSize: 16,[m
+[32m+[m[32m                          fontWeight: FontWeight.bold,[m
+[32m+[m[32m                          color: const Color(0xFF1D4ED8),[m
+[32m+[m[32m                        ),[m
+[32m+[m[32m                      ),[m
+[32m+[m[32m                    );[m
+[32m+[m[32m                  }),[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ],[m
+[32m+[m[32m            ),[m
+[32m+[m[32m          ),[m
+[32m+[m[32m        ],[m
+[32m+[m[32m      ),[m
+[32m+[m[32m    );[m
+[32m+[m[32m  }[m
+[32m+[m
+   Widget _buildUploadBox({[m
+     required String title,[m
+[32m+[m[32m    required String docType,[m
+     required Uint8List? imageBytes,[m
+     required VoidCallback onTap,[m
+   }) {[m
+[31m-    final bool isUploaded = imageBytes != null;[m
+[31m-    return InkWell([m
+[31m-      onTap: onTap,[m
+[31m-      borderRadius: BorderRadius.circular(12),[m
+[31m-      child: Container([m
+[31m-        width: double.infinity,[m
+[31m-        height: 120,[m
+[31m-        decoration: BoxDecoration([m
+[31m-          color: isUploaded ? Colors.transparent : AppTheme.surfaceContainerLow,[m
+[31m-          borderRadius: BorderRadius.circular(12),[m
+[31m-          border: Border.all([m
+[31m-            color: isUploaded ? Colors.green : AppTheme.outlineVariant.withOpacity(0.5),[m
+[31m-            width: isUploaded ? 1.5 : 1,[m
+[32m+[m[32m    final bool hasUploaded = imageBytes != null;[m
+[32m+[m[32m    final String displayFileName = _docFileNames[docType] ?? '';[m
+[32m+[m[32m    final String displayFileSize = _docFileSizes[docType] ?? '';[m
+[32m+[m
+[32m+[m[32m    return Container([m
+[32m+[m[32m      margin: const EdgeInsets.only(bottom: 12),[m
+[32m+[m[32m      decoration: BoxDecoration([m
+[32m+[m[32m        color: AppTheme.surfaceContainer,[m
+[32m+[m[32m        borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m        border: Border.all([m
+[32m+[m[32m          color: hasUploaded ? Colors.green.withOpacity(0.3) : AppTheme.outlineVariant.withOpacity(0.3),[m
+[32m+[m[32m        ),[m
+[32m+[m[32m      ),[m
+[32m+[m[32m      child: ListTile([m
+[32m+[m[32m        leading: Icon([m
+[32m+[m[32m          hasUploaded ? Icons.check_circle : Icons.upload_file_rounded,[m
+[32m+[m[32m          color: hasUploaded ? Colors.green : AppTheme.primaryColor,[m
+[32m+[m[32m        ),[m
+[32m+[m[32m        title: Text([m
+[32m+[m[32m          title,[m
+[32m+[m[32m          style: GoogleFonts.hankenGrotesk([m
+[32m+[m[32m            fontWeight: FontWeight.w600,[m
+[32m+[m[32m            fontSize: 16,[m
+[32m+[m[32m            color: AppTheme.onSurfaceColor,[m
+           ),[m
+[31m-          image: isUploaded[m
+[31m-              ? DecorationImage([m
+[31m-                  image: MemoryImage(imageBytes),[m
+[31m-                  fit: BoxFit.cover,[m
+[31m-                  colorFilter: ColorFilter.mode([m
+[31m-                    Colors.black.withOpacity(0.4),[m
+[31m-                    BlendMode.darken,[m
+[31m-                  ),[m
+[31m-                )[m
+[31m-              : null,[m
+         ),[m
+[31m-        child: isUploaded[m
+[31m-            ? Stack([m
+[32m+[m[32m        subtitle: hasUploaded[m
+[32m+[m[32m            ? Text([m
+[32m+[m[32m                displayFileName.isNotEmpty ? '$displayFileName ($displayFileSize)' : 'Document Selected',[m
+[32m+[m[32m                style: GoogleFonts.inter([m
+[32m+[m[32m                  fontSize: 11,[m
+[32m+[m[32m                  color: AppTheme.onSurfaceVariant,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              )[m
+[32m+[m[32m            : Text([m
+[32m+[m[32m                'Upload JPG/JPEG document',[m
+[32m+[m[32m                style: GoogleFonts.inter([m
+[32m+[m[32m                  fontSize: 11,[m
+[32m+[m[32m                  color: AppTheme.onSurfaceVariant,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m              ),[m
+[32m+[m[32m        trailing: hasUploaded[m
+[32m+[m[32m            ? Row([m
+[32m+[m[32m                mainAxisSize: MainAxisSize.min,[m
+                 children: [[m
+[31m-                  Positioned.fill([m
+[31m-                    child: Padding([m
+[31m-                      padding: const EdgeInsets.all(12.0),[m
+[31m-                      child: Column([m
+[31m-                        crossAxisAlignment: CrossAxisAlignment.start,[m
+[31m-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                        children: [[m
+[31m-                          Row([m
+[31m-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,[m
+[31m-                            children: [[m
+[31m-                              Container([m
+[31m-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[31m-                                decoration: BoxDecoration([m
+[31m-                                  color: Colors.green.withOpacity(0.9),[m
+[31m-                                  borderRadius: BorderRadius.circular(4),[m
+[31m-                                ),[m
+[31m-                                child: Text([m
+[31m-                                  'SELECTED',[m
+[31m-                                  style: GoogleFonts.robotoMono([m
+[31m-                                    fontSize: 10,[m
+[31m-                                    fontWeight: FontWeight.bold,[m
+[31m-                                    color: Colors.white,[m
+[32m+[m[32m                  IconButton([m
+[32m+[m[32m                    icon: const Icon(Icons.visibility, color: AppTheme.primaryColor),[m
+[32m+[m[32m                    tooltip: 'View Document',[m
+[32m+[m[32m                    onPressed: () {[m
+[32m+[m[32m                      showDialog([m
+[32m+[m[32m                        context: context,[m
+[32m+[m[32m                        builder: (context) {[m
+[32m+[m[32m                          return AlertDialog([m
+[32m+[m[32m                            title: Text([m
+[32m+[m[32m                              title,[m
+[32m+[m[32m                              style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),[m
+[32m+[m[32m                            ),[m
+[32m+[m[32m                            content: Column([m
+[32m+[m[32m                              mainAxisSize: MainAxisSize.min,[m
+[32m+[m[32m                              children: [[m
+[32m+[m[32m                                if (displayFileName.isNotEmpty)[m
+[32m+[m[32m                                  Text([m
+[32m+[m[32m                                    displayFileName,[m
+[32m+[m[32m                                    style: GoogleFonts.inter([m
+[32m+[m[32m                                      fontSize: 12,[m
+[32m+[m[32m                                      fontWeight: FontWeight.bold,[m
+[32m+[m[32m                                    ),[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                if (displayFileSize.isNotEmpty)[m
+[32m+[m[32m                                  Text([m
+[32m+[m[32m                                    displayFileSize,[m
+[32m+[m[32m                                    style: GoogleFonts.inter([m
+[32m+[m[32m                                      fontSize: 11,[m
+[32m+[m[32m                                      color: AppTheme.onSurfaceVariant,[m
+[32m+[m[32m                                    ),[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                const SizedBox(height: 12),[m
+[32m+[m[32m                                Container([m
+[32m+[m[32m                                  height: 240,[m
+[32m+[m[32m                                  width: double.infinity,[m
+[32m+[m[32m                                  decoration: BoxDecoration([m
+[32m+[m[32m                                    borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                                    border: Border.all(color: AppTheme.outlineVariant),[m
+[32m+[m[32m                                  ),[m
+[32m+[m[32m                                  child: ClipRRect([m
+[32m+[m[32m                                    borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                                    child: Image.memory([m
+[32m+[m[32m                                      imageBytes,[m
+[32m+[m[32m                                      fit: BoxFit.contain,[m
+[32m+[m[32m                                    ),[m
+                                   ),[m
+[31m-                                ),[m
+[31m-                              ),[m
+[31m-                              const Icon([m
+[31m-                                Icons.check_circle,[m
+[31m-                                color: Colors.green,[m
+[31m-                                size: 24,[m
+[31m-                              ),[m
+[31m-                            ],[m
+[31m-                          ),[m
+[31m-                          Text([m
+[31m-                            title,[m
+[31m-                            style: GoogleFonts.inter([m
+[31m-                              fontSize: 14,[m
+[31m-                              fontWeight: FontWeight.w600,[m
+[31m-                              color: Colors.white,[m
+[31m-                              shadows: const [[m
+[31m-                                Shadow([m
+[31m-                                  offset: Offset(0, 1),[m
+[31m-                                  blurRadius: 3.0,[m
+[31m-                                  color: Colors.black54,[m
+                                 ),[m
+                               ],[m
+                             ),[m
+[31m-                          ),[m
+[31m-                        ],[m
+[31m-                      ),[m
+[31m-                    ),[m
+[31m-                  ),[m
+[31m-                ],[m
+[31m-              )[m
+[31m-            : Row([m
+[31m-                children: [[m
+[31m-                  const SizedBox(width: 16),[m
+[31m-                  Icon([m
+[31m-                    Icons.cloud_upload_outlined,[m
+[31m-                    color: AppTheme.primaryColor,[m
+[31m-                    size: 24,[m
+[31m-                  ),[m
+[31m-                  const SizedBox(width: 12),[m
+[31m-                  Expanded([m
+[31m-                    child: Text([m
+[31m-                      title,[m
+[31m-                      style: GoogleFonts.inter([m
+[31m-                        fontSize: 14,[m
+[31m-                        fontWeight: FontWeight.w500,[m
+[31m-                        color: AppTheme.onSurfaceColor,[m
+[31m-                      ),[m
+[31m-                    ),[m
+[32m+[m[32m                            actions: [[m
+[32m+[m[32m                              TextButton([m
+[32m+[m[32m                                onPressed: () => Navigator.pop(context),[m
+[32m+[m[32m                                child: const Text('Close'),[m
+[32m+[m[32m                              ),[m
+[32m+[m[32m                            ],[m
+[32m+[m[32m                          );[m
+[32m+[m[32m                        },[m
+[32m+[m[32m                      );[m
+[32m+[m[32m                    },[m
+                   ),[m
+[31m-                  Text([m
+[31m-                    'TAP TO UPLOAD',[m
+[31m-                    style: GoogleFonts.robotoMono([m
+[31m-                      fontSize: 12,[m
+[31m-                      fontWeight: FontWeight.w600,[m
+[31m-                      color: AppTheme.primaryColor,[m
+[31m-                    ),[m
+[32m+[m[32m                  IconButton([m
+[32m+[m[32m                    icon: const Icon(Icons.sync_rounded, color: AppTheme.onSurfaceVariant),[m
+[32m+[m[32m                    tooltip: 'Change Document',[m
+[32m+[m[32m                    onPressed: onTap,[m
+                   ),[m
+[31m-                  const SizedBox(width: 16),[m
+                 ],[m
+[32m+[m[32m              )[m
+[32m+[m[32m            : ElevatedButton([m
+[32m+[m[32m                onPressed: onTap,[m
+[32m+[m[32m                style: ElevatedButton.styleFrom([m
+[32m+[m[32m                  backgroundColor: const Color(0xFF004AC6),[m
+[32m+[m[32m                  foregroundColor: Colors.white,[m
+[32m+[m[32m                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),[m
+[32m+[m[32m                  minimumSize: Size.zero,[m
+[32m+[m[32m                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),[m
+[32m+[m[32m                  elevation: 0,[m
+[32m+[m[32m                ),[m
+[32m+[m[32m                child: Text([m
+[32m+[m[32m                  'Upload',[m
+[32m+[m[32m                  style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),[m
+[32m+[m[32m                ),[m
+               ),[m
+       ),[m
+     );[m
+[1mdiff --git a/staydriv_app/lib/features/ride_selection/screens/ride_selection_screen.dart b/staydriv_app/lib/features/ride_selection/screens/ride_selection_screen.dart[m
+[1mindex 41dd13c..0cb9787 100644[m
+[1m--- a/staydriv_app/lib/features/ride_selection/screens/ride_selection_screen.dart[m
+[1m+++ b/staydriv_app/lib/features/ride_selection/screens/ride_selection_screen.dart[m
+[36m@@ -49,12 +49,20 @@[m [mclass RideSelectionScreen extends StatefulWidget {[m
+   final String serviceType;[m
+   final String userName;[m
+   final String phoneNumber;[m
+[32m+[m[32m  final String? initialDropAddress;[m
+[32m+[m[32m  final LatLng? initialDropLatLng;[m
+[32m+[m[32m  final String? initialPickupAddress;[m
+[32m+[m[32m  final LatLng? initialPickupLatLng;[m
+   [m
+   const RideSelectionScreen({[m
+     super.key,[m
+     required this.serviceType,[m
+     this.userName = 'Customer',[m
+     this.phoneNumber = '9999999999',[m
+[32m+[m[32m    this.initialDropAddress,[m
+[32m+[m[32m    this.initialDropLatLng,[m
+[32m+[m[32m    this.initialPickupAddress,[m
+[32m+[m[32m    this.initialPickupLatLng,[m
+   });[m
+ [m
+   @override[m
+[36m@@ -324,11 +332,54 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+     if (widget.serviceType == 'heavy_truck') {[m
+       _initHeavyTruckDateTime();[m
+     }[m
+[32m+[m[32m    _applyInitialLocations();[m
+     WidgetsBinding.instance.addPostFrameCallback((_) {[m
+[31m-      _detectCurrentLocation();[m
+[32m+[m[32m      _handleInitialStartup();[m
+     });[m
+   }[m
+ [m
+[32m+[m[32m  void _applyInitialLocations() {[m
+[32m+[m[32m    if (widget.initialDropAddress != null && widget.initialDropAddress!.isNotEmpty) {[m
+[32m+[m[32m      _dropController.text = widget.initialDropAddress!;[m
+[32m+[m[32m      _dropQuery = widget.initialDropAddress!;[m
+[32m+[m[32m      _dropLatLng = widget.initialDropLatLng;[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (widget.initialPickupAddress != null && widget.initialPickupAddress!.isNotEmpty) {[m
+[32m+[m[32m      _pickupController.text = widget.initialPickupAddress!;[m
+[32m+[m[32m      _pickupQuery = widget.initialPickupAddress!;[m
+[32m+[m[32m      _pickupLatLng = widget.initialPickupLatLng;[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  Future<void> _handleInitialStartup() async {[m
+[32m+[m[32m    // 1. If drop coordinates are missing but drop address is provided, resolve them[m
+[32m+[m[32m    if (_dropLatLng == null && _dropController.text.isNotEmpty) {[m
+[32m+[m[32m      final geo = await _geocodeAddress(_dropController.text);[m
+[32m+[m[32m      if (geo != null && mounted) {[m
+[32m+[m[32m        setState(() {[m
+[32m+[m[32m          _dropLatLng = geo;[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // 2. If pickup was provided without coordinates, resolve it[m
+[32m+[m[32m    if (_pickupController.text.isNotEmpty && _pickupLatLng == null) {[m
+[32m+[m[32m      final geo = await _geocodeAddress(_pickupController.text);[m
+[32m+[m[32m      if (geo != null && mounted) {[m
+[32m+[m[32m        setState(() {[m
+[32m+[m[32m          _pickupLatLng = geo;[m
+[32m+[m[32m        });[m
+[32m+[m[32m      }[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    // 3. If pickup is not provided, detect current location[m
+[32m+[m[32m    if (_pickupController.text.isEmpty) {[m
+[32m+[m[32m      await _detectCurrentLocation();[m
+[32m+[m[32m    } else if (mounted && _pickupLatLng != null && _dropLatLng != null) {[m
+[32m+[m[32m      _checkAndCalculateRoute();[m
+[32m+[m[32m    }[m
+[32m+[m[32m  }[m
+[32m+[m
+   DateTime? _getSlotDateTime(DateTime? date, String? slot) {[m
+     if (date == null || slot == null) return null;[m
+     try {[m
+[36m@@ -1544,10 +1595,10 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                   // Row 1: FROM (Pickup Location)[m
+                   AnimatedContainer([m
+                     duration: const Duration(milliseconds: 200),[m
+[31m-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),[m
+[32m+[m[32m                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),[m
+                     decoration: BoxDecoration([m
+                       color: _isPickupActive ? const Color(0xFFF0FDF4) : Colors.grey.shade50,[m
+[31m-                      borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                      borderRadius: BorderRadius.circular(14),[m
+                       border: Border.all([m
+                         color: _isPickupActive ? Colors.green.shade600 : Colors.grey.shade300,[m
+                         width: _isPickupActive ? 1.8 : 1.0,[m
+[36m@@ -1562,7 +1613,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                           children: [[m
+                             // Green FROM pill[m
+                             Container([m
+[31m-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[32m+[m[32m                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),[m
+                               decoration: BoxDecoration([m
+                                 color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600,[m
+                                 borderRadius: BorderRadius.circular(6),[m
+[36m@@ -1571,7 +1622,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                 'FROM',[m
+                                 style: GoogleFonts.inter([m
+                                   color: Colors.white,[m
+[31m-                                  fontSize: 10,[m
+[32m+[m[32m                                  fontSize: 11,[m
+                                   fontWeight: FontWeight.w800,[m
+                                   letterSpacing: 0.5,[m
+                                 ),[m
+[36m@@ -1586,7 +1637,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                   Text([m
+                                     'PICKUP LOCATION',[m
+                                     style: GoogleFonts.inter([m
+[31m-                                      fontSize: 10,[m
+[32m+[m[32m                                      fontSize: 11,[m
+                                       fontWeight: FontWeight.w700,[m
+                                       color: _isPickupActive ? Colors.green.shade800 : Colors.grey.shade600,[m
+                                       letterSpacing: 0.4,[m
+[36m@@ -1597,7 +1648,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                     controller: _pickupController,[m
+                                     focusNode: _pickupFocusNode,[m
+                                     style: GoogleFonts.inter([m
+[31m-                                      fontSize: 14,[m
+[32m+[m[32m                                      fontSize: 15,[m
+                                       fontWeight: FontWeight.w600,[m
+                                       color: Colors.black87,[m
+                                     ),[m
+[36m@@ -1618,12 +1669,12 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                       hintText: 'Enter pickup spot or use current location',[m
+                                       hintStyle: GoogleFonts.inter([m
+                                         color: Colors.grey.shade400,[m
+[31m-                                        fontSize: 13,[m
+[32m+[m[32m                                        fontSize: 14,[m
+                                         fontWeight: FontWeight.normal,[m
+                                       ),[m
+                                       border: InputBorder.none,[m
+[31m-                                      isDense: true,[m
+[31m-                                      contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                                      isDense: false,[m
+[32m+[m[32m                                      contentPadding: const EdgeInsets.symmetric(vertical: 6),[m
+                                     ),[m
+                                   ),[m
+                                 ],[m
+[36m@@ -1631,8 +1682,8 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                             ),[m
+                             if (_pickupController.text.isNotEmpty)[m
+                               IconButton([m
+[31m-                                icon: const Icon(Icons.cancel, size: 18, color: Colors.grey),[m
+[31m-                                splashRadius: 18,[m
+[32m+[m[32m                                icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),[m
+[32m+[m[32m                                splashRadius: 20,[m
+                                 padding: EdgeInsets.zero,[m
+                                 constraints: const BoxConstraints(),[m
+                                 onPressed: () {[m
+[36m@@ -1646,8 +1697,8 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                               )[m
+                             else[m
+                               IconButton([m
+[31m-                                icon: Icon(Icons.my_location, size: 18, color: Colors.green.shade700),[m
+[31m-                                splashRadius: 18,[m
+[32m+[m[32m                                icon: Icon(Icons.my_location, size: 20, color: Colors.green.shade700),[m
+[32m+[m[32m                                splashRadius: 20,[m
+                                 tooltip: 'Detect current location',[m
+                                 padding: EdgeInsets.zero,[m
+                                 constraints: const BoxConstraints(),[m
+[36m@@ -1655,26 +1706,27 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                               ),[m
+                           ],[m
+                         ),[m
+[31m-                        // Dedicated House / Flat / Residency input for exact door pickup[m
+[31m-                        const SizedBox(height: 6),[m
+[32m+[m[32m                        // Dedicated House / Flat / Residency input with spacious comfortable typing space[m
+[32m+[m[32m                        const SizedBox(height: 10),[m
+                         Container([m
+[31m-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),[m
+[32m+[m[32m                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),[m
+                           decoration: BoxDecoration([m
+                             color: Colors.white,[m
+[31m-                            borderRadius: BorderRadius.circular(8),[m
+[32m+[m[32m                            borderRadius: BorderRadius.circular(10),[m
+                             border: Border.all([m
+[31m-                              color: _isPickupActive ? Colors.green.shade300 : Colors.grey.shade300,[m
+[32m+[m[32m                              color: _isPickupActive ? Colors.green.shade400 : Colors.grey.shade300,[m
+[32m+[m[32m                              width: 1.2,[m
+                             ),[m
+                           ),[m
+                           child: Row([m
+                             children: [[m
+[31m-                              Icon(Icons.home_work_outlined, size: 15, color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600),[m
+[31m-                              const SizedBox(width: 6),[m
+[32m+[m[32m                              Icon(Icons.home_work_outlined, size: 18, color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600),[m
+[32m+[m[32m                              const SizedBox(width: 8),[m
+                               Expanded([m
+                                 child: TextField([m
+                                   controller: _pickupHouseController,[m
+                                   style: GoogleFonts.inter([m
+[31m-                                    fontSize: 12,[m
+[32m+[m[32m                                    fontSize: 14,[m
+                                     fontWeight: FontWeight.w600,[m
+                                     color: Colors.black87,[m
+                                   ),[m
+[36m@@ -1682,12 +1734,12 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                     hintText: 'House / Flat / Residency (e.g. House No -84, Rishipranavam)',[m
+                                     hintStyle: GoogleFonts.inter([m
+                                       color: Colors.grey.shade400,[m
+[31m-                                      fontSize: 11,[m
+[32m+[m[32m                                      fontSize: 13,[m
+                                       fontWeight: FontWeight.normal,[m
+                                     ),[m
+                                     border: InputBorder.none,[m
+[31m-                                    isDense: true,[m
+[31m-                                    contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                                    isDense: false,[m
+[32m+[m[32m                                    contentPadding: const EdgeInsets.symmetric(vertical: 4),[m
+                                   ),[m
+                                 ),[m
+                               ),[m
+[36m@@ -1699,8 +1751,8 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                     });[m
+                                   },[m
+                                   child: const Padding([m
+[31m-                                    padding: EdgeInsets.all(2.0),[m
+[31m-                                    child: Icon(Icons.clear, size: 14, color: Colors.grey),[m
+[32m+[m[32m                                    padding: EdgeInsets.all(4.0),[m
+[32m+[m[32m                                    child: Icon(Icons.clear, size: 16, color: Colors.grey),[m
+                                   ),[m
+                                 ),[m
+                             ],[m
+[36m@@ -1712,7 +1764,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+ [m
+                   // Middle Connector with Swap Button[m
+                   Padding([m
+[31m-                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0),[m
+[32m+[m[32m                    padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 10.0),[m
+                     child: Row([m
+                       children: [[m
+                         const SizedBox(width: 16),[m
+[36m@@ -1728,7 +1780,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                           onTap: _swapLocations,[m
+                           borderRadius: BorderRadius.circular(16),[m
+                           child: Container([m
+[31m-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),[m
+[32m+[m[32m                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),[m
+                             decoration: BoxDecoration([m
+                               color: Colors.white,[m
+                               borderRadius: BorderRadius.circular(16),[m
+[36m@@ -1763,13 +1815,13 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                     ),[m
+                   ),[m
+ [m
+[31m-                  // Row 2: TO (Drop Destination)[m
+[32m+[m[32m                  // Row 2: TO (Drop Destination) with spacious comfortable typing space[m
+                   AnimatedContainer([m
+                     duration: const Duration(milliseconds: 200),[m
+[31m-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),[m
+[32m+[m[32m                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),[m
+                     decoration: BoxDecoration([m
+                       color: !_isPickupActive ? const Color(0xFFFFF7ED) : Colors.grey.shade50,[m
+[31m-                      borderRadius: BorderRadius.circular(12),[m
+[32m+[m[32m                      borderRadius: BorderRadius.circular(14),[m
+                       border: Border.all([m
+                         color: !_isPickupActive ? Colors.orange.shade700 : Colors.grey.shade300,[m
+                         width: !_isPickupActive ? 1.8 : 1.0,[m
+[36m@@ -1780,7 +1832,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                       children: [[m
+                         // Orange TO pill[m
+                         Container([m
+[31m-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),[m
+[32m+[m[32m                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),[m
+                           decoration: BoxDecoration([m
+                             color: !_isPickupActive ? Colors.orange.shade800 : Colors.grey.shade600,[m
+                             borderRadius: BorderRadius.circular(6),[m
+[36m@@ -1789,7 +1841,7 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                             'TO',[m
+                             style: GoogleFonts.inter([m
+                               color: Colors.white,[m
+[31m-                              fontSize: 10,[m
+[32m+[m[32m                              fontSize: 11,[m
+                               fontWeight: FontWeight.w800,[m
+                               letterSpacing: 0.5,[m
+                             ),[m
+[36m@@ -1804,18 +1856,18 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                               Text([m
+                                 'DROP DESTINATION',[m
+                                 style: GoogleFonts.inter([m
+[31m-                                  fontSize: 10,[m
+[32m+[m[32m                                  fontSize: 11,[m
+                                   fontWeight: FontWeight.w700,[m
+                                   color: !_isPickupActive ? Colors.orange.shade800 : Colors.grey.shade600,[m
+                                   letterSpacing: 0.4,[m
+                                 ),[m
+                               ),[m
+[31m-                              const SizedBox(height: 2),[m
+[32m+[m[32m                              const SizedBox(height: 4),[m
+                               TextField([m
+                                 controller: _dropController,[m
+                                 focusNode: _dropFocusNode,[m
+                                 style: GoogleFonts.inter([m
+[31m-                                  fontSize: 14,[m
+[32m+[m[32m                                  fontSize: 16,[m
+                                   fontWeight: FontWeight.w600,[m
+                                   color: Colors.black87,[m
+                                 ),[m
+[36m@@ -1830,12 +1882,12 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                                   hintText: 'Where are you going? (e.g. Secunderabad)',[m
+                                   hintStyle: GoogleFonts.inter([m
+                                     color: Colors.grey.shade400,[m
+[31m-                                    fontSize: 13,[m
+[32m+[m[32m                                    fontSize: 14,[m
+                                     fontWeight: FontWeight.normal,[m
+                                   ),[m
+                                   border: InputBorder.none,[m
+[31m-                                  isDense: true,[m
+[31m-                                  contentPadding: EdgeInsets.zero,[m
+[32m+[m[32m                                  isDense: false,[m
+[32m+[m[32m                                  contentPadding: const EdgeInsets.symmetric(vertical: 6),[m
+                                 ),[m
+                               ),[m
+                             ],[m
+[36m@@ -1843,8 +1895,8 @@[m [mclass _RideSelectionScreenState extends State<RideSelectionScreen> {[m
+                         ),[m
+                         if (_dropController.text.isNotEmpty)[m
+                           IconButton([m
+[31m-                            icon: const Icon(Icons.cancel, size: 18, color: Colors.grey),[m
+[31m-                            splashRadius: 18,[m
+[32m+[m[32m                            icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),[m
+[32m+[m[32m                            splashRadius: 20,[m
+                             padding: EdgeInsets.zero,[m
+                             constraints: const BoxConstraints(),[m
+                             onPressed: () {[m
+[1mdiff --git a/staydriv_backend/deploy_aws/public/main.dart.js b/staydriv_backend/deploy_aws/public/main.dart.js[m
+[1mindex 396e9cc..be537cd 100644[m
+[1m--- a/staydriv_backend/deploy_aws/public/main.dart.js[m
+[1m+++ b/staydriv_backend/deploy_aws/public/main.dart.js[m
+[36m@@ -120271,7 +120271,7 @@[m [mc0===$&&A.c()[m
+ if(c0==="Admin"){c1=B.c.aT(m.r.a.a)[m
+ if(c1.length===0){m.c.S(t.q).f.bx(B.aDL)[m
+ s=1[m
+[31m-break}if(c1!=="bhavi@123"){m.c.S(t.q).f.bx(B.aDM)[m
+[32m+[m[32mbreak}if(c1!=="bhavi@123"&&c1!=="admin@123"){m.c.S(t.q).f.bx(B.aDM)[m
+ s=1[m
+ break}}if(c0==="Driver"){if(!m.ay||!m.ch||!m.CW||!m.cx||!m.cy||!m.db||!m.dx){m.c.S(t.q).f.bx(B.aDH)[m
+ s=1[m
+[36m@@ -120722,7 +120722,7 @@[m [m$1(a){var s=this.a.y[m
+ s===$&&A.c()[m
+ if(s==="Admin"){s=B.c.aT(a)[m
+ if(s.length===0)return"Password is required to access Admin"[m
+[31m-if(s!=="bhavi@123")return"Incorrect password. Access denied."}return null},[m
+[32m+[m[32mif(s!=="bhavi@123"&&s!=="admin@123")return"Incorrect password. Access denied."}return null},[m
+ $S:83}[m
+ A.aS3.prototype={[m
+ $1(a){return this.a.eV()},[m
+[1mdiff --git a/staydriv_backend/public/active_tunnel.json b/staydriv_backend/public/active_tunnel.json[m
+[1mindex b339541..c3372b3 100644[m
+[1m--- a/staydriv_backend/public/active_tunnel.json[m
+[1m+++ b/staydriv_backend/public/active_tunnel.json[m
+[36m@@ -1,5 +1,5 @@[m
+ {[m
+[31m-  "url": "https://aaron-unity-alternatives-canvas.trycloudflare.com",[m
+[31m-  "timestamp": "2026-09-16T03:05:56.702Z",[m
+[32m+[m[32m  "url": "https://favourite-attend-physicians-finest.trycloudflare.com",[m
+[32m+[m[32m  "timestamp": "2026-09-18T01:54:53.000Z",[m
+   "status": "active"[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/staydriv_backend/public/main.dart.js b/staydriv_backend/public/main.dart.js[m
+[1mindex 396e9cc..be537cd 100644[m
+[1m--- a/staydriv_backend/public/main.dart.js[m
+[1m+++ b/staydriv_backend/public/main.dart.js[m
+[36m@@ -120271,7 +120271,7 @@[m [mc0===$&&A.c()[m
+ if(c0==="Admin"){c1=B.c.aT(m.r.a.a)[m
+ if(c1.length===0){m.c.S(t.q).f.bx(B.aDL)[m
+ s=1[m
+[31m-break}if(c1!=="bhavi@123"){m.c.S(t.q).f.bx(B.aDM)[m
+[32m+[m[32mbreak}if(c1!=="bhavi@123"&&c1!=="admin@123"){m.c.S(t.q).f.bx(B.aDM)[m
+ s=1[m
+ break}}if(c0==="Driver"){if(!m.ay||!m.ch||!m.CW||!m.cx||!m.cy||!m.db||!m.dx){m.c.S(t.q).f.bx(B.aDH)[m
+ s=1[m
+[36m@@ -120722,7 +120722,7 @@[m [m$1(a){var s=this.a.y[m
+ s===$&&A.c()[m
+ if(s==="Admin"){s=B.c.aT(a)[m
+ if(s.length===0)return"Password is required to access Admin"[m
+[31m-if(s!=="bhavi@123")return"Incorrect password. Access denied."}return null},[m
+[32m+[m[32mif(s!=="bhavi@123"&&s!=="admin@123")return"Incorrect password. Access denied."}return null},[m
+ $S:83}[m
+ A.aS3.prototype={[m
+ $1(a){return this.a.eV()},[m
+[1mdiff --git a/staydriv_backend/server.js b/staydriv_backend/server.js[m
+[1mindex fee857e..34e42da 100644[m
+[1m--- a/staydriv_backend/server.js[m
+[1m+++ b/staydriv_backend/server.js[m
+[36m@@ -127,6 +127,10 @@[m [mconst userSchema = new mongoose.Schema({[m
+   licenseBack: String,[m
+   rcFront: String,[m
+   rcBack: String,[m
+[32m+[m[32m  panFront: String,[m
+[32m+[m[32m  panBack: String,[m
+[32m+[m[32m  ownerPhone: String,[m
+[32m+[m[32m  driverPhone: String,[m
+   fitness: String,[m
+   permit: String,[m
+   salary: { type: Number, default: 5000 },[m
+[36m@@ -295,7 +299,8 @@[m [mapp.post('/api/partner/update', async (req, res) => {[m
+   try {[m
+     const {[m
+       uid, online, lat, lng, vehicleType, vehiclePlate, vehicleModelColor, approved,[m
+[31m-      photo, aadhaarFront, aadhaarBack, licenseFront, licenseBack, rcFront, rcBack, fitness, permit[m
+[32m+[m[32m      photo, aadhaarFront, aadhaarBack, licenseFront, licenseBack, rcFront, rcBack,[m
+[32m+[m[32m      panFront, panBack, ownerPhone, driverPhone, fitness, permit[m
+     } = req.body;[m
+     console.log(`Updating partner status in MongoDB: uid=${uid}, online=${online}, vehicleType=${vehicleType}, lat=${lat}, lng=${lng}, approved=${approved}`);[m
+     let user = await User.findOne({ uid });[m
+[36m@@ -334,6 +339,10 @@[m [mapp.post('/api/partner/update', async (req, res) => {[m
+     if (licenseBack !== undefined) user.licenseBack = licenseBack;[m
+     if (rcFront !== undefined) user.rcFront = rcFront;[m
+     if (rcBack !== undefined) user.rcBack = rcBack;[m
+[32m+[m[32m    if (panFront !== undefined) user.panFront = panFront;[m
+[32m+[m[32m    if (panBack !== undefined) user.panBack = panBack;[m
+[32m+[m[32m    if (ownerPhone !== undefined) user.ownerPhone = ownerPhone;[m
+[32m+[m[32m    if (driverPhone !== undefined) user.driverPhone = driverPhone;[m
+     if (fitness !== undefined) user.fitness = fitness;[m
+     if (permit !== undefined) user.permit = permit;[m
+     user.lastActive = new Date();[m
+[36m@@ -345,6 +354,80 @@[m [mapp.post('/api/partner/update', async (req, res) => {[m
+   }[m
+ });[m
+ [m
+[32m+[m[32m// Direct register endpoint for Pilot, Admin, Staff, and Customer[m
+[32m+[m[32mapp.post(['/api/register', '/api/user/register'], async (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const { uid, name, phone, role, vehicleType, vehiclePlate, vehicleModelColor, isApproved, isDocumentVerified, status, panFront, panBack, ownerPhone, driverPhone } = req.body;[m
+[32m+[m[32m    let user = await User.findOne({ uid });[m
+[32m+[m[32m    if (!user && phone) {[m
+[32m+[m[32m      user = await User.findOne({ phone, role });[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (!user) {[m
+[32m+[m[32m      user = new User({[m
+[32m+[m[32m        uid: uid || `mock_uid_${phone}_${role || 'partner'}`,[m
+[32m+[m[32m        name: name || 'User',[m
+[32m+[m[32m        phone: phone || '',[m
+[32m+[m[32m        role: role || 'partner',[m
+[32m+[m[32m        vehicleType: vehicleType || 'Bike',[m
+[32m+[m[32m        vehiclePlate: vehiclePlate || '',[m
+[32m+[m[32m        vehicleModelColor: vehicleModelColor || 'Standard',[m
+[32m+[m[32m        approved: isApproved !== undefined ? isApproved : true,[m
+[32m+[m[32m        panFront,[m
+[32m+[m[32m        panBack,[m
+[32m+[m[32m        ownerPhone,[m
+[32m+[m[32m        driverPhone,[m
+[32m+[m[32m        lastActive: new Date()[m
+[32m+[m[32m      });[m
+[32m+[m[32m    } else {[m
+[32m+[m[32m      if (name) user.name = name;[m
+[32m+[m[32m      if (vehicleType) user.vehicleType = vehicleType;[m
+[32m+[m[32m      if (vehiclePlate) user.vehiclePlate = vehiclePlate;[m
+[32m+[m[32m      if (vehicleModelColor) user.vehicleModelColor = vehicleModelColor;[m
+[32m+[m[32m      if (isApproved !== undefined) user.approved = isApproved;[m
+[32m+[m[32m      if (panFront) user.panFront = panFront;[m
+[32m+[m[32m      if (panBack) user.panBack = panBack;[m
+[32m+[m[32m      if (ownerPhone) user.ownerPhone = ownerPhone;[m
+[32m+[m[32m      if (driverPhone) user.driverPhone = driverPhone;[m
+[32m+[m[32m      user.lastActive = new Date();[m
+[32m+[m[32m    }[m
+[32m+[m[32m    await user.save();[m
+[32m+[m[32m    res.status(200).json({ success: true, message: 'User registered successfully', user });[m
+[32m+[m[32m  } catch (err) {[m
+[32m+[m[32m    console.error('Registration error:', err.message);[m
+[32m+[m[32m    res.status(500).json({ success: false, error: err.message });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+[32m+[m[32m// Endpoint to replace or update driver details for an existing vehicle/pilot[m
+[32m+[m[32mapp.post('/api/partner/replace-driver', async (req, res) => {[m
+[32m+[m[32m  try {[m
+[32m+[m[32m    const { uid, ownerPhone, driverPhone, licenseFront, licenseBack, photo } = req.body;[m
+[32m+[m[32m    let user = await User.findOne({ uid });[m
+[32m+[m[32m    if (!user && ownerPhone) {[m
+[32m+[m[32m      user = await User.findOne({ phone: ownerPhone, role: 'partner' }) || await User.findOne({ ownerPhone, role: 'partner' });[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (!user) {[m
+[32m+[m[32m      user = new User({[m
+[32m+[m[32m        uid: uid || `mock_uid_${ownerPhone || driverPhone}_pilot`,[m
+[32m+[m[32m        role: 'partner',[m
+[32m+[m[32m        phone: ownerPhone || driverPhone,[m
+[32m+[m[32m        approved: true,[m
+[32m+[m[32m        lastActive: new Date()[m
+[32m+[m[32m      });[m
+[32m+[m[32m    }[m
+[32m+[m[32m    if (driverPhone) user.driverPhone = driverPhone;[m
+[32m+[m[32m    if (licenseFront) user.licenseFront = licenseFront;[m
+[32m+[m[32m    if (licenseBack) user.licenseBack = licenseBack;[m
+[32m+[m[32m    if (photo) user.photo = photo;[m
+[32m+[m[32m    user.lastActive = new Date();[m
+[32m+[m[32m    await user.save();[m
+[32m+[m[32m    res.status(200).json({ success: true, message: 'Driver details replaced/updated successfully', user });[m
+[32m+[m[32m  } catch (err) {[m
+[32m+[m[32m    console.error('Replace driver error:', err.message);[m
+[32m+[m[32m    res.status(500).json({ success: false, error: err.message });[m
+[32m+[m[32m  }[m
+[32m+[m[32m});[m
+[32m+[m
+ app.get('/api/user/:uid/rides', async (req, res) => {[m
+   try {[m
+     const { uid } = req.params;[m

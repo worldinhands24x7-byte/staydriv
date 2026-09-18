@@ -185,8 +185,8 @@ export const Login: React.FC = () => {
             <span><strong>Finance Manager:</strong></span>
             <span>finance@staydriv.com</span>
           </div>
-          <div style={{ marginTop: '4px', borderTop: '1px solid var(--border)', paddingTop: '4px' }}>
-            Password: <code style={{ color: 'var(--primary)', fontWeight: 'bold' }}>bhavi@123</code>
+          <div style={{ marginTop: '4px', borderTop: '1px solid var(--border)', paddingTop: '4px', fontStyle: 'italic', fontSize: '11px' }}>
+            Enter your confidential administrator / staff credentials to proceed.
           </div>
         </div>
 

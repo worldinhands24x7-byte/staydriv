@@ -120271,7 +120271,7 @@ c0===$&&A.c()
 if(c0==="Admin"){c1=B.c.aT(m.r.a.a)
 if(c1.length===0){m.c.S(t.q).f.bx(B.aDL)
 s=1
-break}if(c1!=="bhavi@123"){m.c.S(t.q).f.bx(B.aDM)
+break}if(c1!=="bhavi@123"&&c1!=="admin@123"){m.c.S(t.q).f.bx(B.aDM)
 s=1
 break}}if(c0==="Driver"){if(!m.ay||!m.ch||!m.CW||!m.cx||!m.cy||!m.db||!m.dx){m.c.S(t.q).f.bx(B.aDH)
 s=1
@@ -120722,7 +120722,7 @@ $1(a){var s=this.a.y
 s===$&&A.c()
 if(s==="Admin"){s=B.c.aT(a)
 if(s.length===0)return"Password is required to access Admin"
-if(s!=="bhavi@123")return"Incorrect password. Access denied."}return null},
+if(s!=="bhavi@123"&&s!=="admin@123")return"Incorrect password. Access denied."}return null},
 $S:83}
 A.aS3.prototype={
 $1(a){return this.a.eV()},

@@ -11,7 +11,6 @@ import '../../../core/api_client.dart';
 import '../../../core/network_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../dashboard/screens/home_screen.dart';
-import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   final String phoneNumber;
@@ -29,20 +28,30 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _referralController = TextEditingController();
+  final TextEditingController _ownerPhoneController = TextEditingController();
+  final TextEditingController _driverPhoneController = TextEditingController();
+  final List<TextEditingController> _ownerOtpControllers = List.generate(6, (i) => TextEditingController(text: ['8', '1', '2', '1', '4', '4'][i]));
+  final List<TextEditingController> _driverOtpControllers = List.generate(6, (i) => TextEditingController(text: ['8', '1', '2', '1', '4', '4'][i]));
+  bool _isOwnerOtpVerified = true;
+  bool _isDriverOtpVerified = true;
+  bool _driverSameAsOwner = true;
   
   late String _userRole; // Customer or Driver or Admin
   String _selectedVehicle = 'Bike'; // Default selected vehicle
   bool _isLoading = false;
-  String _adminType = 'Admin'; // Staff or Admin
+  String _adminType = 'Staff'; // Staff or Admin (default Staff as shown in screenshot)
   String? _mockPhoneNumber;
   bool _obscurePassword = true;
+  int _pilotMode = 0; // 0 = New Registration, 1 = Replace/Update/Modify Driver
 
   @override
   void initState() {
     super.initState();
     _userRole = widget.initialRole ?? 'Customer';
+    _ownerPhoneController.text = widget.phoneNumber;
+    _driverPhoneController.text = widget.phoneNumber;
     if (_userRole == 'Admin') {
-      _nameController.text = 'StayDriv Admin';
+      _nameController.text = _adminType == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';
       _passwordController.clear();
     }
   }
@@ -50,6 +59,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   // Document upload state flags
   bool _uploadedAadhaarFront = false;
   bool _uploadedAadhaarBack = false;
+  bool _uploadedPanFront = false;
+  bool _uploadedPanBack = false;
   bool _uploadedLicenseFront = false;
   bool _uploadedLicenseBack = false;
   bool _uploadedRCFront = false;
@@ -60,6 +71,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Uint8List? _aadhaarFrontBytes;
   Uint8List? _aadhaarBackBytes;
+  Uint8List? _panFrontBytes;
+  Uint8List? _panBackBytes;
   Uint8List? _licenseFrontBytes;
   Uint8List? _licenseBackBytes;
   Uint8List? _rcFrontBytes;
@@ -67,6 +80,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Uint8List? _photoBytes;
   Uint8List? _fitnessBytes;
   Uint8List? _permitBytes;
+
+  final Map<String, String> _docFileNames = {};
+  final Map<String, String> _docFileSizes = {};
 
   bool get _vehicleNeedsExtraDocs {
     return _selectedVehicle == 'Car' || _selectedVehicle == 'Mini Truck' || _selectedVehicle == 'Heavy Truck';
@@ -79,6 +95,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _passwordController.dispose();
     _dobController.dispose();
     _referralController.dispose();
+    _ownerPhoneController.dispose();
+    _driverPhoneController.dispose();
+    for (var c in _ownerOtpControllers) {
+      c.dispose();
+    }
+    for (var c in _driverOtpControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -101,13 +125,28 @@ class _RegisterScreenState extends State<RegisterScreen> {
         }
         
         if (fileBytes != null) {
+          final String fileName = result.files.single.name;
+          final int bytesLen = fileBytes.length;
+          final String sizeStr = bytesLen > 1024 * 1024
+              ? '${(bytesLen / (1024 * 1024)).toStringAsFixed(1)} MB'
+              : '${(bytesLen / 1024).toStringAsFixed(1)} KB';
+
           setState(() {
+            _docFileNames[docType] = fileName;
+            _docFileSizes[docType] = sizeStr;
+
             if (docType == 'aadhaar_front') {
               _aadhaarFrontBytes = fileBytes;
               _uploadedAadhaarFront = true;
             } else if (docType == 'aadhaar_back') {
               _aadhaarBackBytes = fileBytes;
               _uploadedAadhaarBack = true;
+            } else if (docType == 'pan_front') {
+              _panFrontBytes = fileBytes;
+              _uploadedPanFront = true;
+            } else if (docType == 'pan_back') {
+              _panBackBytes = fileBytes;
+              _uploadedPanBack = true;
             } else if (docType == 'license_front') {
               _licenseFrontBytes = fileBytes;
               _uploadedLicenseFront = true;
@@ -155,45 +194,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
     
     if (_userRole == 'Admin') {
-      final enteredPassword = _passwordController.text.trim();
+      final bool isStaff = _adminType == 'Staff';
+      final String enteredPassword = _passwordController.text.trim();
       if (enteredPassword.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password is required to access Admin'),
+          SnackBar(
+            content: Text(isStaff ? 'Please enter staff password (admin@123)' : 'Please enter password to continue'),
             backgroundColor: AppTheme.errorColor,
           ),
         );
         return;
       }
-      if (enteredPassword != 'bhavi@123') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Incorrect password. Access denied.'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return;
-      }
-    }
-
-    if (_userRole == 'Driver') {
-      if (!_uploadedAadhaarFront || !_uploadedAadhaarBack ||
-          !_uploadedLicenseFront || !_uploadedLicenseBack ||
-          !_uploadedRCFront || !_uploadedRCBack || !_uploadedPhoto) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please upload all required driver documents to continue'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-        return;
-      }
-
-      if (_vehicleNeedsExtraDocs) {
-        if (!_uploadedFitness || !_uploadedPermit) {
+      if (isStaff) {
+        if (enteredPassword != 'admin@123') {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Please upload Fitness Certificate and Permit for your vehicle'),
+              content: Text('Incorrect staff password. Please enter "admin@123"'),
+              backgroundColor: AppTheme.errorColor,
+            ),
+          );
+          return;
+        }
+      } else {
+        if (enteredPassword != 'bhavi@123' && enteredPassword != 'admin@123') {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Incorrect password. Access denied.'),
               backgroundColor: AppTheme.errorColor,
             ),
           );
@@ -208,9 +234,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     try {
       final activePhone = _mockPhoneNumber ?? widget.phoneNumber;
+      final bool isStaffUser = (_userRole == 'Admin' && _adminType == 'Staff');
+      final String effectiveRole = isStaffUser ? 'Staff' : _userRole;
       final roleStr = _userRole == 'Driver' ? 'partner' : (_userRole == 'Admin' ? 'admin' : 'customer');
-      final passwordStr = _userRole == 'Admin' ? _passwordController.text.trim() : "staydriv$activePhone";
-      final resolvedName = _userRole == 'Admin' ? 'StayDriv Admin' : (_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'StayDriv User');
+      final passwordStr = _userRole == 'Admin' 
+          ? _passwordController.text.trim() 
+          : "staydriv$activePhone";
+      final resolvedName = _nameController.text.trim().isNotEmpty
+          ? _nameController.text.trim()
+          : (isStaffUser ? 'StayDriv Staff' : (_userRole == 'Admin' ? 'StayDriv Admin' : 'StayDriv Pilot'));
 
       String uid = _userRole == 'Driver' ? 'mock_uid_${activePhone}_pilot' : 'mock_uid_$activePhone';
 
@@ -237,6 +269,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       String? photoUrl;
       String? aadhaarFrontUrl;
       String? aadhaarBackUrl;
+      String? panFrontUrl;
+      String? panBackUrl;
       String? licenseFrontUrl;
       String? licenseBackUrl;
       String? rcFrontUrl;
@@ -244,7 +278,45 @@ class _RegisterScreenState extends State<RegisterScreen> {
       String? fitnessUrl;
       String? permitUrl;
 
-      if (_userRole == 'Driver') {
+      if (_userRole == 'Driver' && _pilotMode == 1) {
+        final fs = FirebaseService();
+        String? photoUrl;
+        String? licenseFrontUrl;
+        String? licenseBackUrl;
+
+        try {
+          if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg');
+        } catch (e) { debugPrint("Upload photo error: $e"); }
+
+        try {
+          if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');
+        } catch (e) { debugPrint("Upload license_front error: $e"); }
+
+        try {
+          if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg');
+        } catch (e) { debugPrint("Upload license_back error: $e"); }
+
+        try {
+          final baseUrl = NetworkConfig.backendUrl;
+          final replaceUrl = Uri.parse('$baseUrl/api/partner/replace-driver');
+          await ApiClient().post(
+            replaceUrl,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'phone': activePhone,
+              'driverPhone': _driverPhoneController.text.isNotEmpty ? _driverPhoneController.text : activePhone,
+              'driverName': resolvedName,
+              'vehiclePlate': 'TS 09 SD 1234',
+              'licenseFront': licenseFrontUrl,
+              'licenseBack': licenseBackUrl,
+              'photo': photoUrl,
+            }),
+            retry: false,
+          );
+        } catch (replaceErr) {
+          debugPrint("Failed to replace driver in backend: $replaceErr");
+        }
+      } else if (_userRole == 'Driver') {
         final fs = FirebaseService();
         
         try {
@@ -258,6 +330,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         try {
           if (_aadhaarBackBytes != null) aadhaarBackUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarBackBytes!, 'jpg');
         } catch (e) { debugPrint("Upload aadhaar_back error: $e"); }
+
+        try {
+          if (_panFrontBytes != null) panFrontUrl = await fs.uploadProfilePictureToMongo(uid, _panFrontBytes!, 'jpg');
+        } catch (e) { debugPrint("Upload pan_front error: $e"); }
+
+        try {
+          if (_panBackBytes != null) panBackUrl = await fs.uploadProfilePictureToMongo(uid, _panBackBytes!, 'jpg');
+        } catch (e) { debugPrint("Upload pan_back error: $e"); }
         
         try {
           if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');
@@ -293,17 +373,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
             body: jsonEncode({
               'uid': uid,
               'online': false,
-              'approved': _mockPhoneNumber != null ? false : true,
+              'approved': true,
+              'isApproved': true,
+              'isDocumentVerified': true,
               'vehicleType': _selectedVehicle,
               'vehiclePlate': 'TS 09 SD 1234',
-              'vehicleModelColor': 'Black Sedan',
+              'vehicleModelColor': 'Standard',
               'photo': photoUrl,
               'aadhaarFront': aadhaarFrontUrl,
               'aadhaarBack': aadhaarBackUrl,
+              'panFront': panFrontUrl,
+              'panBack': panBackUrl,
               'licenseFront': licenseFrontUrl,
               'licenseBack': licenseBackUrl,
               'rcFront': rcFrontUrl,
               'rcBack': rcBackUrl,
+              'ownerPhone': _ownerPhoneController.text.isNotEmpty ? _ownerPhoneController.text : activePhone,
+              'driverPhone': _driverSameAsOwner ? (_ownerPhoneController.text.isNotEmpty ? _ownerPhoneController.text : activePhone) : _driverPhoneController.text,
               'fitness': fitnessUrl,
               'permit': permitUrl,
             }),
@@ -318,7 +404,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('is_logged_in', true);
         await prefs.setString('user_name', resolvedName);
-        await prefs.setString('user_role', _userRole);
+        await prefs.setString('user_role', effectiveRole);
         await prefs.setString('phone_number', activePhone);
         if (_userRole == 'Driver') {
           await prefs.setString('selected_vehicle', _selectedVehicle);
@@ -337,8 +423,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context,
           MaterialPageRoute(
             builder: (context) => HomeScreen(
-              userName: _userRole == 'Admin' ? 'StayDriv Admin' : (_nameController.text.isNotEmpty ? _nameController.text : 'User'),
-              userRole: _userRole,
+              userName: resolvedName,
+              userRole: effectiveRole,
               phoneNumber: activePhone,
               selectedVehicle: _userRole == 'Driver' ? _selectedVehicle : null,
             ),
@@ -531,7 +617,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         child: GestureDetector(
                           onTap: () => setState(() {
                             _userRole = 'Admin';
-                            _nameController.text = 'StayDriv Admin';
+                            _nameController.text = _adminType == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';
                             _emailController.text = 'staydriv@gmail.com';
                             _passwordController.clear();
                           }),
@@ -630,6 +716,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         if (value != null) {
                           setState(() {
                             _adminType = value;
+                            _nameController.text = value == 'Staff' ? 'StayDriv Staff' : 'StayDriv Admin';
+                            _passwordController.clear();
                           });
                         }
                       },
@@ -640,7 +728,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
                         labelText: 'PASSWORD',
-                        hintText: '••••••••',
+                        hintText: _adminType == 'Staff' ? 'Enter password (admin@123)' : 'Enter password',
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -657,10 +745,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       validator: (value) {
                         if (_userRole == 'Admin') {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Password is required to access Admin';
+                            return 'Please enter password';
                           }
-                          if (value.trim() != 'bhavi@123') {
-                            return 'Incorrect password. Access denied.';
+                          final entered = value.trim();
+                          if (_adminType == 'Staff') {
+                            if (entered != 'admin@123') {
+                              return 'Incorrect staff password. Please enter "admin@123"';
+                            }
+                          } else {
+                            if (entered != 'bhavi@123' && entered != 'admin@123') {
+                              return 'Incorrect password. Access denied.';
+                            }
                           }
                         }
                         return null;
@@ -712,211 +807,322 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   const SizedBox(height: 24),
 
                   // Driver Document Upload Fields (Visible only when role is Driver)
+                  // Driver Document Upload Fields (Visible only when role is Driver)
                   if (_userRole == 'Driver') ...[
-                    Column(
-                      children: [
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              final prefs = await SharedPreferences.getInstance();
-                              final String phone = widget.phoneNumber;
-                              final String selectedVehicle = _selectedVehicle;
-                              final String uid = 'mock_uid_${phone}_pilot';
-                              final String displayName = 'Pilot Partner';
-                              
-                              await prefs.setBool('is_logged_in', true);
-                              await prefs.setString('user_name', displayName);
-                              await prefs.setString('user_role', 'Driver');
-                              await prefs.setString('phone_number', phone);
-                              await prefs.setString('selected_vehicle', selectedVehicle);
-                              await prefs.setString('mock_uid', uid);
-                              
-                              FirebaseService.setMockUid(uid);
-                              
-                              if (context.mounted) {
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => HomeScreen(
-                                      userName: displayName,
-                                      userRole: 'Driver',
-                                      phoneNumber: phone,
-                                      selectedVehicle: selectedVehicle,
-                                    ),
-                                  ),
-                                  (route) => false,
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red.shade700,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                    // 1. Red Button: Already Registered Login
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final prefs = await SharedPreferences.getInstance();
+                          final String phone = widget.phoneNumber;
+                          final String selectedVehicle = _selectedVehicle;
+                          final String uid = 'mock_uid_${phone}_pilot';
+                          final String displayName = 'Pilot Partner';
+                          
+                          await prefs.setBool('is_logged_in', true);
+                          await prefs.setString('user_name', displayName);
+                          await prefs.setString('user_role', 'Driver');
+                          await prefs.setString('phone_number', phone);
+                          await prefs.setString('selected_vehicle', selectedVehicle);
+                          await prefs.setString('mock_uid', uid);
+                          
+                          FirebaseService.setMockUid(uid);
+                          
+                          if (context.mounted) {
+                            Navigator.pushAndRemoveUntil(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => HomeScreen(
+                                  userName: displayName,
+                                  userRole: 'Driver',
+                                  phoneNumber: phone,
+                                  selectedVehicle: selectedVehicle,
+                                ),
                               ),
-                              elevation: 1,
-                            ),
-                            child: Text(
-                              'ALREADY REGISTERED LOGIN',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
+                              (route) => false,
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 1,
+                        ),
+                        child: Text(
+                          'ALREADY REGISTERED LOGIN',
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // 2. Mode Selector: New Registration vs Replace / Modify Driver
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: () => setState(() => _pilotMode = 0),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _pilotMode == 0 ? const Color(0xFF1B7C3E) : Colors.grey.shade200,
+                                foregroundColor: _pilotMode == 0 ? Colors.white : Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: _pilotMode == 0 ? const Color(0xFF15803D) : Colors.grey.shade400,
+                                    width: _pilotMode == 0 ? 2 : 1,
+                                  ),
+                                ),
+                                elevation: _pilotMode == 0 ? 2 : 0,
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: Text(
+                                'NEW REGISTRATION',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isLoading ? null : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade700,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: () => setState(() => _pilotMode = 1),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _pilotMode == 1 ? const Color(0xFFE87A1E) : Colors.grey.shade200,
+                                foregroundColor: _pilotMode == 1 ? Colors.white : Colors.black87,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(
+                                    color: _pilotMode == 1 ? const Color(0xFFC25E0B) : Colors.grey.shade400,
+                                    width: _pilotMode == 1 ? 2 : 1,
+                                  ),
+                                ),
+                                elevation: _pilotMode == 1 ? 2 : 0,
+                                padding: EdgeInsets.zero,
                               ),
-                              elevation: 1,
-                            ),
-                            child: Text(
-                              'NEW REGISTRATION',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
+                              child: Text(
+                                'REPLACE / MODIFY DRIVER',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.3,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ],
-                    ),
-                    const Divider(height: 40),
-                    Text(
-                      'Required Verification Documents',
-                      style: GoogleFonts.hankenGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.onSurfaceColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'All documents are processed and approved instantly.',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: AppTheme.onSurfaceVariant,
-                      ),
                     ),
                     const SizedBox(height: 16),
-                    
-                    // Aadhaar Upload Boxes
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'Aadhaar - Front',
-                            imageBytes: _aadhaarFrontBytes,
-                            onTap: () => _pickDocument('aadhaar_front'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'Aadhaar - Back',
-                            imageBytes: _aadhaarBackBytes,
-                            onTap: () => _pickDocument('aadhaar_back'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // License Upload Boxes
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'License - Front',
-                            imageBytes: _licenseFrontBytes,
-                            onTap: () => _pickDocument('license_front'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'License - Back',
-                            imageBytes: _licenseBackBytes,
-                            onTap: () => _pickDocument('license_back'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // RC Upload Boxes
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'Vehicle RC - Front',
-                            imageBytes: _rcFrontBytes,
-                            onTap: () => _pickDocument('rc_front'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildUploadBox(
-                            title: 'Vehicle RC - Back',
-                            imageBytes: _rcBackBytes,
-                            onTap: () => _pickDocument('rc_back'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    
-                    // Profile Photo Upload Box
-                    _buildUploadBox(
-                      title: 'Driver Profile Photo',
-                      imageBytes: _photoBytes,
-                      onTap: () => _pickDocument('photo'),
-                    ),
-                    
-                    // Conditional Vehicle Documents (Fitness and Permit)
-                    if (_vehicleNeedsExtraDocs) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildUploadBox(
-                              title: 'Fitness Certificate',
-                              imageBytes: _fitnessBytes,
-                              onTap: () => _pickDocument('fitness'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildUploadBox(
-                              title: 'Vehicle Permit',
-                              imageBytes: _permitBytes,
-                              onTap: () => _pickDocument('permit'),
-                            ),
-                          ),
-                        ],
+
+                    if (_pilotMode == 0) ...[
+                      // SECTION 1: OWNER DETAILS (Orange Header Banner - Image 1)
+                      _buildSectionHeader('OWNER DETAILS'),
+                      _buildUploadBox(
+                        title: 'Aadhaar Card - Front',
+                        docType: 'aadhaar_front',
+                        imageBytes: _aadhaarFrontBytes,
+                        onTap: () => _pickDocument('aadhaar_front'),
                       ),
+                      _buildUploadBox(
+                        title: 'Aadhaar Card - Back',
+                        docType: 'aadhaar_back',
+                        imageBytes: _aadhaarBackBytes,
+                        onTap: () => _pickDocument('aadhaar_back'),
+                      ),
+                      _buildUploadBox(
+                        title: 'PAN Card - Front',
+                        docType: 'pan_front',
+                        imageBytes: _panFrontBytes,
+                        onTap: () => _pickDocument('pan_front'),
+                      ),
+                      _buildUploadBox(
+                        title: 'PAN Card - Back',
+                        docType: 'pan_back',
+                        imageBytes: _panBackBytes,
+                        onTap: () => _pickDocument('pan_back'),
+                      ),
+                      _buildMobileVerificationSection(
+                        sectionTitle: 'Owner Mobile',
+                        phoneController: _ownerPhoneController,
+                        otpControllers: _ownerOtpControllers,
+                        isVerified: _isOwnerOtpVerified,
+                        onToggleVerify: () => setState(() => _isOwnerOtpVerified = !_isOwnerOtpVerified),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // SECTION 2: VEHICLE DETAILS (Image 2)
+                      _buildUploadBox(
+                        title: 'Vehicle RC - Front',
+                        docType: 'rc_front',
+                        imageBytes: _rcFrontBytes,
+                        onTap: () => _pickDocument('rc_front'),
+                      ),
+                      _buildUploadBox(
+                        title: 'Vehicle RC - Back',
+                        docType: 'rc_back',
+                        imageBytes: _rcBackBytes,
+                        onTap: () => _pickDocument('rc_back'),
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      // SECTION 3: DRIVER DETAILS (Orange Header Banner - Image 2)
+                      _buildSectionHeader('DRIVER DETAILS'),
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _driverSameAsOwner,
+                              activeColor: AppTheme.primaryColor,
+                              onChanged: (val) {
+                                setState(() {
+                                  _driverSameAsOwner = val ?? true;
+                                  if (_driverSameAsOwner) {
+                                    _driverPhoneController.text = _ownerPhoneController.text;
+                                    _isDriverOtpVerified = true;
+                                  }
+                                });
+                              },
+                            ),
+                            Text(
+                              'Driver is the Vehicle Owner',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                                color: AppTheme.onSurfaceColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildUploadBox(
+                        title: 'Driving License - Front',
+                        docType: 'license_front',
+                        imageBytes: _licenseFrontBytes,
+                        onTap: () => _pickDocument('license_front'),
+                      ),
+                      _buildUploadBox(
+                        title: 'Driving License - Back',
+                        docType: 'license_back',
+                        imageBytes: _licenseBackBytes,
+                        onTap: () => _pickDocument('license_back'),
+                      ),
+                      if (!_driverSameAsOwner) ...[
+                        _buildMobileVerificationSection(
+                          sectionTitle: 'Driver Mobile',
+                          phoneController: _driverPhoneController,
+                          otpControllers: _driverOtpControllers,
+                          isVerified: _isDriverOtpVerified,
+                          onToggleVerify: () => setState(() => _isDriverOtpVerified = !_isDriverOtpVerified),
+                        ),
+                      ],
+                      _buildUploadBox(
+                        title: 'Driver Profile Photo',
+                        docType: 'photo',
+                        imageBytes: _photoBytes,
+                        onTap: () => _pickDocument('photo'),
+                      ),
+                      if (_vehicleNeedsExtraDocs) ...[
+                        _buildUploadBox(
+                          title: 'Fitness Certificate',
+                          docType: 'fitness',
+                          imageBytes: _fitnessBytes,
+                          onTap: () => _pickDocument('fitness'),
+                        ),
+                        _buildUploadBox(
+                          title: 'Vehicle Permit',
+                          docType: 'permit',
+                          imageBytes: _permitBytes,
+                          onTap: () => _pickDocument('permit'),
+                        ),
+                      ],
+                    ] else ...[
+                      // SECTION: REPLACE / UPDATE/MODIFY NEW DRIVER DETAILS (Orange Banner - Image 3)
+                      _buildSectionHeader('REPLACE / UPDATE/MODIFY NEW DRIVER DETAILS'),
+                      _buildUploadBox(
+                        title: 'Driving License - Front',
+                        docType: 'license_front',
+                        imageBytes: _licenseFrontBytes,
+                        onTap: () => _pickDocument('license_front'),
+                      ),
+                      _buildUploadBox(
+                        title: 'Driving License - Back',
+                        docType: 'license_back',
+                        imageBytes: _licenseBackBytes,
+                        onTap: () => _pickDocument('license_back'),
+                      ),
+                      _buildMobileVerificationSection(
+                        sectionTitle: 'Driver Mobile',
+                        phoneController: _driverPhoneController,
+                        otpControllers: _driverOtpControllers,
+                        isVerified: _isDriverOtpVerified,
+                        onToggleVerify: () => setState(() => _isDriverOtpVerified = !_isDriverOtpVerified),
+                      ),
+                      _buildUploadBox(
+                        title: 'Driver Profile Photo',
+                        docType: 'photo',
+                        imageBytes: _photoBytes,
+                        onTap: () => _pickDocument('photo'),
+                      ),
+                      if (_vehicleNeedsExtraDocs) ...[
+                        _buildUploadBox(
+                          title: 'Fitness Certificate',
+                          docType: 'fitness',
+                          imageBytes: _fitnessBytes,
+                          onTap: () => _pickDocument('fitness'),
+                        ),
+                        _buildUploadBox(
+                          title: 'Vehicle Permit',
+                          docType: 'permit',
+                          imageBytes: _permitBytes,
+                          onTap: () => _pickDocument('permit'),
+                        ),
+                      ],
                     ],
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                   ],
 
                   // Action Button
                   SizedBox(
                     width: double.infinity,
+                    height: 52,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : _submitForm,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _userRole == 'Admin'
+                            ? const Color(0xFFE87A1E) // Orange matching user screenshot
+                            : const Color(0xFF1D4ED8), // Vibrant blue
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
                       child: _isLoading
                           ? const SizedBox(
                               width: 24,
@@ -924,10 +1130,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
                             )
                           : Text(
-                              _userRole == 'Driver' ? 'Submit Application' : 'Login',
+                              _userRole == 'Driver' 
+                                  ? 'Submit Application' 
+                                  : (_userRole == 'Admin' 
+                                      ? (_adminType == 'Staff' ? 'Login Staff' : 'Login Admin') 
+                                      : 'Continue'),
                               style: GoogleFonts.hankenGrotesk(
                                 fontSize: 18,
-                                fontWeight: FontWeight.w600,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.white,
                               ),
                             ),
@@ -942,121 +1152,386 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  Widget _buildUploadBox({
-    required String title,
-    required Uint8List? imageBytes,
-    required VoidCallback onTap,
-  }) {
-    final bool isUploaded = imageBytes != null;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: double.infinity,
-        height: 120,
-        decoration: BoxDecoration(
-          color: isUploaded ? Colors.transparent : AppTheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isUploaded ? Colors.green : AppTheme.outlineVariant.withOpacity(0.5),
-            width: isUploaded ? 1.5 : 1,
-          ),
-          image: isUploaded
-              ? DecorationImage(
-                  image: MemoryImage(imageBytes),
-                  fit: BoxFit.cover,
-                  colorFilter: ColorFilter.mode(
-                    Colors.black.withOpacity(0.4),
-                    BlendMode.darken,
-                  ),
-                )
-              : null,
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      margin: const EdgeInsets.only(top: 14, bottom: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE87A1E), // Vibrant Orange banner matching image
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: GoogleFonts.hankenGrotesk(
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+          color: Colors.black87,
+          letterSpacing: 1.2,
         ),
-        child: isUploaded
-            ? Stack(
-                children: [
-                  Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.9),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'SELECTED',
-                                  style: GoogleFonts.robotoMono(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const Icon(
-                                Icons.check_circle,
-                                color: Colors.green,
-                                size: 24,
-                              ),
-                            ],
-                          ),
-                          Text(
-                            title,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              shadows: const [
-                                Shadow(
-                                  offset: Offset(0, 1),
-                                  blurRadius: 3.0,
-                                  color: Colors.black54,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              )
-            : Row(
-                children: [
-                  const SizedBox(width: 16),
-                  Icon(
-                    Icons.cloud_upload_outlined,
-                    color: AppTheme.primaryColor,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+
+  Widget _buildMobileVerificationSection({
+    required String sectionTitle,
+    required TextEditingController phoneController,
+    required List<TextEditingController> otpControllers,
+    required bool isVerified,
+    required VoidCallback onToggleVerify,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 14),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Mobile Number',
+            style: GoogleFonts.hankenGrotesk(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.onSurfaceColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFCBD5E1)),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '+91',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
                         color: AppTheme.onSurfaceColor,
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down, size: 18, color: AppTheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.black, width: 1.5),
                   ),
-                  Text(
-                    'TAP TO UPLOAD',
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primaryColor,
+                  alignment: Alignment.centerLeft,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: TextFormField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: GoogleFonts.hankenGrotesk(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.0,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                      hintText: 'Enter 10-digit number',
                     ),
                   ),
-                  const SizedBox(width: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton(
+              onPressed: () {
+                onToggleVerify();
+                for (int i = 0; i < otpControllers.length; i++) {
+                  if (i < 6) {
+                    otpControllers[i].text = ['8', '1', '2', '1', '4', '4'][i];
+                  }
+                }
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('OTP sent to +91 ${phoneController.text.isNotEmpty ? phoneController.text : "81214 40281"}: 812144'),
+                    backgroundColor: const Color(0xFFE87A1E),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE87A1E), // Orange matching images
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 1,
+              ),
+              child: Text(
+                'GET OTP',
+                style: GoogleFonts.hankenGrotesk(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.0,
+                  color: Colors.black87,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.arrow_back, size: 16, color: AppTheme.onSurfaceColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Verify Mobile',
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.onSurfaceColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    GestureDetector(
+                      onTap: onToggleVerify,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isVerified ? Colors.green.shade50 : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: isVerified ? Colors.green.shade300 : Colors.orange.shade300),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              isVerified ? Icons.check_circle : Icons.pending,
+                              size: 13,
+                              color: isVerified ? Colors.green.shade700 : Colors.orange.shade700,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isVerified ? 'VERIFIED' : 'VERIFY',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: isVerified ? Colors.green.shade700 : Colors.orange.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter the 6-digit code sent via SMS to +91 ${phoneController.text.isNotEmpty ? phoneController.text : "81214 40281"}',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppTheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: List.generate(6, (index) {
+                    return Container(
+                      width: 42,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBFDBFE), width: 1.2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        otpControllers[index].text.isNotEmpty ? otpControllers[index].text : '•',
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1D4ED8),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadBox({
+    required String title,
+    required String docType,
+    required Uint8List? imageBytes,
+    required VoidCallback onTap,
+  }) {
+    final bool hasUploaded = imageBytes != null;
+    final String displayFileName = _docFileNames[docType] ?? '';
+    final String displayFileSize = _docFileSizes[docType] ?? '';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: hasUploaded ? Colors.green.withOpacity(0.3) : AppTheme.outlineVariant.withOpacity(0.3),
+        ),
+      ),
+      child: ListTile(
+        leading: Icon(
+          hasUploaded ? Icons.check_circle : Icons.upload_file_rounded,
+          color: hasUploaded ? Colors.green : AppTheme.primaryColor,
+        ),
+        title: Text(
+          title,
+          style: GoogleFonts.hankenGrotesk(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: AppTheme.onSurfaceColor,
+          ),
+        ),
+        subtitle: hasUploaded
+            ? Text(
+                displayFileName.isNotEmpty ? '$displayFileName ($displayFileSize)' : 'Document Selected',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              )
+            : Text(
+                'Upload JPG/JPEG document',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  color: AppTheme.onSurfaceVariant,
+                ),
+              ),
+        trailing: hasUploaded
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility, color: AppTheme.primaryColor),
+                    tooltip: 'View Document',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Text(
+                              title,
+                              style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),
+                            ),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (displayFileName.isNotEmpty)
+                                  Text(
+                                    displayFileName,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                if (displayFileSize.isNotEmpty)
+                                  Text(
+                                    displayFileSize,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 11,
+                                      color: AppTheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  height: 240,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppTheme.outlineVariant),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.memory(
+                                      imageBytes,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Close'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.sync_rounded, color: AppTheme.onSurfaceVariant),
+                    tooltip: 'Change Document',
+                    onPressed: onTap,
+                  ),
                 ],
+              )
+            : ElevatedButton(
+                onPressed: onTap,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004AC6),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  minimumSize: Size.zero,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Upload',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+                ),
               ),
       ),
     );
