@@ -1,15 +1,19 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme.dart';
-import '../../../core/razorpay_gateway.dart';
+import '../../../core/api_client.dart';
+import '../../../core/firebase_service.dart';
+import '../../../core/network_config.dart';
 import '../../ride_selection/screens/ride_selection_screen.dart';
+import 'ride_details_screen.dart';
 
 class ActivityScreen extends StatefulWidget {
   final String userRole;
   final double totalEarnings;
   final List<Map<String, dynamic>> completedRides;
   final bool isAdvanceWithdrawn;
-  final VoidCallback onWithdrawAdvance;
+  final VoidCallback? onWithdrawAdvance;
   final VoidCallback onGoToHome;
   final Function(double)? onWithdrawMoney;
   
@@ -20,8 +24,8 @@ class ActivityScreen extends StatefulWidget {
     required this.userRole,
     required this.totalEarnings,
     required this.completedRides,
-    required this.isAdvanceWithdrawn,
-    required this.onWithdrawAdvance,
+    this.isAdvanceWithdrawn = false,
+    this.onWithdrawAdvance,
     required this.onGoToHome,
     this.onWithdrawMoney,
     this.pilotVehicle = 'Bike',
@@ -34,12 +38,388 @@ class ActivityScreen extends StatefulWidget {
 class _ActivityScreenState extends State<ActivityScreen> {
   String _activeTab = 'past'; // past or scheduled
   String _timeFilter = 'Day'; // Day, Week, Month, Year
+  String _serviceFilter = 'All'; // All, Rides, Food Deliveries, Parcel Deliveries
   late String _selectedIncentiveVehicle;
+  
+  double _availableBalance = 0.0;
+  double _reservedBalance = 0.0;
+  double _withdrawableBalance = 0.0;
+  double _pendingSettlement = 0.0;
+  List<dynamic> _payoutHistory = [];
+  Map<String, dynamic> _pilotBankAccount = {};
+  bool _isLoadingWallet = false;
+  List<Map<String, dynamic>> _livePastTrips = [];
+  bool _isLoadingTrips = false;
 
   @override
   void initState() {
     super.initState();
     _selectedIncentiveVehicle = widget.pilotVehicle.isNotEmpty ? widget.pilotVehicle : 'Bike';
+    _livePastTrips = List<Map<String, dynamic>>.from(widget.completedRides);
+    _fetchPastTrips();
+    if (widget.userRole == 'Driver') {
+      _fetchPilotWallet();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ActivityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.completedRides != oldWidget.completedRides && widget.completedRides.isNotEmpty) {
+      setState(() {
+        _livePastTrips = List<Map<String, dynamic>>.from(widget.completedRides);
+      });
+    }
+  }
+
+  String _formatDateTime(DateTime dt) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final month = months[dt.month - 1];
+    final day = dt.day;
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '$month $day, $hour:$min';
+  }
+
+  String _resolveServiceType(String vehicle) {
+    final v = vehicle.toLowerCase();
+    if (v.contains('food')) return 'food';
+    if (v.contains('bike') || v.contains('moto') || v.contains('two')) return 'bike';
+    if (v.contains('auto') || v.contains('rickshaw')) return 'auto';
+    if (v.contains('truck') || v.contains('parcel') || v.contains('cargo')) return 'parcel';
+    return 'car';
+  }
+
+  String _getVehicleTitle(String vehicle) {
+    final v = vehicle.toLowerCase();
+    if (v.contains('food')) return 'StayDriv Food Delivery';
+    if (v.contains('bike')) return 'StayDriv Bike';
+    if (v.contains('auto')) return 'StayDriv Auto';
+    if (v.contains('truck') || v.contains('parcel') || v.contains('cargo')) return 'Mini Truck';
+    return 'StayDriv Car';
+  }
+
+  String _getVehicleImage(String vehicle) {
+    final v = vehicle.toLowerCase();
+    if (v.contains('food')) return 'assets/images/bike.png';
+    if (v.contains('bike')) return 'assets/images/bike.png';
+    if (v.contains('auto')) return 'assets/images/auto.png';
+    if (v.contains('truck') || v.contains('parcel') || v.contains('cargo')) return 'assets/images/mini_truck.png';
+    return 'assets/images/car.png';
+  }
+
+  IconData _getVehicleIcon(String vehicle) {
+    final v = vehicle.toLowerCase();
+    if (v.contains('food')) return Icons.fastfood_rounded;
+    if (v.contains('bike')) return Icons.two_wheeler_rounded;
+    if (v.contains('auto')) return Icons.electric_rickshaw_rounded;
+    if (v.contains('truck') || v.contains('parcel') || v.contains('cargo')) return Icons.airport_shuttle_rounded;
+    return Icons.directions_car_rounded;
+  }
+
+  Future<void> _fetchPastTrips() async {
+    final rawUid = FirebaseService().currentUid ?? '';
+    final phoneDigits = rawUid.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanPhone = phoneDigits.length >= 10 ? phoneDigits.substring(phoneDigits.length - 10) : phoneDigits;
+
+    if (rawUid.isEmpty && cleanPhone.isEmpty) return;
+
+    if (mounted) setState(() => _isLoadingTrips = true);
+
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final queryUid = rawUid.isNotEmpty ? rawUid : cleanPhone;
+      final role = widget.userRole == 'Driver' ? 'Pilot' : 'Customer';
+      final uri = Uri.parse('$baseUrl/api/user/$queryUid/rides?role=$role&phone=$cleanPhone&allStatuses=true');
+      final res = await ApiClient().get(uri, timeout: const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        final rawRides = (data['rides'] as List?) ?? (data['bookings'] as List?);
+        if (data['success'] == true && rawRides != null) {
+          final List rides = rawRides;
+          final List<Map<String, dynamic>> formatted = rides.map<Map<String, dynamic>>((r) {
+            final ride = Map<String, dynamic>.from(r is Map ? r : {});
+            
+            // Extract and format real local date (IST)
+            DateTime dt = DateTime.now();
+            final ts = ride['timestamp'];
+            final createdAt = ride['createdAt'];
+            if (ts != null && ts is int && ts > 0) {
+              dt = DateTime.fromMillisecondsSinceEpoch(ts).toLocal();
+            } else if (createdAt != null) {
+              try {
+                dt = DateTime.parse(createdAt.toString()).toLocal();
+              } catch (_) {}
+            }
+            
+            final isFood = (ride['serviceType'] == 'food' ||
+                ride['isFoodDelivery'] == true ||
+                (ride['vehicle']?.toString().toLowerCase().contains('food') ?? false));
+            final vehicle = isFood
+                ? 'Food Delivery'
+                : (ride['vehicle'] ?? ride['vehicleType'] ?? 'bike').toString();
+            
+            // For pilots viewing earnings history, ensure food deliveries reflect pilotEarnings
+            String displayPrice;
+            if (isFood && widget.userRole == 'Driver') {
+              final pilotEarn = ride['pilotEarnings'] ??
+                  ride['pilotDeliveryEarnings'] ??
+                  ride['pilotDeliveryFee'] ??
+                  ride['originalDeliveryFee'];
+              double pVal = 0.0;
+              if (pilotEarn != null) {
+                pVal = double.tryParse(pilotEarn.toString().replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+              }
+              if (pVal > 0) {
+                displayPrice = '₹${pVal.toStringAsFixed(pVal % 1 == 0 ? 0 : 2)}';
+              } else {
+                final price = ride['price']?.toString() ?? '0.00';
+                displayPrice = price.startsWith('₹') ? price : '₹$price';
+              }
+            } else {
+              final price = ride['price']?.toString() ?? '0.00';
+              displayPrice = price.startsWith('₹') ? price : '₹$price';
+            }
+            final pickup = ride['pickup']?.toString() ?? 'Pickup location';
+            final drop = ride['drop']?.toString() ?? 'Destination location';
+            final route = '$pickup to $drop';
+
+            return {
+              ...ride,
+              'bookingId': ride['bookingId'] ?? ride['_id'] ?? '',
+              'date': _formatDateTime(dt),
+              'price': displayPrice,
+              'icon': _getVehicleIcon(vehicle),
+              'image': _getVehicleImage(vehicle),
+              'title': isFood ? 'StayDriv Food Delivery' : _getVehicleTitle(vehicle),
+              'route': route,
+              'pickup': pickup,
+              'drop': drop,
+              'serviceType': isFood ? 'food' : _resolveServiceType(vehicle),
+              'vehicle': vehicle,
+              'status': (ride['status'] ?? 'completed').toString(),
+              'timestamp': dt.millisecondsSinceEpoch,
+            };
+          }).toList();
+
+          if (mounted) {
+            setState(() {
+              _livePastTrips = formatted;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[ACTIVITY] Error fetching past trips: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingTrips = false);
+    }
+  }
+
+  Future<void> _fetchPilotWallet() async {
+    final rawUid = FirebaseService().currentUid ?? '';
+    final phoneDigits = rawUid.replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanPhone = phoneDigits.length >= 10 ? phoneDigits.substring(phoneDigits.length - 10) : phoneDigits;
+    final queryUid = rawUid.isNotEmpty ? rawUid : (cleanPhone.isNotEmpty ? 'pilot_$cleanPhone' : '');
+    if (queryUid.isEmpty) return;
+
+    if (mounted) setState(() => _isLoadingWallet = true);
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final uri = Uri.parse('$baseUrl/api/pilot/wallet/$queryUid');
+      final res = await ApiClient().get(uri);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && mounted) {
+          final avail = (data['availableBalance'] as num?)?.toDouble() ?? 0.0;
+          final resBal = (data['reservedBalance'] as num?)?.toDouble() ?? 0.0;
+          final withAmt = (data['withdrawableAmount'] as num?)?.toDouble() ??
+              (avail - resBal).clamp(0.0, double.infinity);
+          setState(() {
+            _availableBalance = avail;
+            _reservedBalance = resBal;
+            _withdrawableBalance = withAmt;
+            _pendingSettlement = (data['pendingSettlement'] as num?)?.toDouble() ?? 0.0;
+            _payoutHistory = (data['withdrawals'] as List<dynamic>?) ?? [];
+            _pilotBankAccount = (data['bankAccount'] as Map<String, dynamic>?) ?? {};
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('[ACTIVITY WALLET ERROR]: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingWallet = false);
+    }
+  }
+
+  double _getWithdrawableAmount() {
+    if (_withdrawableBalance > 0) return _withdrawableBalance;
+    if (_availableBalance > 0) return (_availableBalance - _reservedBalance).clamp(0.0, double.infinity);
+    return widget.totalEarnings;
+  }
+
+  void _showBankDetailsDialog() {
+    final formKey = GlobalKey<FormState>();
+    final isUpiMode = ValueNotifier<bool>((_pilotBankAccount['upiId'] ?? '').toString().isNotEmpty && (_pilotBankAccount['accountNumber'] ?? '').toString().isEmpty);
+    final holderCtrl = TextEditingController(text: _pilotBankAccount['accountHolderName'] ?? '');
+    final bankCtrl = TextEditingController(text: _pilotBankAccount['bankName'] ?? '');
+    final accCtrl = TextEditingController(text: _pilotBankAccount['accountNumber'] ?? '');
+    final confirmAccCtrl = TextEditingController(text: _pilotBankAccount['accountNumber'] ?? '');
+    final ifscCtrl = TextEditingController(text: _pilotBankAccount['ifsc'] ?? '');
+    final upiCtrl = TextEditingController(text: _pilotBankAccount['upiId'] ?? '');
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.account_balance_rounded, color: AppTheme.primaryColor),
+                const SizedBox(width: 8),
+                Text('Bank & Payout Details', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 18)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: isUpiMode,
+                  builder: (context, upiOnly, _) {
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          'Add your verified bank account or UPI ID for instant 24-hr earnings settlements via RazorpayX.',
+                          style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('Bank Account'),
+                                selected: !upiOnly,
+                                onSelected: (val) => isUpiMode.value = false,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: ChoiceChip(
+                                label: const Text('UPI ID'),
+                                selected: upiOnly,
+                                onSelected: (val) => isUpiMode.value = true,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        if (!upiOnly) ...[
+                          TextFormField(
+                            controller: holderCtrl,
+                            decoration: const InputDecoration(labelText: 'Account Holder Name', border: OutlineInputBorder()),
+                            validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter account holder name' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: accCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Bank Account Number', border: OutlineInputBorder()),
+                            validator: (v) => (v == null || v.trim().length < 9) ? 'Enter valid account number (9-18 digits)' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: confirmAccCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'Confirm Account Number', border: OutlineInputBorder()),
+                            validator: (v) => v != accCtrl.text ? 'Account numbers do not match' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: ifscCtrl,
+                            textCapitalization: TextCapitalization.characters,
+                            decoration: const InputDecoration(labelText: 'Bank IFSC Code', hintText: 'e.g. HDFC0000001', border: OutlineInputBorder()),
+                            validator: (v) => (v == null || v.trim().length != 11) ? 'Enter valid 11-character IFSC' : null,
+                          ),
+                          const SizedBox(height: 12),
+                          TextFormField(
+                            controller: bankCtrl,
+                            decoration: const InputDecoration(labelText: 'Bank Name (Optional)', border: OutlineInputBorder()),
+                          ),
+                        ] else ...[
+                          TextFormField(
+                            controller: upiCtrl,
+                            decoration: const InputDecoration(labelText: 'UPI ID', hintText: 'e.g. pilot@okaxis', border: OutlineInputBorder()),
+                            validator: (v) => (v == null || !v.contains('@')) ? 'Enter a valid UPI ID (e.g. mobile@upi)' : null,
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                onPressed: isSaving ? null : () async {
+                  if (formKey.currentState?.validate() ?? false) {
+                    setDialogState(() => isSaving = true);
+                    final uid = FirebaseService().currentUid;
+                    try {
+                      final baseUrl = NetworkConfig.backendUrl;
+                      final res = await ApiClient().post(
+                        Uri.parse('$baseUrl/api/pilot/bank-account/save'),
+                        headers: {'Content-Type': 'application/json'},
+                        body: jsonEncode({
+                          'uid': uid,
+                          'accountNumber': isUpiMode.value ? '' : accCtrl.text.trim(),
+                          'confirmAccountNumber': isUpiMode.value ? '' : confirmAccCtrl.text.trim(),
+                          'ifsc': isUpiMode.value ? '' : ifscCtrl.text.trim().toUpperCase(),
+                          'bankName': isUpiMode.value ? '' : bankCtrl.text.trim(),
+                          'accountHolderName': isUpiMode.value ? '' : holderCtrl.text.trim(),
+                          'upiId': isUpiMode.value ? upiCtrl.text.trim() : '',
+                        }),
+                      );
+                      if (res.statusCode == 200) {
+                        Navigator.pop(ctx);
+                        _fetchPilotWallet();
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Bank account successfully saved & verified!'), backgroundColor: Colors.green),
+                          );
+                        }
+                      } else {
+                        final data = jsonDecode(res.body);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(data['error'] ?? 'Failed to save bank details'), backgroundColor: Colors.red),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error saving bank account: $e'), backgroundColor: Colors.red),
+                      );
+                    } finally {
+                      setDialogState(() => isSaving = false);
+                    }
+                  }
+                },
+                child: isSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Save & Verify', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   void _switchTab(String tabName) {
@@ -158,199 +538,288 @@ class _ActivityScreenState extends State<ActivityScreen> {
   }
 
   Widget _buildPastTripsView() {
-    final List<Map<String, dynamic>> pastTrips = widget.completedRides.isNotEmpty
-        ? widget.completedRides
-        : [
-            {
-              'date': 'Oct 24, 14:30',
-              'price': '₹45.00',
-              'icon': Icons.two_wheeler_rounded,
-              'image': 'assets/images/bike.png',
-              'title': 'StayDriv Bike',
-              'route': 'Downtown Hub to Int. Airport',
-              'serviceType': 'bike',
-            },
-            {
-              'date': 'Oct 23, 11:45',
-              'price': '₹85.00',
-              'icon': Icons.electric_rickshaw_rounded,
-              'image': 'assets/images/auto.png',
-              'title': 'StayDriv Auto',
-              'route': 'Hitech City to Madhapur Metro',
-              'serviceType': 'auto',
-            },
-            {
-              'date': 'Oct 22, 16:10',
-              'price': '₹165.00',
-              'icon': Icons.directions_car_rounded,
-              'image': 'assets/images/car.png',
-              'title': 'StayDriv Car',
-              'route': 'Jubilee Hills to Gachibowli',
-              'serviceType': 'car',
-            },
-            {
-              'date': 'Oct 22, 09:15',
-              'price': '₹320.00',
-              'icon': Icons.airport_shuttle_rounded,
-              'image': 'assets/images/mini_truck.png',
-              'title': 'Mini Truck',
-              'route': 'Westside Office to Tech Park',
-              'serviceType': 'parcel',
-            },
-          ];
+    final List<Map<String, dynamic>> pastTrips = _livePastTrips.isNotEmpty
+        ? _livePastTrips
+        : widget.completedRides;
 
-    return ListView.builder(
-      itemCount: pastTrips.length,
-      itemBuilder: (context, index) {
-        final trip = pastTrips[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Date & Fare row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      trip['date'] as String,
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: AppTheme.onSurfaceVariant,
-                      ),
-                    ),
-                    Text(
-                      trip['price'] as String,
-                      style: GoogleFonts.hankenGrotesk(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.onSurfaceColor,
-                      ),
-                    ),
-                  ],
+    if (_isLoadingTrips && pastTrips.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(color: AppTheme.primaryColor),
+            const SizedBox(height: 16),
+            Text(
+              'Loading past trips...',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppTheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (pastTrips.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _fetchPastTrips,
+        color: AppTheme.primaryColor,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.08),
+            Center(
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceContainerLow,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 12),
-                
-                // Info body row
-                Row(
+                child: const Icon(
+                  Icons.directions_car_outlined,
+                  size: 48,
+                  color: AppTheme.outlineColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'No past trips yet',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.onSurfaceColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'When you complete a ride with StayDriv, your journey history, receipts, and details will appear here.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: AppTheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: widget.onGoToHome,
+                icon: const Icon(Icons.navigation_rounded, size: 18, color: Colors.white),
+                label: Text(
+                  'Book a Ride',
+                  style: GoogleFonts.hankenGrotesk(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchPastTrips,
+      color: AppTheme.primaryColor,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        itemCount: pastTrips.length,
+        itemBuilder: (context, index) {
+          final trip = pastTrips[index];
+          final status = (trip['status'] as String? ?? 'completed').toLowerCase();
+          final isCompleted = status == 'completed';
+          final isCancelled = status == 'cancelled';
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            clipBehavior: Clip.antiAlias,
+            elevation: 1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppTheme.outlineVariant.withValues(alpha: 0.4)),
+            ),
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RideDetailsScreen(ride: trip),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: trip['image'] != null
-                          ? Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Image.asset(
-                                trip['image'] as String,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => Icon(
-                                  trip['icon'] as IconData,
+                    // Date & Fare row
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          trip['date'] as String? ?? 'Recent Trip',
+                          style: GoogleFonts.robotoMono(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.onSurfaceVariant,
+                          ),
+                        ),
+                        Text(
+                          trip['price'] as String? ?? '₹0.00',
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.onSurfaceColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Info body row
+                    Row(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: trip['image'] != null
+                              ? Padding(
+                                  padding: const EdgeInsets.all(4.0),
+                                  child: Image.asset(
+                                    trip['image'] as String,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => Icon(
+                                      (trip['icon'] as IconData?) ?? Icons.directions_car_rounded,
+                                      color: AppTheme.primaryColor,
+                                      size: 28,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  (trip['icon'] as IconData?) ?? Icons.directions_car_rounded,
                                   color: AppTheme.primaryColor,
                                   size: 28,
                                 ),
-                              ),
-                            )
-                          : Icon(
-                              trip['icon'] as IconData,
-                              color: AppTheme.primaryColor,
-                              size: 28,
-                            ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            trip['title'] as String,
-                            style: GoogleFonts.hankenGrotesk(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.onSurfaceColor,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            trip['route'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: AppTheme.onSurfaceVariant,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(height: 24),
-
-                // Status chip & Rebook trigger
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Status Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryAccent.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 14),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Completed',
-                            style: GoogleFonts.robotoMono(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Rebook action
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RideSelectionScreen(serviceType: trip['serviceType'] as String),
-                          ),
-                        );
-                      },
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      ),
-                      child: Text(
-                        'Rebook',
-                        style: GoogleFonts.hankenGrotesk(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.primaryColor,
                         ),
-                      ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                trip['title'] as String? ?? 'StayDriv Ride',
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.onSurfaceColor,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                trip['route'] as String? ?? 'Trip Route',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: AppTheme.onSurfaceVariant,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+
+                    // Status chip & Rebook trigger
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                                : (isCancelled ? const Color(0xFFEF4444).withValues(alpha: 0.12) : AppTheme.primaryAccent.withValues(alpha: 0.08)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isCompleted ? Icons.check_circle_rounded : (isCancelled ? Icons.cancel_rounded : Icons.info_outline_rounded),
+                                color: isCompleted ? const Color(0xFF10B981) : (isCancelled ? const Color(0xFFEF4444) : AppTheme.primaryColor),
+                                size: 14,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isCompleted ? 'Completed' : (isCancelled ? 'Cancelled' : status.toUpperCase()),
+                                style: GoogleFonts.robotoMono(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: isCompleted ? const Color(0xFF10B981) : (isCancelled ? const Color(0xFFEF4444) : AppTheme.primaryColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Rebook action
+                        OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RideSelectionScreen(
+                                  serviceType: (trip['serviceType'] as String?) ?? 'bike',
+                                ),
+                              ),
+                            );
+                          },
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            side: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          child: Text(
+                            'Rebook',
+                            style: GoogleFonts.hankenGrotesk(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -413,29 +882,58 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   List<Map<String, dynamic>> _getFilteredRides() {
     final now = DateTime.now();
-    return widget.completedRides.where((ride) {
+    final sourceRides = _livePastTrips.isNotEmpty ? _livePastTrips : widget.completedRides;
+    return sourceRides.where((ride) {
+      // 1. Time Filter
       final timestamp = ride['timestamp'] as int? ?? 0;
       final rideDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
       final diff = now.difference(rideDate).inDays.abs();
       
+      bool matchesTime = true;
       if (_timeFilter == 'Day') {
-        return diff < 1;
+        matchesTime = diff < 1;
       } else if (_timeFilter == 'Week') {
-        return diff < 7;
+        matchesTime = diff < 7;
       } else if (_timeFilter == 'Month') {
-        return diff < 30;
+        matchesTime = diff < 30;
       } else {
-        return diff < 365;
+        matchesTime = diff < 365;
       }
+      if (!matchesTime) return false;
+
+      // 2. Service Filter
+      if (_serviceFilter != 'All') {
+        final sType = (ride['serviceType'] ?? '').toString().toLowerCase();
+        final vehicleStr = (ride['vehicle'] ?? '').toString().toLowerCase();
+        final isFood = sType == 'food' || (ride['isFoodDelivery'] == true) || vehicleStr.contains('food');
+        final isParcel = sType == 'parcel' || vehicleStr.contains('truck') || vehicleStr.contains('parcel');
+        final isRide = !isFood && !isParcel;
+
+        if (_serviceFilter == 'Rides' && !isRide) return false;
+        if (_serviceFilter == 'Food Deliveries' && !isFood) return false;
+        if (_serviceFilter == 'Parcel Deliveries' && !isParcel) return false;
+      }
+
+      return true;
     }).toList();
   }
 
   double _getFilteredEarnings(List<Map<String, dynamic>> filteredRides) {
     double sum = 0;
     for (var ride in filteredRides) {
-      final priceStr = ride['price'] as String? ?? '0';
-      final cleanStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
-      sum += double.tryParse(cleanStr) ?? 0.0;
+      if (ride['pilotEarnings'] != null) {
+        sum += (double.tryParse(ride['pilotEarnings'].toString()) ?? 0.0);
+      } else {
+        final priceStr = ride['price'] as String? ?? '0';
+        final cleanStr = priceStr.replaceAll(RegExp(r'[^0-9.]'), '');
+        final priceVal = double.tryParse(cleanStr) ?? 0.0;
+        final sType = (ride['serviceType'] ?? '').toString().toLowerCase();
+        if (sType == 'food' || ride['isFoodDelivery'] == true) {
+          sum += priceVal;
+        } else {
+          sum += priceVal * 0.85;
+        }
+      }
     }
     return sum;
   }
@@ -464,8 +962,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
     int count = 0;
     final start = _currentMonday;
     final end = _currentSunday;
+    final sourceRides = _livePastTrips.isNotEmpty ? _livePastTrips : widget.completedRides;
 
-    for (var ride in widget.completedRides) {
+    for (var ride in sourceRides) {
       final status = (ride['status'] as String? ?? 'completed').toLowerCase();
       if (status != 'completed' && status != 'accepted') continue;
 
@@ -1139,6 +1638,23 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   color: Colors.blue.shade700,
                 ),
               ),
+            )
+          else if ((ride['status'] ?? '').toString().toLowerCase().contains('return'))
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade50,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.amber.shade300),
+              ),
+              child: Text(
+                'Returned',
+                style: GoogleFonts.inter(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber.shade800,
+                ),
+              ),
             ),
         ],
       ),
@@ -1166,13 +1682,25 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: isHeavyTruck
-          ? InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _showHeavyTruckRideDetailsBottomSheet(context, ride),
-              child: listTileChild,
-            )
-          : listTileChild,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          if (isHeavyTruck) {
+            _showHeavyTruckRideDetailsBottomSheet(context, ride);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RideDetailsScreen(
+                  ride: ride,
+                  isPilotView: true,
+                ),
+              ),
+            );
+          }
+        },
+        child: listTileChild,
+      ),
     );
   }
 
@@ -1201,9 +1729,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
             maxWidth: isDesktop ? 600 : double.infinity,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: ListView(
-            padding: const EdgeInsets.only(top: 8, bottom: 32),
-            children: [
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                _fetchPilotWallet(),
+                _fetchPastTrips(),
+              ]);
+            },
+            color: AppTheme.primaryColor,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 8, bottom: 32),
+              children: [
               // Time Filter Selector
               Container(
                 width: double.infinity,
@@ -1247,7 +1784,49 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+
+              // Service Filter Selector (All, Rides, Food Deliveries, Parcel Deliveries)
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    {'key': 'All', 'label': 'All', 'icon': Icons.all_inclusive_rounded},
+                    {'key': 'Rides', 'label': 'Rides', 'icon': Icons.two_wheeler_rounded},
+                    {'key': 'Food Deliveries', 'label': 'Food Deliveries', 'icon': Icons.fastfood_rounded},
+                    {'key': 'Parcel Deliveries', 'label': 'Parcels', 'icon': Icons.airport_shuttle_rounded},
+                  ].map((item) {
+                    final isSel = _serviceFilter == item['key'];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: FilterChip(
+                        selected: isSel,
+                        showCheckmark: false,
+                        avatar: Icon(item['icon'] as IconData, size: 16, color: isSel ? Colors.white : AppTheme.primaryColor),
+                        label: Text(
+                          item['label'] as String,
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
+                            color: isSel ? Colors.white : AppTheme.onSurfaceColor,
+                          ),
+                        ),
+                        backgroundColor: AppTheme.surfaceContainerLow,
+                        selectedColor: AppTheme.primaryColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        side: BorderSide(color: isSel ? AppTheme.primaryColor : AppTheme.outlineVariant.withValues(alpha: 0.3)),
+                        onSelected: (val) {
+                          setState(() {
+                            _serviceFilter = item['key'] as String;
+                          });
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // Earnings overview cards
               Row(
@@ -1309,71 +1888,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
               _buildWeeklyIncentiveCard(),
               const SizedBox(height: 16),
 
-              // Weekly Expense Advance Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: widget.isAdvanceWithdrawn
-                        ? [AppTheme.surfaceContainerLow, AppTheme.surfaceContainerLow]
-                        : [AppTheme.primaryColor.withValues(alpha: 0.08), AppTheme.primaryAccent.withValues(alpha: 0.04)],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: widget.isAdvanceWithdrawn
-                        ? AppTheme.outlineVariant.withValues()
-                        : AppTheme.primaryColor.withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: widget.isAdvanceWithdrawn ? AppTheme.outlineVariant.withValues() : AppTheme.primaryColor.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.account_balance_wallet_rounded,
-                        color: widget.isAdvanceWithdrawn ? AppTheme.onSurfaceVariant : AppTheme.primaryColor,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Weekly Expense Advance',
-                            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.onSurfaceColor),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            widget.isAdvanceWithdrawn 
-                                ? '₹200 advancedly withdrawn'
-                                : 'Withdraw ₹200 advance for fuel & expenses',
-                            style: GoogleFonts.inter(fontSize: 11, color: AppTheme.onSurfaceVariant),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: widget.isAdvanceWithdrawn ? null : widget.onWithdrawAdvance,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      child: Text(
-                        widget.isAdvanceWithdrawn ? 'Claimed' : 'Withdraw',
-                        style: GoogleFonts.hankenGrotesk(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
+
 
               // Instant Earnings Cashout Card
               Container(
@@ -1412,14 +1927,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Withdrawable: ₹${widget.totalEarnings.toStringAsFixed(2)}',
+                            'Withdrawable: ₹${_getWithdrawableAmount().toStringAsFixed(2)}',
                             style: GoogleFonts.inter(fontSize: 11, color: AppTheme.onSurfaceVariant),
                           ),
                         ],
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: widget.totalEarnings <= 0 
+                      onPressed: _getWithdrawableAmount() <= 0 
                           ? null 
                           : () => _showWithdrawDialog(context),
                       style: ElevatedButton.styleFrom(
@@ -1435,6 +1950,263 @@ class _ActivityScreenState extends State<ActivityScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
+
+              // Pending Settlement Card (24-Hour Automatic Bank Settlement)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFDE68A),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFD97706).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.schedule_rounded,
+                        color: Color(0xFFD97706),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Pending Settlement',
+                                style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 14.5, color: const Color(0xFF92400E)),
+                              ),
+                              Text(
+                                '₹${_pendingSettlement.toStringAsFixed(2)}',
+                                style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF92400E)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Ride earnings automatically transfer to bank after 24-hr settlement window.',
+                            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFB45309)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Linked Bank Account Card
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  boxShadow: const [BoxShadow(color: Color(0x06000000), blurRadius: 8, offset: Offset(0, 2))],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A).withValues(alpha: 0.06),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.account_balance_rounded, color: Color(0xFF0F172A)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Payout Destination',
+                                style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 14, color: const Color(0xFF0F172A)),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDCFCE7),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text('VERIFIED', style: GoogleFonts.robotoMono(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF16A34A))),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            (_pilotBankAccount['maskedAccountNumber'] as String?)?.isNotEmpty == true
+                                ? _pilotBankAccount['maskedAccountNumber']
+                                : ((_pilotBankAccount['upiId'] as String?)?.isNotEmpty == true ? _pilotBankAccount['upiId'] : 'pilot@okaxis (Default)'),
+                            style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _showBankDetailsDialog,
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      child: Text('Change', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.primaryColor)),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bank Payout History Section (if any payouts exist)
+              if (_payoutHistory.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(
+                  'Bank Payout History',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
+                ),
+                const SizedBox(height: 10),
+                ..._payoutHistory.take(10).map((payout) {
+                  final rawStatus = (payout['status'] as String? ?? 'pending_approval').toLowerCase();
+                  String displayStatus;
+                  Color statusColor;
+                  Color statusBg;
+                  switch (rawStatus) {
+                    case 'completed':
+                    case 'processed':
+                    case 'paid':
+                      displayStatus = 'COMPLETED';
+                      statusColor = const Color(0xFF16A34A);
+                      statusBg = const Color(0xFFDCFCE7);
+                      break;
+                    case 'approved':
+                      displayStatus = 'APPROVED';
+                      statusColor = const Color(0xFF2563EB);
+                      statusBg = const Color(0xFFDBEAFE);
+                      break;
+                    case 'processing':
+                      displayStatus = 'PROCESSING';
+                      statusColor = const Color(0xFF0284C7);
+                      statusBg = const Color(0xFFE0F2FE);
+                      break;
+                    case 'rejected':
+                      displayStatus = 'REJECTED';
+                      statusColor = const Color(0xFFDC2626);
+                      statusBg = const Color(0xFFFEE2E2);
+                      break;
+                    case 'failed':
+                    case 'reversed':
+                      displayStatus = 'FAILED';
+                      statusColor = const Color(0xFFDC2626);
+                      statusBg = const Color(0xFFFEE2E2);
+                      break;
+                    case 'cancelled':
+                      displayStatus = 'CANCELLED';
+                      statusColor = const Color(0xFF64748B);
+                      statusBg = const Color(0xFFF1F5F9);
+                      break;
+                    case 'pending_approval':
+                    case 'pending':
+                    case 'under_review':
+                    default:
+                      displayStatus = 'PENDING_APPROVAL';
+                      statusColor = const Color(0xFFD97706);
+                      statusBg = const Color(0xFFFEF3C7);
+                  }
+
+                  final rejectionReason = payout['rejectionReason'] as String?;
+                  final utr = payout['utr'] as String?;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(color: statusBg, shape: BoxShape.circle),
+                                  child: Icon(
+                                    displayStatus == 'COMPLETED' ? Icons.check_circle_outline_rounded : (displayStatus == 'REJECTED' || displayStatus == 'FAILED' ? Icons.error_outline_rounded : Icons.history_rounded),
+                                    size: 18,
+                                    color: statusColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '₹${((payout['amount'] as num?)?.toDouble() ?? 0.0).toStringAsFixed(2)}',
+                                      style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 15),
+                                    ),
+                                    Text(
+                                      payout['withdrawalId'] ?? payout['transactionId'] ?? payout['payoutId'] ?? 'Payout Ref',
+                                      style: GoogleFonts.robotoMono(fontSize: 10, color: const Color(0xFF94A3B8)),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(6)),
+                              child: Text(
+                                displayStatus,
+                                style: GoogleFonts.robotoMono(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (rejectionReason != null && rejectionReason.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Reason: $rejectionReason',
+                              style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFFDC2626), fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                        if (utr != null && utr.isNotEmpty && utr != 'Pending settlement') ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Bank UTR: $utr',
+                            style: GoogleFonts.robotoMono(fontSize: 10, color: const Color(0xFF16A34A), fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+              ],
+
               const SizedBox(height: 20),
 
               Text(
@@ -1457,105 +2229,315 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 ...filteredRides.map((ride) => _buildRideHistoryCard(context, ride)),
             ],
           ),
+          ),
         ),
       ),
     );
   }
 
   void _showWithdrawDialog(BuildContext context) {
-    final TextEditingController amountController = TextEditingController(text: widget.totalEarnings.toStringAsFixed(0));
-    final TextEditingController upiController = TextEditingController(text: 'driver@upi');
-    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    final maxWithdrawable = _getWithdrawableAmount();
+    final bool hasVerifiedDestination = (_pilotBankAccount['isVerified'] == true) ||
+        ((_pilotBankAccount['maskedAccountNumber'] as String?)?.isNotEmpty == true) ||
+        ((_pilotBankAccount['accountNumber'] as String?)?.isNotEmpty == true) ||
+        ((_pilotBankAccount['upiId'] as String?)?.isNotEmpty == true);
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Text(
-            'Withdraw Earnings',
-            style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold),
+    final destinationDisplay = (_pilotBankAccount['maskedAccountNumber'] as String?)?.isNotEmpty == true
+        ? _pilotBankAccount['maskedAccountNumber']!
+        : ((_pilotBankAccount['upiId'] as String?)?.isNotEmpty == true
+            ? _pilotBankAccount['upiId']!
+            : ((_pilotBankAccount['accountNumber'] as String?)?.isNotEmpty == true
+                ? 'Acc ending in ${_pilotBankAccount['accountNumber'].toString().substring(_pilotBankAccount['accountNumber'].toString().length > 4 ? _pilotBankAccount['accountNumber'].toString().length - 4 : 0)}'
+                : ''));
+
+    if (!hasVerifiedDestination || destinationDisplay.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Payout Destination Required', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 17)),
+              ),
+            ],
           ),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Withdraw instant payout via Razorpay. Available: ₹${widget.totalEarnings.toStringAsFixed(2)}',
-                  style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: amountController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Withdrawal Amount',
-                    prefixText: '₹ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Enter amount';
-                    final amt = double.tryParse(val);
-                    if (amt == null || amt <= 0) return 'Enter valid positive amount';
-                    if (amt > widget.totalEarnings) return 'Exceeds available balance';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: upiController,
-                  decoration: const InputDecoration(
-                    labelText: 'UPI ID or Bank Account',
-                    border: OutlineInputBorder(),
-                    hintText: 'driver@okaxis',
-                  ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Enter payment address';
-                    return null;
-                  },
-                ),
-              ],
-            ),
+          content: Text(
+            'Before requesting a withdrawal, you must link and verify your destination bank account or UPI ID.',
+            style: GoogleFonts.inter(fontSize: 14, color: AppTheme.onSurfaceVariant),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(ctx),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF5046E5)),
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
               onPressed: () {
-                if (formKey.currentState?.validate() ?? false) {
-                  final amt = double.parse(amountController.text);
-                  final upi = upiController.text;
-                  Navigator.pop(context); // Close withdrawal request form
-
-                  // Open Razorpay Payout gateway
-                  RazorpayGateway.show(
-                    context,
-                    amount: amt,
-                    description: 'Earning Withdrawal Payout',
-                    isPayout: true,
-                    targetAccount: upi,
-                    onSuccess: () {
-                      if (widget.onWithdrawMoney != null) {
-                        widget.onWithdrawMoney!(amt);
-                      }
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Instant Payout of ₹${amt.toStringAsFixed(2)} processed to $upi via Razorpay.'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    },
-                  );
-                }
+                Navigator.pop(ctx);
+                _showBankDetailsDialog();
               },
-              child: Text('Withdraw', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('Add Bank Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
+        ),
+      );
+      return;
+    }
+
+    final TextEditingController amountController = TextEditingController(
+      text: maxWithdrawable > 0 ? (maxWithdrawable >= 100 ? '100' : maxWithdrawable.toStringAsFixed(0)) : '0',
+    );
+    final GlobalKey<FormState> formKey = GlobalKey<FormState>();
+    bool isSubmitting = false;
+    String? submitError;
+
+    showDialog(
+      context: context,
+      barrierDismissible: !isSubmitting,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final enteredAmt = double.tryParse(amountController.text.trim()) ?? 0.0;
+            const fee = 0.0;
+            final netPayable = enteredAmt > 0 ? enteredAmt - fee : 0.0;
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF5046E5).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF5046E5), size: 22),
+                  ),
+                  const SizedBox(width: 10),
+                  Text('Withdrawal Request', style: GoogleFonts.hankenGrotesk(fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Balance & Destination Summary
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Available Withdrawable:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+                                Text('₹${maxWithdrawable.toStringAsFixed(2)}', style: GoogleFonts.robotoMono(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF16A34A))),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Destination:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF64748B))),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFDCFCE7),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text('VERIFIED', style: GoogleFonts.robotoMono(fontSize: 8, fontWeight: FontWeight.bold, color: const Color(0xFF16A34A))),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(destinationDisplay, style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A))),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Amount Input
+                      TextFormField(
+                        controller: amountController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(
+                          labelText: 'Withdrawal Amount',
+                          prefixText: '₹ ',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        ),
+                        onChanged: (_) => setDialogState(() {}),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) return 'Please enter withdrawal amount';
+                          final amt = double.tryParse(val.trim());
+                          if (amt == null || amt <= 0) return 'Amount must be greater than zero';
+                          if (amt > maxWithdrawable) {
+                            return 'Exceeds withdrawable balance (₹${maxWithdrawable.toStringAsFixed(2)})';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Fee & Net Payable Breakdown
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Requested Amount:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
+                                Text('₹${enteredAmt.toStringAsFixed(2)}', style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Withdrawal Fee:', style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF475569))),
+                                Text('₹0.00 (Zero Fee)', style: GoogleFonts.robotoMono(fontSize: 12, color: const Color(0xFF16A34A), fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                            const Divider(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Net Payable to Bank:', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F172A))),
+                                Text('₹${netPayable.toStringAsFixed(2)}', style: GoogleFonts.robotoMono(fontSize: 15, fontWeight: FontWeight.bold, color: const Color(0xFF5046E5))),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      if (submitError != null) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEE2E2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(submitError!, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFDC2626))),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5046E5),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: isSubmitting ? null : () async {
+                    if (formKey.currentState?.validate() ?? false) {
+                      setDialogState(() {
+                        isSubmitting = true;
+                        submitError = null;
+                      });
+
+                      final rawUid = FirebaseService().currentUid ?? '';
+                      final phoneDigits = rawUid.replaceAll(RegExp(r'[^0-9]'), '');
+                      final cleanPhone = phoneDigits.length >= 10 ? phoneDigits.substring(phoneDigits.length - 10) : phoneDigits;
+                      final effectiveUid = rawUid.isNotEmpty ? rawUid : (cleanPhone.isNotEmpty ? 'pilot_$cleanPhone' : '');
+                      final reqAmt = double.parse(amountController.text.trim());
+                      final idempotencyKey = 'WTH_${DateTime.now().millisecondsSinceEpoch}_${cleanPhone.isNotEmpty ? cleanPhone : 'pilot'}';
+
+                      try {
+                        final baseUrl = NetworkConfig.backendUrl;
+                        final res = await ApiClient().post(
+                          Uri.parse('$baseUrl/api/pilot/payouts/withdraw'),
+                          headers: {'Content-Type': 'application/json'},
+                          body: jsonEncode({
+                            'uid': effectiveUid,
+                            'amount': reqAmt,
+                            'targetAccount': destinationDisplay,
+                            'idempotencyKey': idempotencyKey,
+                          }),
+                        );
+
+                        final data = jsonDecode(res.body);
+                        if (res.statusCode == 200 && data['success'] == true) {
+                          Navigator.pop(ctx);
+                          await _fetchPilotWallet();
+                          if (widget.onWithdrawMoney != null) {
+                            widget.onWithdrawMoney!(reqAmt);
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Row(
+                                  children: [
+                                    const Icon(Icons.check_circle, color: Colors.white),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Withdrawal of ₹${reqAmt.toStringAsFixed(2)} submitted!\nRef: ${data['withdrawalId'] ?? data['payoutId'] ?? 'Submitted'} • Status: PENDING_APPROVAL',
+                                        style: const TextStyle(fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                backgroundColor: const Color(0xFF16A34A),
+                                duration: const Duration(seconds: 5),
+                              ),
+                            );
+                          }
+                        } else {
+                          setDialogState(() {
+                            isSubmitting = false;
+                            submitError = data['error'] ?? 'Withdrawal request failed. Please check your balance.';
+                          });
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          isSubmitting = false;
+                          submitError = 'Network error: $e';
+                        });
+                      }
+                    }
+                  },
+                  child: isSubmitting
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Text('Confirm & Withdraw', style: GoogleFonts.hankenGrotesk(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
         );
       },
     );

@@ -1,0 +1,1735 @@
+[
+  {
+    "_id": "6abc053313883936cc79ccfa",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000453_pilot",
+    "targetName": "Pilot Heavy Truck",
+    "targetPhone": "9900000453",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-29T18:36:35.496Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abc053513883936cc79ccfb",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000771_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000771",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-29T18:36:37.216Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abc053513883936cc79ccfc",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000892_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000892",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-29T18:36:37.958Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abc053613883936cc79ccfd",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000412_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000412",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-29T18:36:38.599Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd4c565b0cd45caee3f596",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_BLOCKED",
+    "targetType": "pilot",
+    "targetId": "pilot_9444444444",
+    "targetName": "StayDriv Pilot",
+    "targetPhone": "9444444444",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Suspended by Admin"
+    },
+    "reason": "Suspended by Admin",
+    "timestamp": "2026-09-30T17:52:22.915Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5e706e42306f277c4dee",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-30T19:09:36.592Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5eaf6e42306f277c4def",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000453_pilot",
+    "targetName": "Pilot Heavy Truck",
+    "targetPhone": "9900000453",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:10:39.384Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5eb36e42306f277c4df0",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000771_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000771",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:10:43.350Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5eb76e42306f277c4df1",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000892_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000892",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:10:47.182Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5ebc6e42306f277c4df2",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000412_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000412",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:10:52.390Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5ecb6e42306f277c4df3",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "pilot_9988776655",
+    "targetName": "StayDriv Pilot",
+    "targetPhone": "9988776655",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:11:07.343Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5ece6e42306f277c4df4",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "pilot_9333333333",
+    "targetName": "StayDriv Pilot",
+    "targetPhone": "9333333333",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:11:10.174Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5edf6e42306f277c4df7",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "pilot_prod_test_1790712795749",
+    "targetName": "CloudFront Test Pilot",
+    "targetPhone": "9999999999",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:11:27.935Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5ef56e42306f277c4df8",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_REJECTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000733_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000733",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": false,
+      "rejectionReason": "Partner status updated to rejected"
+    },
+    "reason": "Partner status updated to rejected",
+    "timestamp": "2026-09-30T19:11:49.816Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5efd6e42306f277c4df9",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_REJECTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000733_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000733",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": false,
+      "rejectionReason": "Partner status updated to rejected"
+    },
+    "reason": "Partner status updated to rejected",
+    "timestamp": "2026-09-30T19:11:57.167Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f0d6e42306f277c4dfa",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9900000733_pilot",
+    "targetName": "Pilot Bike",
+    "targetPhone": "9900000733",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-09-30T19:12:13.015Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f2b6e42306f277c4dfb",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:43.159Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f2c6e42306f277c4dfc",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:44.710Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f2e6e42306f277c4dfd",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:46.142Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f2f6e42306f277c4dfe",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:47.597Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f316e42306f277c4dff",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:49.550Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f326e42306f277c4e00",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:12:50.933Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f476e42306f277c4e01",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:11.173Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f486e42306f277c4e02",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:12.333Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f486e42306f277c4e03",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:12.581Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f486e42306f277c4e04",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:12.782Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f486e42306f277c4e05",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:12.989Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f496e42306f277c4e06",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:13.269Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f496e42306f277c4e07",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:13.470Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f496e42306f277c4e08",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:13.691Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f4a6e42306f277c4e09",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:14.445Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f4a6e42306f277c4e0a",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:14.646Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f4a6e42306f277c4e0b",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:14.829Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f4b6e42306f277c4e0c",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:15.029Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f4b6e42306f277c4e0d",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:15.220Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f586e42306f277c4e0e",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Suspended by Admin"
+    },
+    "reason": "Suspended by Admin",
+    "timestamp": "2026-09-30T19:13:28.317Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f616e42306f277c4e0f",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:37.175Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f626e42306f277c4e10",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:38.150Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abd5f636e42306f277c4e11",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Partner status updated to suspended"
+    },
+    "reason": "Partner status updated to suspended",
+    "timestamp": "2026-09-30T19:13:39.036Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe6c746e42306f277c4e12",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9876543210_pilot",
+    "targetName": "Suresh Pilot",
+    "targetPhone": "9876543210",
+    "previousState": {
+      "approved": false,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T14:21:40.123Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe6c7a6e42306f277c4e13",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "pilot_prod_test_1790712795749",
+    "targetName": "CloudFront Test Pilot",
+    "targetPhone": "9999999999",
+    "previousState": {
+      "approved": true,
+      "isApproved": false
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T14:21:46.384Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe6c7e6e42306f277c4e14",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9876543210_pilot",
+    "targetName": "Suresh Pilot",
+    "targetPhone": "9876543210",
+    "previousState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T14:21:50.951Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe84226e42306f277c4e15",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9876543210_pilot",
+    "targetName": "Suresh Pilot",
+    "targetPhone": "9876543210",
+    "previousState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T16:02:42.451Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe92e055e9eb742354c3a3",
+    "adminId": "admin",
+    "adminName": "Admin Tester",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "newState": {
+      "docKey": "aadhaarFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified aadhaarFront",
+    "timestamp": "2026-10-01T17:05:36.269Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe931f55e9eb742354c3a4",
+    "adminId": "admin",
+    "adminName": "Admin Tester",
+    "action": "PILOT_DOCUMENT_REJECTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "newState": {
+      "docKey": "panFront",
+      "status": "REJECTED",
+      "rejectionReason": "PAN card photo is blurry"
+    },
+    "reason": "PAN card photo is blurry",
+    "timestamp": "2026-10-01T17:06:39.424Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe935555e9eb742354c3a5",
+    "adminId": "admin",
+    "adminName": "Admin Tester",
+    "action": "PILOT_CORRECTION_REQUESTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "newState": {
+      "status": "ACTION_REQUIRED",
+      "correctionNotes": "Please re-upload driving licence and PAN with clear lighting"
+    },
+    "reason": "Please re-upload driving licence and PAN with clear lighting",
+    "timestamp": "2026-10-01T17:07:33.185Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe943f55e9eb742354c3a6",
+    "adminId": "admin",
+    "adminName": "Admin Tester",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "ACTION_REQUIRED"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Documents fully verified",
+    "timestamp": "2026-10-01T17:11:27.837Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe9a9555e9eb742354c3a7",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9247535068_pilot",
+    "targetName": "Satyanarayana",
+    "targetPhone": "9247535068",
+    "newState": {
+      "docKey": "aadhaarFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified aadhaarFront",
+    "timestamp": "2026-10-01T17:38:29.937Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe9cdd55e9eb742354c3a9",
+    "adminId": "admin",
+    "adminName": "Chief Inspector",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9555123456_pilot",
+    "targetName": "Venkata Pilot Test",
+    "targetPhone": "9555123456",
+    "newState": {
+      "docKey": "aadhaarFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified aadhaarFront",
+    "timestamp": "2026-10-01T17:48:13.021Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe9cdd55e9eb742354c3aa",
+    "adminId": "admin",
+    "adminName": "Chief Inspector",
+    "action": "PILOT_DOCUMENT_REJECTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9555123456_pilot",
+    "targetName": "Venkata Pilot Test",
+    "targetPhone": "9555123456",
+    "newState": {
+      "docKey": "rcFront",
+      "status": "REJECTED",
+      "rejectionReason": "RC registration validity expired in 2024"
+    },
+    "reason": "RC registration validity expired in 2024",
+    "timestamp": "2026-10-01T17:48:13.073Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe9cdd55e9eb742354c3ab",
+    "adminId": "admin",
+    "adminName": "Chief Inspector",
+    "action": "PILOT_CORRECTION_REQUESTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9555123456_pilot",
+    "targetName": "Venkata Pilot Test",
+    "targetPhone": "9555123456",
+    "newState": {
+      "status": "ACTION_REQUIRED",
+      "correctionNotes": "Please upload updated RC certificate issued by RTO"
+    },
+    "reason": "Please upload updated RC certificate issued by RTO",
+    "timestamp": "2026-10-01T17:48:13.097Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe9cdd55e9eb742354c3ac",
+    "adminId": "admin",
+    "adminName": "Chief Inspector",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9555123456_pilot",
+    "targetName": "Venkata Pilot Test",
+    "targetPhone": "9555123456",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "All corrected documents verified and validated",
+    "timestamp": "2026-10-01T17:48:13.220Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abea39855e9eb742354c3ad",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "newState": {
+      "docKey": "aadhaarFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified aadhaarFront",
+    "timestamp": "2026-10-01T18:16:56.652Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abea39a55e9eb742354c3ae",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "newState": {
+      "docKey": "aadhaarBack",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified aadhaarBack",
+    "timestamp": "2026-10-01T18:16:58.610Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abea39d55e9eb742354c3af",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "newState": {
+      "docKey": "rcFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified rcFront",
+    "timestamp": "2026-10-01T18:17:01.970Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abea3a055e9eb742354c3b0",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "newState": {
+      "docKey": "licenseFront",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified licenseFront",
+    "timestamp": "2026-10-01T18:17:04.122Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abea3a255e9eb742354c3b1",
+    "adminId": "adm_0",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_DOCUMENT_VERIFIED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "newState": {
+      "docKey": "licenseBack",
+      "status": "VERIFIED"
+    },
+    "reason": "Verified licenseBack",
+    "timestamp": "2026-10-01T18:17:06.561Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedbd755e9eb742354c3b2",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:16:55.807Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedbde55e9eb742354c3b3",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:02.287Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedbe955e9eb742354c3b4",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:13.723Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedbf355e9eb742354c3b5",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:23.359Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc0655e9eb742354c3b6",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:42.154Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc0955e9eb742354c3b7",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:45.677Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc1455e9eb742354c3b8",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9010922111_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9010922111",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:17:56.089Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc1855e9eb742354c3b9",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9490440281_pilot",
+    "targetName": "ramesh",
+    "targetPhone": "9490440281",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:00.276Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc1b55e9eb742354c3ba",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_8121440281_pilot",
+    "targetName": "jkkkkk",
+    "targetPhone": "8121440281",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "UNDER_REVIEW"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:03.509Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc1e55e9eb742354c3bb",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_7013213057_pilot",
+    "targetName": "bhavi",
+    "targetPhone": "7013213057",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:06.336Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2155e9eb742354c3bc",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9247535068_pilot",
+    "targetName": "Satyanarayana",
+    "targetPhone": "9247535068",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "UNDER_REVIEW"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:09.436Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2355e9eb742354c3bd",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:11.698Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2655e9eb742354c3be",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:14.101Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2855e9eb742354c3bf",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:16.685Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2d55e9eb742354c3c0",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:21.185Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc2f55e9eb742354c3c1",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:23.915Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc3455e9eb742354c3c2",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:18:28.718Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedc6b55e9eb742354c3c3",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_REJECTED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": false,
+      "status": "rejected",
+      "rejectionReason": "Documents unreadable or incomplete"
+    },
+    "reason": "Documents unreadable or incomplete",
+    "timestamp": "2026-10-01T22:19:23.872Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedf9f55e9eb742354c3c4",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "rejected"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:33:03.670Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedfa255e9eb742354c3c5",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:33:06.022Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abedfbf55e9eb742354c3c6",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:33:35.121Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee07855e9eb742354c3c7",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_SUSPENDED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9490440281_pilot",
+    "targetName": "ramesh",
+    "targetPhone": "9490440281",
+    "previousState": {
+      "isBlocked": false
+    },
+    "newState": {
+      "isBlocked": true,
+      "blockReason": "Operational disciplinary suspension"
+    },
+    "reason": "Operational disciplinary suspension",
+    "timestamp": "2026-10-01T22:36:40.974Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee1e155e9eb742354c3c8",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_UNBLOCKED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9490440281_pilot",
+    "targetName": "ramesh",
+    "targetPhone": "9490440281",
+    "previousState": {
+      "isBlocked": true
+    },
+    "newState": {
+      "isBlocked": false,
+      "blockReason": ""
+    },
+    "reason": "",
+    "timestamp": "2026-10-01T22:42:41.939Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee1f355e9eb742354c3c9",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_UNBLOCKED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "isBlocked": true
+    },
+    "newState": {
+      "isBlocked": false,
+      "blockReason": ""
+    },
+    "reason": "",
+    "timestamp": "2026-10-01T22:42:59.157Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee1f855e9eb742354c3ca",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_UNBLOCKED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9876543210_pilot",
+    "targetName": "Suresh Pilot",
+    "targetPhone": "9876543210",
+    "previousState": {
+      "isBlocked": true
+    },
+    "newState": {
+      "isBlocked": false,
+      "blockReason": ""
+    },
+    "reason": "",
+    "timestamp": "2026-10-01T22:43:04.321Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee20f55e9eb742354c3cb",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9876543210_pilot",
+    "targetName": "Suresh Pilot",
+    "targetPhone": "9876543210",
+    "previousState": {
+      "approved": false,
+      "isApproved": false,
+      "status": "PENDING_VERIFICATION"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:43:27.554Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abee21255e9eb742354c3cc",
+    "adminId": "mock_admin_uid",
+    "adminName": "StayDriv Admin",
+    "action": "PILOT_APPROVED",
+    "targetType": "pilot",
+    "targetId": "mock_uid_9121403844_pilot",
+    "targetName": "Pilot Partner",
+    "targetPhone": "9121403844",
+    "previousState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "newState": {
+      "approved": true,
+      "isApproved": true,
+      "status": "approved"
+    },
+    "reason": "Partner status updated to approved",
+    "timestamp": "2026-10-01T22:43:30.983Z",
+    "__v": 0
+  }
+]

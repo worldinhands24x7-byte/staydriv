@@ -70,7 +70,7 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
   bool _isOtpVerified = true;
 
   bool get _vehicleNeedsExtraDocs {
-    return _selectedVehicle == 'Car' || _selectedVehicle == 'Mini Truck' || _selectedVehicle == 'Heavy Truck';
+    return _selectedVehicle == 'Car' || _selectedVehicle == 'Car XL' || _selectedVehicle == 'Mini Truck' || _selectedVehicle == 'Heavy Truck';
   }
 
   @override
@@ -195,7 +195,7 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
 
       try {
         final driverName = _nameController.text.trim().isNotEmpty ? _nameController.text.trim() : 'New Driver';
-        final vehiclePlate = _plateController.text.trim().isNotEmpty ? _plateController.text.trim().toUpperCase() : 'TS 09 SD 1234';
+        final vehiclePlate = _plateController.text.trim().toUpperCase();
         final driverPhone = _ownerPhoneController.text.trim().isNotEmpty ? _ownerPhoneController.text.trim() : phone;
         final fs = FirebaseService();
         final String uid = 'mock_uid_${phone}_pilot';
@@ -205,15 +205,15 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
         String? licenseBackUrl;
 
         try {
-          if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg');
+          if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg', documentType: 'photo');
         } catch (e) { debugPrint("Upload photo err: $e"); }
 
         try {
-          if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');
+          if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg', documentType: 'licenseFront');
         } catch (e) { debugPrint("Upload licenseFront err: $e"); }
 
         try {
-          if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg');
+          if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg', documentType: 'licenseBack');
         } catch (e) { debugPrint("Upload licenseBack err: $e"); }
 
         final baseUrl = NetworkConfig.backendUrl;
@@ -304,9 +304,7 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
 
     try {
       final name = _nameController.text.trim();
-      final vehiclePlate = _plateController.text.trim().isNotEmpty
-          ? _plateController.text.trim().toUpperCase()
-          : 'TS 09 SD 1234';
+      final vehiclePlate = _plateController.text.trim().toUpperCase();
       final vehicleModelColor = _modelColorController.text.trim().isNotEmpty
           ? _modelColorController.text.trim()
           : 'Standard';
@@ -328,47 +326,47 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
       String? permitUrl;
 
       try {
-        if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg');
+        if (_photoBytes != null) photoUrl = await fs.uploadProfilePictureToMongo(uid, _photoBytes!, 'jpg', documentType: 'photo');
       } catch (e) { debugPrint("Upload photo err: $e"); }
 
       try {
-        if (_aadhaarFrontBytes != null) aadhaarFrontUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarFrontBytes!, 'jpg');
+        if (_aadhaarFrontBytes != null) aadhaarFrontUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarFrontBytes!, 'jpg', documentType: 'aadhaarFront');
       } catch (e) { debugPrint("Upload aadhaarFront err: $e"); }
 
       try {
-        if (_aadhaarBackBytes != null) aadhaarBackUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarBackBytes!, 'jpg');
+        if (_aadhaarBackBytes != null) aadhaarBackUrl = await fs.uploadProfilePictureToMongo(uid, _aadhaarBackBytes!, 'jpg', documentType: 'aadhaarBack');
       } catch (e) { debugPrint("Upload aadhaarBack err: $e"); }
 
       try {
-        if (_panFrontBytes != null) panFrontUrl = await fs.uploadProfilePictureToMongo(uid, _panFrontBytes!, 'jpg');
+        if (_panFrontBytes != null) panFrontUrl = await fs.uploadProfilePictureToMongo(uid, _panFrontBytes!, 'jpg', documentType: 'panFront');
       } catch (e) { debugPrint("Upload panFront err: $e"); }
 
       try {
-        if (_panBackBytes != null) panBackUrl = await fs.uploadProfilePictureToMongo(uid, _panBackBytes!, 'jpg');
+        if (_panBackBytes != null) panBackUrl = await fs.uploadProfilePictureToMongo(uid, _panBackBytes!, 'jpg', documentType: 'panBack');
       } catch (e) { debugPrint("Upload panBack err: $e"); }
 
       try {
-        if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg');
+        if (_licenseFrontBytes != null) licenseFrontUrl = await fs.uploadProfilePictureToMongo(uid, _licenseFrontBytes!, 'jpg', documentType: 'licenseFront');
       } catch (e) { debugPrint("Upload licenseFront err: $e"); }
 
       try {
-        if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg');
+        if (_licenseBackBytes != null) licenseBackUrl = await fs.uploadProfilePictureToMongo(uid, _licenseBackBytes!, 'jpg', documentType: 'licenseBack');
       } catch (e) { debugPrint("Upload licenseBack err: $e"); }
 
       try {
-        if (_rcFrontBytes != null) rcFrontUrl = await fs.uploadProfilePictureToMongo(uid, _rcFrontBytes!, 'jpg');
+        if (_rcFrontBytes != null) rcFrontUrl = await fs.uploadProfilePictureToMongo(uid, _rcFrontBytes!, 'jpg', documentType: 'rcFront');
       } catch (e) { debugPrint("Upload rcFront err: $e"); }
 
       try {
-        if (_rcBackBytes != null) rcBackUrl = await fs.uploadProfilePictureToMongo(uid, _rcBackBytes!, 'jpg');
+        if (_rcBackBytes != null) rcBackUrl = await fs.uploadProfilePictureToMongo(uid, _rcBackBytes!, 'jpg', documentType: 'rcBack');
       } catch (e) { debugPrint("Upload rcBack err: $e"); }
 
       try {
-        if (_fitnessBytes != null) fitnessUrl = await fs.uploadProfilePictureToMongo(uid, _fitnessBytes!, 'jpg');
+        if (_fitnessBytes != null) fitnessUrl = await fs.uploadProfilePictureToMongo(uid, _fitnessBytes!, 'jpg', documentType: 'fitness');
       } catch (e) { debugPrint("Upload fitness err: $e"); }
 
       try {
-        if (_permitBytes != null) permitUrl = await fs.uploadProfilePictureToMongo(uid, _permitBytes!, 'jpg');
+        if (_permitBytes != null) permitUrl = await fs.uploadProfilePictureToMongo(uid, _permitBytes!, 'jpg', documentType: 'permit');
       } catch (e) { debugPrint("Upload permit err: $e"); }
 
       // 1. Register User via /api/register
@@ -839,7 +837,7 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Enter the 6-digit code sent via SMS to +91 ${phoneController.text.isNotEmpty ? phoneController.text : "81214 40281"}',
+                  'Enter the 6-digit verification code shown below.',
                   style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppTheme.onSurfaceVariant,
@@ -1108,6 +1106,7 @@ class _AdminPilotRegistrationScreenState extends State<AdminPilotRegistrationScr
                       _buildVehicleChip('Bike', Icons.two_wheeler_rounded),
                       _buildVehicleChip('Auto', Icons.electric_rickshaw_rounded),
                       _buildVehicleChip('Car', Icons.directions_car_rounded),
+                      _buildVehicleChip('Car XL', Icons.directions_car_filled_rounded),
                       _buildVehicleChip('Mini Truck', Icons.airport_shuttle_rounded),
                       _buildVehicleChip('Heavy Truck', Icons.local_shipping_rounded),
                     ],

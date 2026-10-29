@@ -25,6 +25,14 @@ class FirebaseService {
   FirebaseStorage get _storage => FirebaseStorage.instance;
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
 
+  bool get isInitialized {
+    try {
+      return Firebase.apps.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // Initialize Firebase App
   static Future<void> initialize() async {
     WidgetsFlutterBinding.ensureInitialized();
@@ -42,15 +50,17 @@ class FirebaseService {
   // Stream of auth state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+
   // Get current user UID
   String? get currentUid {
-    if (_mockUid != null) return _mockUid;
+    if (_mockUid != null && _mockUid!.isNotEmpty) return _mockUid;
     try {
       if (Firebase.apps.isNotEmpty) {
-        return _auth.currentUser?.uid;
+        final fUid = _auth.currentUser?.uid;
+        if (fUid != null && fUid.isNotEmpty) return fUid;
       }
     } catch (_) {}
-    return null;
+    return _mockUid;
   }
 
   // Sign In with Email & Password
@@ -292,17 +302,34 @@ class FirebaseService {
       });
     }
 
-    // Proactively bypass Firestore for mock UIDs to prevent hangs
+    // Proactively query MongoDB with role parameter
     if (uid.startsWith('mock_uid_')) {
       try {
         final baseUrl = NetworkConfig.backendUrl;
-        final url = Uri.parse('$baseUrl/api/user/$uid');
+        final cleanP = uid.replaceFirst('mock_uid_', '').replaceAll('_pilot', '').replaceAll('_partner', '');
+        final url = Uri.parse('$baseUrl/api/user/$uid?role=$role&phone=$cleanP');
         final response = await ApiClient().get(url, retry: false).timeout(const Duration(seconds: 4));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data['success'] == true && data['user'] != null) {
             final userMap = data['user'] as Map<String, dynamic>;
             return MockDocumentSnapshot(userMap);
+          }
+        }
+        // If partner and not resolved yet, check dedicated application-status endpoint
+        if (role == 'partner' && cleanP.isNotEmpty) {
+          final statusUrl = Uri.parse('$baseUrl/api/pilot/application-status?phone=$cleanP&uid=$uid');
+          final statusRes = await ApiClient().get(statusUrl, retry: false).timeout(const Duration(seconds: 4));
+          if (statusRes.statusCode == 200) {
+            final sData = jsonDecode(statusRes.body);
+            if (sData['success'] == true && sData['found'] == true && sData['pilot'] != null) {
+              final pilotMap = Map<String, dynamic>.from(sData['pilot']);
+              pilotMap['applicationId'] = sData['applicationId'];
+              pilotMap['status'] = sData['status'];
+              pilotMap['approved'] = sData['approved'];
+              pilotMap['isApproved'] = sData['isApproved'];
+              return MockDocumentSnapshot(pilotMap);
+            }
           }
         }
       } catch (err) {
@@ -322,7 +349,8 @@ class FirebaseService {
       debugPrint("Firestore getProfile failed, querying MongoDB: $e");
       try {
         final baseUrl = NetworkConfig.backendUrl;
-        final url = Uri.parse('$baseUrl/api/user/$uid');
+        final cleanP = uid.replaceAll(RegExp(r'\D'), '').length >= 10 ? uid.replaceAll(RegExp(r'\D'), '').substring(uid.replaceAll(RegExp(r'\D'), '').length - 10) : '';
+        final url = Uri.parse('$baseUrl/api/user/$uid?role=$role&phone=$cleanP');
         final response = await ApiClient().get(url, retry: false).timeout(const Duration(seconds: 4));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
@@ -439,26 +467,100 @@ class FirebaseService {
   }
 
   // Upload file to MongoDB storage backend
-  Future<String> uploadProfilePictureToMongo(String uid, List<int> fileBytes, String extension) async {
+  Future<String> uploadProfilePictureToMongo(
+    String uid,
+    List<int> fileBytes,
+    String extension, {
+    String? documentType,
+    String? originalFileName,
+  }) async {
     final base64Data = base64Encode(fileBytes);
     final baseUrl = NetworkConfig.backendUrl;
     final url = Uri.parse('$baseUrl/api/upload');
-    final response = await ApiClient().post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'uid': uid,
-        'fileName': 'doc_$uid.$extension',
-        'fileData': base64Data,
-      }),
-    );
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      if (data['success'] == true) {
-        return '$baseUrl${data['url']}';
-      }
+
+    final cleanExt = extension.startsWith('.')
+        ? extension.substring(1).toLowerCase()
+        : extension.toLowerCase();
+
+    String mimeType = 'image/jpeg';
+    if (cleanExt == 'png') {
+      mimeType = 'image/png';
+    } else if (cleanExt == 'pdf') {
+      mimeType = 'application/pdf';
+    } else if (cleanExt == 'jpg' || cleanExt == 'jpeg') {
+      mimeType = 'image/jpeg';
+    } else {
+      mimeType = 'application/octet-stream';
     }
-    throw Exception("Failed to upload file to MongoDB storage");
+
+    final safeDocType = documentType ?? 'document';
+    final name = originalFileName ?? '${safeDocType}_$uid.$cleanExt';
+
+    try {
+      final response = await ApiClient().post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'StayDrivApp/1.0',
+        },
+        body: jsonEncode({
+          'uid': uid,
+          'fileName': name,
+          'fileData': base64Data,
+          'documentType': safeDocType,
+          'mimeType': mimeType,
+        }),
+        timeout: const Duration(seconds: 45),
+      );
+
+      final rawBody = response.body.trimLeft();
+      final isHtmlResponse = rawBody.startsWith('<');
+
+      if (response.statusCode == 200 && !isHtmlResponse) {
+        final data = jsonDecode(response.body);
+        if (data is Map && data['success'] == true && data['url'] != null) {
+          final relUrl = data['url'].toString();
+          return relUrl.startsWith('http') ? relUrl : '$baseUrl$relUrl';
+        }
+        final message = (data is Map && data['message'] != null)
+            ? data['message'].toString()
+            : 'Server could not process file';
+        throw Exception(message);
+      } else if (response.statusCode == 403) {
+        throw Exception('Your session has expired. Please login again.');
+      } else if (response.statusCode == 413) {
+        throw Exception('File exceeds maximum size limit of 10 MB.');
+      } else {
+        if (!isHtmlResponse && rawBody.isNotEmpty) {
+          try {
+            final data = jsonDecode(response.body);
+            if (data is Map && data['message'] != null) {
+              throw Exception(data['message'].toString());
+            }
+          } catch (parseErr) {
+            if (parseErr is! FormatException &&
+                !parseErr.toString().contains('FormatException') &&
+                parseErr.toString().contains('Exception:')) {
+              rethrow;
+            }
+          }
+        }
+        throw Exception('Upload failed (HTTP ${response.statusCode}). Please try again.');
+      }
+    } catch (e) {
+      debugPrint('[STORAGE] uploadProfilePictureToMongo error: $e');
+      final errStr = e.toString();
+      if (e is FormatException ||
+          errStr.contains('FormatException') ||
+          errStr.contains('Unexpected character') ||
+          errStr.contains('<html>')) {
+        throw Exception('Server returned an unexpected response. Please check your connection and try again.');
+      }
+      if (errStr.contains('Exception:')) {
+        rethrow;
+      }
+      throw Exception('Unable to upload document. Please check your internet connection and try again.');
+    }
   }
 
   // --- MESSAGING & PUSH NOTIFICATIONS ---

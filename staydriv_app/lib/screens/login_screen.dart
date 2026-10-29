@@ -30,7 +30,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
       _errorMessage = '';
     });
 
-    final res = await ApiService.sendOtp(mobile);
+    final res = await ApiService.sendOtp(mobile, role: 'CUSTOMER');
 
     setState(() {
       _isLoading = false;
@@ -38,25 +38,23 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
 
     if (res['success'] == true) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(res['message'] ?? 'OTP sent successfully!'),
-            backgroundColor: AppTheme.primaryColor,
-          ),
-        );
-
+        final code = (res['verificationCode'] ?? res['code'])?.toString();
+        final sessId = (res['verificationSessionId'] ?? res['transactionId'])?.toString();
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OtpScreen(
               mobile: mobile.replaceAll(RegExp(r'\D'), ''),
+              initialCode: code,
+              verificationSessionId: sessId,
+              role: 'CUSTOMER',
             ),
           ),
         );
       }
     } else {
       setState(() {
-        _errorMessage = res['message'] ?? 'Failed to send OTP. Please try again.';
+        _errorMessage = res['message'] ?? 'Failed to generate verification code. Please try again.';
       });
     }
   }
@@ -119,7 +117,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'We will send a 6-digit OTP via Tata Smartflo SMS to verify your account.',
+                'A secure 6-digit verification code will be generated inside the app.',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white60,
                   fontSize: 14,
@@ -215,7 +213,7 @@ class _MobileLoginScreenState extends State<MobileLoginScreen> {
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                         )
                       : Text(
-                          'Send OTP',
+                          'Get Verification Code',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

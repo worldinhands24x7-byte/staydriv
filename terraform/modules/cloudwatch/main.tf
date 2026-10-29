@@ -99,6 +99,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_latency" {
 
 # --- CloudWatch Metric Alarm: RDS High CPU ---
 resource "aws_cloudwatch_metric_alarm" "rds_high_cpu" {
+  count               = var.db_instance_id != "" && var.db_instance_id != null ? 1 : 0
   alarm_name          = "${var.project_name}-${var.environment}-rds-high-cpu"
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 2
@@ -120,6 +121,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_high_cpu" {
 
 # --- CloudWatch Metric Alarm: RDS Low Free Storage Space (< 5 GB) ---
 resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
+  count               = var.db_instance_id != "" && var.db_instance_id != null ? 1 : 0
   alarm_name          = "${var.project_name}-${var.environment}-rds-low-storage"
   comparison_operator = "LessThanOrEqualToThreshold"
   evaluation_periods  = 1
@@ -138,6 +140,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_low_storage" {
 
   tags = var.common_tags
 }
+
 
 # --- CloudWatch Operational Dashboard ---
 resource "aws_cloudwatch_dashboard" "main" {

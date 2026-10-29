@@ -28,31 +28,16 @@ mkdir -p /opt/staydriv
 mkdir -p /var/log/staydriv
 chown -R ubuntu:ubuntu /opt/staydriv /var/log/staydriv
 
-# Create StayDriv Backend Bootstrap / Health Service
-cat << 'EOF' > /opt/staydriv/server.js
-const http = require('http');
+# Install Docker for MongoDB
+which docker || (apt-get update -y && apt-get install -y docker.io)
+systemctl enable docker --now
+docker ps -a | grep -q staydriv-mongo || docker run -d --name staydriv-mongo -p 27017:27017 --restart always mongo:7.0
 
-const PORT = process.env.PORT || ${app_port};
-
-const server = http.createServer((req, res) => {
-  if (req.url === '/' || req.url === '/api/health' || req.url === '/health') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'UP',
-      service: 'staydriv-backend',
-      environment: '${environment}',
-      timestamp: new Date().toISOString()
-    }));
-  } else {
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not Found' }));
-  }
-});
-
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('StayDriv Production Service running on port ' + PORT);
-});
-EOF
+# Download and install StayDriv production backend from S3
+aws s3 cp s3://${s3_bucket_name}/staydriv_core_backend.tar.gz /tmp/staydriv_core_backend.tar.gz --region ${aws_region}
+tar -xzf /tmp/staydriv_core_backend.tar.gz -C /opt/staydriv
+cd /opt/staydriv && npm install --omit=dev
+chown -R ubuntu:ubuntu /opt/staydriv
 
 # Fetch DB and API Secrets from AWS Secrets Manager if configured
 if [ -n "${db_secret_arn}" ]; then
@@ -137,3 +122,39 @@ systemctl daemon-reload
 /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -s -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json || true
 systemctl enable staydriv
 systemctl start staydriv
+
+# Create StayDriv ASG Instance CLI helper command
+cat << 'EOF' > /usr/local/bin/${project_name}-${environment}-asg-instance
+#!/bin/bash
+echo "============================================================"
+echo "          STAYDRIV PRODUCTION ASG INSTANCE INFO"
+echo "============================================================"
+TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null)
+INSTANCE_ID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/instance-id 2>/dev/null || hostname)
+LOCAL_IP=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/local-ipv4 2>/dev/null || hostname -I | awk '{print $1}')
+AZ=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" http://169.254.169.254/latest/meta-data/placement/availability-zone 2>/dev/null || echo "${aws_region}")
+
+echo "Instance Name : ${project_name}-${environment}-asg-instance"
+echo "Instance ID   : $INSTANCE_ID"
+echo "Private IP    : $LOCAL_IP"
+echo "AZ / Region   : $AZ"
+echo "------------------------------------------------------------"
+echo "Backend Status:"
+if systemctl is-active staydriv &>/dev/null; then
+  echo "  Service staydriv: ACTIVE (RUNNING)"
+else
+  echo "  Service staydriv: INACTIVE"
+fi
+echo ""
+echo "Health Check (http://127.0.0.1:${app_port}/health):"
+curl -s http://127.0.0.1:${app_port}/health
+echo ""
+echo "------------------------------------------------------------"
+echo "Useful Commands:"
+echo "  View live logs  : sudo journalctl -u staydriv -f"
+echo "  Restart service: sudo systemctl restart staydriv"
+echo "============================================================"
+EOF
+chmod +x /usr/local/bin/${project_name}-${environment}-asg-instance
+ln -sf /usr/local/bin/${project_name}-${environment}-asg-instance /usr/bin/${project_name}-${environment}-asg-instance
+

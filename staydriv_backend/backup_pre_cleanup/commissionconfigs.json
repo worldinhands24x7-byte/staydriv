@@ -1,0 +1,30 @@
+[
+  {
+    "_id": "6abd3ca46944456d8cd5f522",
+    "configId": "CFG_DEFAULT_V1",
+    "version": 1,
+    "defaultRate": 20,
+    "ratesByVehicle": {
+      "Bike": 20,
+      "Auto": 15,
+      "Car": 20,
+      "Mini Truck": 12,
+      "6 Ton Truck": 10
+    },
+    "ratesByService": {
+      "ride": 20,
+      "delivery": 15,
+      "parcel": 15
+    },
+    "taxRateGst": 5,
+    "gatewayFeeRate": 2,
+    "effectiveTo": null,
+    "isActive": true,
+    "notes": "Initial production commission configuration",
+    "createdBy": "Super Admin",
+    "effectiveFrom": "2026-09-30T16:45:24.507Z",
+    "createdAt": "2026-09-30T16:45:24.507Z",
+    "updatedAt": "2026-09-30T16:45:24.507Z",
+    "__v": 0
+  }
+]

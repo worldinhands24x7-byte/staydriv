@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372277190040:android:4a9844cdd1b76af9b59fee",
+        "android_client_info": {
+          "package_name": "com.staydriv.customer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ_Hoy7X5PkMz0MXLLzgvkH_A1e8xzLZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:372277190040:android:4a9844cdd1b76af9b59fef",
+        "android_client_info": {
+          "package_name": "com.staydriv.pilot"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJ_Hoy7X5PkMz0MXLLzgvkH_A1e8xzLZg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

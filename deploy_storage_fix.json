@@ -1,0 +1,15 @@
+{
+  "InstanceIds": ["i-022567dabce0647bc"],
+  "DocumentName": "AWS-RunShellScript",
+  "Parameters": {
+    "commands": [
+      "mkdir -p /opt/staydriv/services",
+      "curl -s -f https://staydriv-s3.s3.ap-south-2.amazonaws.com/apk/storageService.js -o /opt/staydriv/services/storageService.js",
+      "curl -s -f https://staydriv-s3.s3.ap-south-2.amazonaws.com/apk/server.js -o /opt/staydriv/server.js",
+      "systemctl restart staydriv",
+      "sleep 2",
+      "systemctl is-active staydriv",
+      "curl -s http://127.0.0.1:3000/api/health"
+    ]
+  }
+}

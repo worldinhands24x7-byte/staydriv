@@ -1,0 +1,1 @@
+{"InstanceIds":["i-0f8915ff46459c3b5"],"DocumentName":"AWS-RunShellScript","Parameters":{"commands":["grep -i \"/api/food/partner\" /var/log/staydriv/app.log | tail -n 50"]}}

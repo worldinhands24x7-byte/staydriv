@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'theme.dart';
 
 class SharedLocationResult {
@@ -13,15 +14,43 @@ class SharedLocationResult {
   final LatLng? coordinates;
   final String? mapsUrl;
 
+  // Rich StayDriv Ride Deep Link Parameters
+  final bool isStayDrivRideLink;
+  final String? pickupAddress;
+  final LatLng? pickupLatLng;
+  final String? dropAddress;
+  final LatLng? dropLatLng;
+  final String serviceType;
+  final String? rideRef;
+  final String? bookingId;
+  final String? trackingToken;
+
   SharedLocationResult({
     required this.originalText,
     required this.title,
     this.coordinates,
     this.mapsUrl,
+    this.isStayDrivRideLink = false,
+    this.pickupAddress,
+    this.pickupLatLng,
+    this.dropAddress,
+    this.dropLatLng,
+    this.serviceType = 'bike',
+    this.rideRef,
+    this.bookingId,
+    this.trackingToken,
   });
 
+  bool get hasBothLocations =>
+      (pickupAddress != null || pickupLatLng != null) &&
+      (dropAddress != null || dropLatLng != null);
+
+  bool get isTrackingLink =>
+      trackingToken != null && trackingToken!.trim().isNotEmpty;
+
   @override
-  String toString() => 'SharedLocationResult(title: $title, coords: $coordinates, url: $mapsUrl)';
+  String toString() =>
+      'SharedLocationResult(title: $title, isStayDriv: $isStayDrivRideLink, pickup: $pickupAddress, drop: $dropAddress, service: $serviceType)';
 }
 
 class LocationShareService {
@@ -37,7 +66,41 @@ class LocationShareService {
 
   bool _isInitialized = false;
 
+  static String? _pendingRawLink;
+  static String? get pendingRawLink => _pendingRawLink;
+
   LocationShareService._internal();
+
+  /// Cache pending deep link so it survives login navigation or cold start
+  static Future<void> savePendingLink(String link) async {
+    _pendingRawLink = link;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('pending_deep_link', link);
+    } catch (_) {}
+  }
+
+  /// Retrieve and clear any pending deep link after login
+  static Future<String?> consumePendingLink() async {
+    if (_pendingRawLink != null && _pendingRawLink!.trim().isNotEmpty) {
+      final link = _pendingRawLink;
+      _pendingRawLink = null;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('pending_deep_link');
+      } catch (_) {}
+      return link;
+    }
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final link = prefs.getString('pending_deep_link');
+      if (link != null && link.trim().isNotEmpty) {
+        await prefs.remove('pending_deep_link');
+        return link;
+      }
+    } catch (_) {}
+    return null;
+  }
 
   void init({required Function(SharedLocationResult) onLocationReceived}) {
     if (_isInitialized) return;
@@ -55,15 +118,18 @@ class LocationShareService {
       }
     });
 
-    // Check if app was cold-started from a share intent
+    // Check if app was cold-started from an intent or has a pending link
     _checkInitialIntent(onLocationReceived);
   }
 
   Future<void> _checkInitialIntent(Function(SharedLocationResult) onLocationReceived) async {
     try {
-      final initialData = await _channel.invokeMethod<String>('getInitialSharedLocation');
-      if (initialData != null && initialData.trim().isNotEmpty) {
-        final result = await parseSharedText(initialData);
+      String? rawData = await consumePendingLink();
+      if (rawData == null || rawData.trim().isEmpty) {
+        rawData = await _channel.invokeMethod<String>('getInitialSharedLocation');
+      }
+      if (rawData != null && rawData.trim().isNotEmpty) {
+        final result = await parseSharedText(rawData);
         _locationStreamController.add(result);
         onLocationReceived(result);
       }
@@ -72,7 +138,7 @@ class LocationShareService {
     }
   }
 
-  /// Parses raw text shared from Google Maps or other apps
+  /// Parses raw text, deep links, Google Maps URLs, or geo: URIs
   static Future<SharedLocationResult> parseSharedText(String raw) async {
     String cleanText = raw.trim();
     String? foundUrl;
@@ -84,13 +150,171 @@ class LocationShareService {
     final match = urlRegex.firstMatch(cleanText);
     if (match != null) {
       foundUrl = match.group(0);
-      // Remove URL from title candidate
-      final withoutUrl = cleanText.replaceFirst(foundUrl!, '').trim();
+    } else if (cleanText.startsWith('staydriv://') || cleanText.startsWith('geo:')) {
+      foundUrl = cleanText;
+    }
+
+    // 2. CHECK FOR STAYDRIV RIDE BOOKING DEEP LINKS
+    if (foundUrl != null &&
+        (foundUrl.contains('staydriv.in') ||
+         foundUrl.contains('staydriv.com') ||
+         foundUrl.contains('cloudfront.net') ||
+         foundUrl.startsWith('staydriv://'))) {
+      try {
+        final uri = Uri.parse(foundUrl);
+        final params = uri.queryParameters;
+
+        // Check for live tracking link (/track/:token)
+        if (uri.path.contains('/track/')) {
+          final parts = uri.path.split('/');
+          final trackIdx = parts.indexOf('track');
+          final token = (trackIdx != -1 && trackIdx + 1 < parts.length) ? parts[trackIdx + 1] : '';
+          return SharedLocationResult(
+            originalText: raw,
+            title: 'Live Trip Tracking',
+            isStayDrivRideLink: true,
+            trackingToken: token.isNotEmpty ? token : params['token'],
+            bookingId: params['rideId'] ?? params['bookingId'],
+            rideRef: params['ref'],
+          );
+        }
+
+        // Extract ride booking locations
+        final pickup = params['pickup'] ?? params['pname'] ?? params['from'] ?? params['pickupName'];
+        final drop = params['drop'] ?? params['dname'] ?? params['to'] ?? params['destination'] ?? params['dropName'];
+
+        LatLng? pickupLatLng;
+        final platStr = params['plat'] ?? params['pickupLat'] ?? params['fromLat'];
+        final plngStr = params['plng'] ?? params['pickupLng'] ?? params['fromLng'];
+        if (platStr != null && plngStr != null) {
+          final plat = double.tryParse(platStr);
+          final plng = double.tryParse(plngStr);
+          if (plat != null && plng != null) {
+            pickupLatLng = LatLng(plat, plng);
+          }
+        }
+
+        LatLng? dropLatLng;
+        final dlatStr = params['dlat'] ?? params['dropLat'] ?? params['toLat'];
+        final dlngStr = params['dlng'] ?? params['dropLng'] ?? params['toLng'];
+        if (dlatStr != null && dlngStr != null) {
+          final dlat = double.tryParse(dlatStr);
+          final dlng = double.tryParse(dlngStr);
+          if (dlat != null && dlng != null) {
+            dropLatLng = LatLng(dlat, dlng);
+          }
+        }
+
+        final rawService = (params['service'] ?? params['serviceType'] ?? params['vehicle'] ?? 'bike').toLowerCase();
+        String serviceType = 'bike';
+        if (rawService.contains('auto')) {
+          serviceType = 'auto';
+        } else if (rawService.contains('car') || rawService.contains('cab')) {
+          serviceType = 'car';
+        } else if (rawService.contains('parcel') || rawService.contains('delivery')) {
+          serviceType = 'parcel';
+        } else if (rawService.contains('truck')) {
+          serviceType = 'heavy_truck';
+        }
+
+        String rideTitle = 'StayDriv Ride';
+        if (pickup != null && drop != null) {
+          rideTitle = '$pickup → $drop';
+        } else if (drop != null) {
+          rideTitle = 'Ride to $drop';
+        } else if (pickup != null) {
+          rideTitle = 'Pickup from $pickup';
+        }
+
+        return SharedLocationResult(
+          originalText: raw,
+          title: rideTitle,
+          isStayDrivRideLink: true,
+          pickupAddress: pickup,
+          pickupLatLng: pickupLatLng,
+          dropAddress: drop,
+          dropLatLng: dropLatLng,
+          serviceType: serviceType,
+          rideRef: params['ref'] ?? params['rideRef'],
+          bookingId: params['bookingId'] ?? params['rideId'],
+          mapsUrl: foundUrl,
+        );
+      } catch (e) {
+        debugPrint('[LocationShareService] Error parsing StayDriv deep link: $e');
+      }
+    }
+
+    // 3. CHECK FOR GEO: SCHEME (e.g. geo:17.4834,78.3871?q=... or geo:0,0?q=17.4834,78.3871(Title))
+    if (cleanText.startsWith('geo:')) {
+      try {
+        final geoContent = cleanText.replaceFirst('geo:', '');
+        final querySplit = geoContent.split('?');
+        final latLngPart = querySplit.first;
+
+        if (querySplit.length > 1) {
+          final qParam = Uri.splitQueryString(querySplit[1])['q'] ?? '';
+          if (qParam.isNotEmpty) {
+            // Check if label enclosed in parentheses e.g. 17.48,78.38(Hitec City)
+            final labelMatch = RegExp(r'\(([^)]+)\)').firstMatch(qParam);
+            if (labelMatch != null) {
+              locationTitle = labelMatch.group(1)!;
+            } else if (!qParam.contains(',')) {
+              locationTitle = qParam;
+            }
+            final qCoords = _extractCoordsFromText(qParam);
+            if (qCoords != null) {
+              foundCoords = qCoords;
+            }
+          }
+        }
+
+        if (foundCoords == null && latLngPart.contains(',')) {
+          final parts = latLngPart.split(',');
+          if (parts.length >= 2) {
+            final lat = double.tryParse(parts[0].trim());
+            final lng = double.tryParse(parts[1].trim());
+            if (lat != null && lng != null && (lat != 0.0 || lng != 0.0)) {
+              foundCoords = LatLng(lat, lng);
+            }
+          }
+        }
+
+        return SharedLocationResult(
+          originalText: raw,
+          title: locationTitle.isNotEmpty ? locationTitle : 'Dropped Location',
+          coordinates: foundCoords,
+        );
+      } catch (e) {
+        debugPrint('[LocationShareService] Error parsing geo URI: $e');
+      }
+    }
+
+    // 4. PARSE GOOGLE MAPS OR STANDARD LOCATION URLS
+    if (foundUrl != null) {
+      final withoutUrl = cleanText.replaceFirst(foundUrl, '').trim();
       if (withoutUrl.isNotEmpty) {
-        // First line or non-empty line as title
         final lines = withoutUrl.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
         if (lines.isNotEmpty) {
           locationTitle = lines.first;
+        }
+      }
+
+      foundCoords = _extractCoordsFromUrl(foundUrl);
+
+      // If short URL (e.g. maps.app.goo.gl or goo.gl/maps), resolve redirect to get coordinates
+      if (foundCoords == null &&
+          (foundUrl.contains('maps.app.goo.gl') || foundUrl.contains('goo.gl'))) {
+        try {
+          final client = http.Client();
+          final request = http.Request('GET', Uri.parse(foundUrl))..followRedirects = true;
+          final response = await client.send(request).timeout(const Duration(seconds: 3));
+          final finalUrl = response.headers['location'] ?? response.request?.url.toString();
+          if (finalUrl != null) {
+            foundCoords = _extractCoordsFromUrl(finalUrl);
+          }
+          client.close();
+        } catch (e) {
+          debugPrint('Could not resolve Google Maps short URL: $e');
         }
       }
     } else {
@@ -98,6 +322,11 @@ class LocationShareService {
       if (lines.isNotEmpty) {
         locationTitle = lines.first;
       }
+    }
+
+    // 5. REGEX FALLBACK FOR COORDINATES IN PLAIN TEXT
+    if (foundCoords == null) {
+      foundCoords = _extractCoordsFromText(cleanText);
     }
 
     // Clean up generic prefixes from Google Maps
@@ -118,62 +347,27 @@ class LocationShareService {
       }
     }
 
-    // 2. Direct regex search for lat,lng in text: e.g. 17.4834, 78.3871
-    final coordsRegex = RegExp(r'([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)');
-    final coordsMatch = coordsRegex.firstMatch(cleanText);
-    if (coordsMatch != null) {
-      try {
-        final lat = double.parse(coordsMatch.group(1)!);
-        final lng = double.parse(coordsMatch.group(2)!);
-        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-          foundCoords = LatLng(lat, lng);
-        }
-      } catch (_) {}
-    }
-
-    // 3. Check geo: scheme URI: e.g. geo:17.4834,78.3871?q=...
-    if (foundCoords == null && cleanText.startsWith('geo:')) {
-      final geoContent = cleanText.replaceFirst('geo:', '');
-      final querySplit = geoContent.split('?');
-      final latLngPart = querySplit.first;
-      final parts = latLngPart.split(',');
-      if (parts.length >= 2) {
-        try {
-          final lat = double.parse(parts[0].trim());
-          final lng = double.parse(parts[1].trim());
-          foundCoords = LatLng(lat, lng);
-        } catch (_) {}
-      }
-    }
-
-    // 4. If URL exists and no coords yet, inspect and resolve Google Maps URL
-    if (foundCoords == null && foundUrl != null) {
-      foundCoords = _extractCoordsFromUrl(foundUrl);
-
-      // If short URL (e.g. maps.app.goo.gl or goo.gl/maps), resolve redirect to get full URL
-      if (foundCoords == null &&
-          (foundUrl.contains('maps.app.goo.gl') || foundUrl.contains('goo.gl'))) {
-        try {
-          final client = http.Client();
-          final request = http.Request('GET', Uri.parse(foundUrl))..followRedirects = true;
-          final response = await client.send(request).timeout(const Duration(seconds: 3));
-          final finalUrl = response.headers['location'] ?? response.request?.url.toString();
-          if (finalUrl != null) {
-            foundCoords = _extractCoordsFromUrl(finalUrl);
-          }
-          client.close();
-        } catch (e) {
-          debugPrint('Could not resolve Google Maps short URL: $e');
-        }
-      }
-    }
-
     return SharedLocationResult(
       originalText: raw,
       title: locationTitle,
       coordinates: foundCoords,
       mapsUrl: foundUrl,
     );
+  }
+
+  static LatLng? _extractCoordsFromText(String text) {
+    try {
+      final coordsRegex = RegExp(r'([-+]?\d{1,2}\.\d+)[,\s]+([-+]?\d{1,3}\.\d+)');
+      final coordsMatch = coordsRegex.firstMatch(text);
+      if (coordsMatch != null) {
+        final lat = double.parse(coordsMatch.group(1)!);
+        final lng = double.parse(coordsMatch.group(2)!);
+        if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+          return LatLng(lat, lng);
+        }
+      }
+    } catch (_) {}
+    return null;
   }
 
   static LatLng? _extractCoordsFromUrl(String url) {

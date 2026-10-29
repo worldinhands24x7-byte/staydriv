@@ -32,7 +32,81 @@
   <title>staydriv_app</title>
   <link rel="manifest" href="manifest.json">
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2Lw1UPJAVtzSBY4JARHS6yV284w2hneg"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
+    // Official Razorpay Web Checkout Integration for StayDriv
+    window.openStayDrivRazorpayCheckout = function(optionsJson, callbackName) {
+      console.log("[StayDriv Razorpay Web] Opening checkout for:", callbackName);
+      try {
+        if (typeof Razorpay === 'undefined') {
+          console.error("[StayDriv Razorpay Web] Razorpay script not loaded.");
+          if (window[callbackName]) {
+            window[callbackName](JSON.stringify({
+              status: 'error',
+              code: 'SCRIPT_NOT_LOADED',
+              message: 'Razorpay checkout script failed to load. Please check your internet connection.'
+            }));
+          }
+          return;
+        }
+
+        const options = JSON.parse(optionsJson);
+
+        // Success handler
+        options.handler = function(response) {
+          console.log("[StayDriv Razorpay Web] Payment successful:", response);
+          if (window[callbackName]) {
+            window[callbackName](JSON.stringify({
+              status: 'success',
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature
+            }));
+          }
+        };
+
+        // Modal dismissal
+        options.modal = options.modal || {};
+        options.modal.ondismiss = function() {
+          console.log("[StayDriv Razorpay Web] Checkout modal dismissed by user.");
+          if (window[callbackName]) {
+            window[callbackName](JSON.stringify({
+              status: 'cancelled',
+              code: 2,
+              message: 'Payment cancelled. You can retry whenever you are ready.'
+            }));
+          }
+        };
+
+        const rzp = new Razorpay(options);
+
+        // Payment failed handler
+        rzp.on('payment.failed', function(resp) {
+          console.warn("[StayDriv Razorpay Web] Payment failed at gateway:", resp);
+          const err = resp.error || {};
+          if (window[callbackName]) {
+            window[callbackName](JSON.stringify({
+              status: 'failed',
+              code: err.code || 1,
+              message: err.description || err.reason || 'Payment failed at gateway',
+              error: err
+            }));
+          }
+        });
+
+        rzp.open();
+      } catch (err) {
+        console.error("[StayDriv Razorpay Web] Exception in openStayDrivRazorpayCheckout:", err);
+        if (window[callbackName]) {
+          window[callbackName](JSON.stringify({
+            status: 'error',
+            code: 100,
+            message: err.message || 'Payment initiation error'
+          }));
+        }
+      }
+    };
+
     // Unregister any active service worker to prevent caching issues during testing
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(function(registrations) {
@@ -60,78 +134,172 @@
 
     let stayDrivAudioCtx = null;
     let stayDrivRingingInterval = null;
+    let originalDocTitle = document.title;
+    let titleFlashInterval = null;
 
     // Unlock AudioContext on user interaction
     const unlockAudioContext = () => {
-      if (!stayDrivAudioCtx) {
-        stayDrivAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (stayDrivAudioCtx.state === 'suspended') {
-        stayDrivAudioCtx.resume().then(() => {
-          console.log("AudioContext unlocked successfully!");
-          window.removeEventListener('click', unlockAudioContext);
-          window.removeEventListener('touchstart', unlockAudioContext);
-        });
-      } else {
-        window.removeEventListener('click', unlockAudioContext);
-        window.removeEventListener('touchstart', unlockAudioContext);
+      try {
+        if (!stayDrivAudioCtx) {
+          stayDrivAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (stayDrivAudioCtx.state === 'suspended') {
+          stayDrivAudioCtx.resume().then(() => {
+            console.log("[StayDriv Audio] AudioContext unlocked successfully!");
+          });
+        }
+      } catch (e) {
+        console.warn("[StayDriv Audio] Error unlocking AudioContext:", e);
       }
     };
     window.addEventListener('click', unlockAudioContext);
     window.addEventListener('touchstart', unlockAudioContext);
+    window.addEventListener('keydown', unlockAudioContext);
 
-    window.startStayDrivRinging = function() {
-      if (stayDrivRingingInterval) return; // already ringing
-      
-      const playChime = () => {
-        try {
-          if (!stayDrivAudioCtx) {
-            stayDrivAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          }
-          if (stayDrivAudioCtx.state === 'suspended') {
-            stayDrivAudioCtx.resume();
-          }
-          
-          // Synthesize a dual-tone telephone alert chime
-          const osc1 = stayDrivAudioCtx.createOscillator();
-          const osc2 = stayDrivAudioCtx.createOscillator();
-          const gainNode = stayDrivAudioCtx.createGain();
-          
-          osc1.type = 'sine';
-          osc1.frequency.setValueAtTime(440, stayDrivAudioCtx.currentTime); // A4
-          osc1.frequency.exponentialRampToValueAtTime(880, stayDrivAudioCtx.currentTime + 0.4); // A5
-          
-          osc2.type = 'triangle';
-          osc2.frequency.setValueAtTime(554.37, stayDrivAudioCtx.currentTime); // C#5
-          osc2.frequency.exponentialRampToValueAtTime(1108.73, stayDrivAudioCtx.currentTime + 0.4); // C#6
-          
-          gainNode.gain.setValueAtTime(0.35, stayDrivAudioCtx.currentTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.001, stayDrivAudioCtx.currentTime + 0.5);
-          
-          osc1.connect(gainNode);
-          osc2.connect(gainNode);
-          gainNode.connect(stayDrivAudioCtx.destination);
-          
-          osc1.start();
-          osc2.start();
-          
-          osc1.stop(stayDrivAudioCtx.currentTime + 0.5);
-          osc2.stop(stayDrivAudioCtx.currentTime + 0.5);
-        } catch (e) {
-          console.error("Audio playback error: ", e);
+    // High-volume restaurant kitchen order chime synthesizer
+    const playRestaurantKitchenChime = (customVolume) => {
+      try {
+        if (!stayDrivAudioCtx) {
+          stayDrivAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
-      };
+        if (stayDrivAudioCtx.state === 'suspended') {
+          stayDrivAudioCtx.resume();
+        }
 
-      // Play chime immediately, and repeat every 1.5 seconds
-      playChime();
-      stayDrivRingingInterval = setInterval(playChime, 1500);
+        const vol = (typeof customVolume === 'number' && !isNaN(customVolume))
+          ? Math.max(0.1, Math.min(1.0, customVolume))
+          : 1.0;
+
+        const ctx = stayDrivAudioCtx;
+        const now = ctx.currentTime;
+
+        // Distinctive 4-tone rapid restaurant alert arpeggio (G5 -> C6 -> E6 -> G6)
+        // High penetrating frequencies easily heard in busy, noisy kitchen environments
+        const noteSequence = [
+          { freq1: 783.99, freq2: 1567.98, time: 0.00, dur: 0.18, type1: 'sine', type2: 'triangle' },
+          { freq1: 1046.50, freq2: 2093.00, time: 0.16, dur: 0.18, type1: 'sine', type2: 'triangle' },
+          { freq1: 1318.51, freq2: 2637.02, time: 0.32, dur: 0.20, type1: 'sine', type2: 'triangle' },
+          { freq1: 1567.98, freq2: 3135.96, time: 0.50, dur: 0.35, type1: 'triangle', type2: 'sine' },
+          // Echo chime pulse
+          { freq1: 1318.51, freq2: 2637.02, time: 0.88, dur: 0.20, type1: 'sine', type2: 'triangle' },
+          { freq1: 1567.98, freq2: 3135.96, time: 1.06, dur: 0.38, type1: 'triangle', type2: 'sine' }
+        ];
+
+        noteSequence.forEach((note) => {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+
+          osc1.type = note.type1;
+          osc1.frequency.setValueAtTime(note.freq1, now + note.time);
+
+          osc2.type = note.type2;
+          osc2.frequency.setValueAtTime(note.freq2, now + note.time);
+
+          // Gain envelope with sharp attack and natural decay
+          gain.gain.setValueAtTime(vol * 0.9, now + note.time);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc1.start(now + note.time);
+          osc2.start(now + note.time);
+          osc1.stop(now + note.time + note.dur);
+          osc2.stop(now + note.time + note.dur);
+        });
+      } catch (e) {
+        console.error("[StayDriv Audio] Kitchen chime playback error: ", e);
+      }
     };
 
-    window.stopStayDrivRinging = function() {
+    // Public methods called by Flutter / Web
+    window.startStayDrivOrderAlarm = function(volume, orderId, orderSummary, roleTitle) {
+      if (stayDrivRingingInterval) return; // already ringing
+      
+      const vol = (typeof volume === 'number' && !isNaN(volume)) ? volume : 1.0;
+      console.log("[StayDriv Audio] Starting loud incoming order ringtone alert. Vol:", vol, "Order:", orderId);
+
+      // Play immediate chime
+      playRestaurantKitchenChime(vol);
+      // Continuous loop every 1.5 seconds until accepted/rejected
+      stayDrivRingingInterval = setInterval(() => {
+        playRestaurantKitchenChime(vol);
+      }, 1500);
+
+      // Flash browser tab title if in background or minimized
+      if (!titleFlashInterval) {
+        let flashToggle = false;
+        const fallbackTitle = roleTitle || "🔔 StayDriv New Order";
+        titleFlashInterval = setInterval(() => {
+          document.title = flashToggle ? "🚨 NEW ORDER ARRIVED! 🚨" : fallbackTitle;
+          flashToggle = !flashToggle;
+        }, 800);
+      }
+
+      // Trigger Web Push / Browser Notification if tab is hidden/minimized
+      try {
+        if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+          const summaryText = orderSummary || 'Customer placed a new food order. Tap to review & accept!';
+          const notif = new Notification(roleTitle || "🚨 NEW ORDER ARRIVED!", {
+            body: `#${orderId || ''}: ${summaryText}`,
+            icon: "/favicon.png",
+            tag: "staydriv_new_order_" + (orderId || Date.now()),
+            requireInteraction: true
+          });
+          notif.onclick = function() {
+            window.focus();
+            notif.close();
+          };
+        }
+      } catch (notifErr) {
+        console.warn("[StayDriv Audio] Web Notification error:", notifErr);
+      }
+    };
+
+    window.stopStayDrivOrderAlarm = function() {
+      console.log("[StayDriv Audio] Stopping incoming order ringtone alert.");
       if (stayDrivRingingInterval) {
         clearInterval(stayDrivRingingInterval);
         stayDrivRingingInterval = null;
       }
+      if (titleFlashInterval) {
+        clearInterval(titleFlashInterval);
+        titleFlashInterval = null;
+        document.title = originalDocTitle || "StayDriv";
+      }
+    };
+
+    window.playStayDrivTestChime = function(volume) {
+      const vol = (typeof volume === 'number' && !isNaN(volume)) ? volume : 1.0;
+      console.log("[StayDriv Audio] Playing test restaurant ringtone chime. Vol:", vol);
+      playRestaurantKitchenChime(vol);
+      setTimeout(() => playRestaurantKitchenChime(vol), 1500);
+    };
+
+    window.requestStayDrivNotificationPermission = async function() {
+      if (!('Notification' in window)) return 'unsupported';
+      try {
+        const result = await Notification.requestPermission();
+        return result;
+      } catch (e) {
+        return Notification.permission || 'default';
+      }
+    };
+
+    window.getStayDrivNotificationPermission = function() {
+      if (!('Notification' in window)) return 'unsupported';
+      return Notification.permission;
+    };
+
+    // Backward compatibility for existing split-screen & ride booking callers
+    window.startStayDrivRinging = function() {
+      window.startStayDrivOrderAlarm(1.0, 'LEGACY', 'Incoming ride/order');
+    };
+
+    window.stopStayDrivRinging = function() {
+      window.stopStayDrivOrderAlarm();
     };
   </script>
 </head>

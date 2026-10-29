@@ -1,1 +1,15 @@
-{"app_name":"staydriv_app","version":"1.0.23","build_number":"23","package_name":"staydriv_app"}
+{
+  "version": "1.0.109",
+  "buildNumber": 109,
+  "releaseDate": "2026-10-22T21:20:00.000Z",
+  "features": [
+    "Food Delivery Pilot Console: Fixed automatic navigation launching upon accepting food orders; pilot stays cleanly on Order Details screen",
+    "Manual Navigation Only: Navigation launches exclusively when the pilot explicitly taps 'Navigate to Restaurant Pickup' or 'Navigate to Customer Location'",
+    "Exact Coordinates Navigation: Restaurant navigation routes directly to pinned restaurant coordinates; customer navigation routes to customer delivery coordinates",
+    "Preserved Delivery Workflow: Accept Order -> Order Details -> Navigate to Restaurant -> Confirm Pickup -> Navigate to Customer -> OTP Delivery Completion",
+    "Anti-Duplicate Navigation Guards: Eliminated duplicate route triggers from API polls, real-time socket events, and lifecycle resumes",
+    "Ride-Booking Intact: Existing passenger ride navigation, live GPS tracking, camera follow, and earnings remain unaffected"
+  ],
+  "apkUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.apk",
+  "aabUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.aab"
+}

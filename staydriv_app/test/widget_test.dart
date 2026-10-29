@@ -22,6 +22,6 @@ void main() {
     // Verify that onboarding screen shows StayDriv title and Welcome message.
     expect(find.text('StayDriv'), findsWidgets);
     expect(find.text('Welcome to StayDriv'), findsOneWidget);
-    expect(find.text('Get OTP'), findsOneWidget);
+    expect(find.text('Get Verification Code'), findsOneWidget);
   });
 }

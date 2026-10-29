@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -15,6 +16,7 @@ import '../../live_tracking/screens/live_tracking_screen.dart';
 import '../../../core/network_config.dart';
 import '../../../core/api_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/contact_picker_service.dart';
 
 class PlacePredictionItem {
   final String description;
@@ -139,11 +141,160 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
   int _selectedOptionIndex = 0;
   bool _isConfirming = false;
 
+  // Round Trip & Shared Ride States
+  String _tripType = 'ONE_WAY'; // 'ONE_WAY' | 'ROUND_TRIP'
+  bool get _isRoundTrip => _tripType == 'ROUND_TRIP';
+  DateTime _returnDate = DateTime.now().add(const Duration(hours: 2));
+  TimeOfDay _returnTime = TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 2)));
+  int _waitingDurationMinutes = 60; // 1 hour default
+  String _pilotWaitOption = 'wait_at_destination'; // 'wait_at_destination' | 'return_later'
+  int _passengerCount = 1;
+  int _sharedSeats = 1;
+  final TextEditingController _specialInstructionsController = TextEditingController();
+
+  DateTime get _minAllowedReturnDateTime {
+    final now = DateTime.now();
+    int outwardMins = 25;
+    if (_duration != null) {
+      final match = RegExp(r'(\d+)').firstMatch(_duration!);
+      if (match != null) {
+        outwardMins = int.tryParse(match.group(1) ?? '25') ?? 25;
+      }
+    }
+    // Return pickup must be at least outward trip duration + 20 minutes minimum stay
+    return now.add(Duration(minutes: outwardMins + 20));
+  }
+
+  int get _maxPassengersForSelectedVehicle {
+    final opts = _availableOptions;
+    if (opts.isEmpty || _selectedOptionIndex >= opts.length) return 4;
+    final title = (opts[_selectedOptionIndex]['title'] as String? ?? '').toLowerCase();
+    if (title.contains('bike') || title.contains('moto') || title.contains('two')) {
+      return 1;
+    } else if (title.contains('auto') || title.contains('rickshaw')) {
+      return 3;
+    } else if (title.contains('xl') || title.contains('suv') || title.contains('7')) {
+      return 6;
+    } else {
+      return 4; // Standard Cab / Car
+    }
+  }
+
+  String get _vehiclePassengerCapacityLabel {
+    final maxP = _maxPassengersForSelectedVehicle;
+    if (maxP == 1) return 'Max 1 (Solo Bike)';
+    if (maxP == 3) return 'Max 3 Persons (Auto)';
+    return 'Max $maxP Persons';
+  }
+
+  String _formatReturnDateString(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final target = DateTime(date.year, date.month, date.day);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final mName = months[date.month - 1];
+
+    if (target.isAtSameMomentAs(today)) {
+      return 'Today, ${date.day} $mName';
+    } else if (target.isAtSameMomentAs(tomorrow)) {
+      return 'Tomorrow, ${date.day} $mName';
+    }
+    return '${date.day} $mName ${date.year}';
+  }
+
+  String _formatTimeOfDay(TimeOfDay time) {
+    final h = time.hour % 12 == 0 ? 12 : time.hour % 12;
+    final m = time.minute.toString().padLeft(2, '0');
+    final amPm = time.hour >= 12 ? 'PM' : 'AM';
+    return '$h:$m $amPm';
+  }
+
+  Future<void> _selectReturnDate() async {
+    final now = DateTime.now();
+    final minDate = DateTime(now.year, now.month, now.day);
+    final initial = _returnDate.isBefore(minDate) ? minDate : _returnDate;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: minDate,
+      lastDate: minDate.add(const Duration(days: 30)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6366F1),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _returnDate = picked;
+        final combined = DateTime(picked.year, picked.month, picked.day, _returnTime.hour, _returnTime.minute);
+        if (combined.isBefore(_minAllowedReturnDateTime)) {
+          final minDt = _minAllowedReturnDateTime;
+          _returnTime = TimeOfDay(hour: minDt.hour, minute: minDt.minute);
+        }
+      });
+    }
+  }
+
+  Future<void> _selectReturnTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _returnTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF6366F1),
+              onPrimary: Colors.white,
+              onSurface: Color(0xFF1E293B),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      final combined = DateTime(_returnDate.year, _returnDate.month, _returnDate.day, picked.hour, picked.minute);
+      final minDt = _minAllowedReturnDateTime;
+      if (combined.isBefore(minDt)) {
+        final formattedMin = _formatTimeOfDay(TimeOfDay(hour: minDt.hour, minute: minDt.minute));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Return time cannot be in the past. Earliest return time is $formattedMin'),
+              backgroundColor: const Color(0xFFDC2626),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+        setState(() {
+          _returnTime = TimeOfDay(hour: minDt.hour, minute: minDt.minute);
+        });
+      } else {
+        setState(() {
+          _returnTime = picked;
+        });
+      }
+    }
+  }
+
   // Parcel Specific State Variables
   bool get _isParcel => widget.serviceType == 'parcel' || widget.serviceType == 'heavy_truck';
   int _parcelStep = 0; // 0=Pickup Search, 1=Confirm Pickup Details, 2=Parcel Dashboard, 3=Confirm Drop Details, 4=Route & Fare, 5=Drop Search
 
-  final TextEditingController _pickupHouseController = TextEditingController(text: 'House No -84, Rishipranavam residancy');
+  final TextEditingController _pickupHouseController = TextEditingController();
   final TextEditingController _pickupNameController = TextEditingController();
   final TextEditingController _pickupPhoneController = TextEditingController();
   bool _pickupUseMyContact = false;
@@ -204,7 +355,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
           if (savedHouse != null && savedHouse.isNotEmpty) {
             _pickupHouseController.text = savedHouse;
           } else {
-            _pickupHouseController.text = 'House No -84, Rishipranavam residancy';
+            _pickupHouseController.text = '';
           }
           if (savedWork != null && savedWork.isNotEmpty) {
             _savedWorkAddress = savedWork;
@@ -221,7 +372,6 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
 
   void _selectHomeAddress() {
     setState(() {
-      _pickupHouseController.text = 'House No -84, Rishipranavam residancy';
       _pickupController.text = _savedHomeAddress;
       _pickupQuery = _savedHomeAddress;
       _pickupLatLng = _savedHomeLatLng;
@@ -274,6 +424,12 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     super.initState();
     _loadCancellationCharge();
     _loadSavedPreferences();
+
+    if (_pickupNameController.text.isEmpty && widget.userName.isNotEmpty && widget.userName != 'Customer') {
+      _pickupNameController.text = widget.userName;
+      _pickupPhoneController.text = ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber);
+      _pickupUseMyContact = true;
+    }
 
     _pickupHouseController.addListener(() {
       final text = _pickupHouseController.text.trim();
@@ -329,6 +485,15 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         _selectedOptionIndex = 2;
       }
     }
+    
+    final initialReturn = _minAllowedReturnDateTime;
+    _returnDate = initialReturn;
+    _returnTime = TimeOfDay(hour: initialReturn.hour, minute: initialReturn.minute);
+    final maxAllowed = _maxPassengersForSelectedVehicle;
+    if (_passengerCount > maxAllowed) {
+      _passengerCount = maxAllowed;
+    }
+
     if (widget.serviceType == 'heavy_truck') {
       _initHeavyTruckDateTime();
     }
@@ -348,6 +513,9 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
       _pickupController.text = widget.initialPickupAddress!;
       _pickupQuery = widget.initialPickupAddress!;
       _pickupLatLng = widget.initialPickupLatLng;
+      if (_isParcel && widget.serviceType != 'heavy_truck' && _pickupLatLng != null) {
+        _parcelStep = 1;
+      }
     }
   }
 
@@ -812,8 +980,8 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     _checkAndCalculateRoute();
   }
 
-  void _selectHistoryItem(String title, String subtitle, LatLng coordinates) {
-    final bool targetPickup = _isPickupActive && _pickupController.text.isEmpty;
+  void _selectHistoryItem(String title, String subtitle, LatLng coordinates, {bool? isPickup}) {
+    final bool targetPickup = isPickup ?? _isPickupActive;
 
     setState(() {
       if (targetPickup) {
@@ -821,18 +989,21 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         _pickupQuery = title;
         _pickupLatLng = coordinates;
         _pickupPredictions = [];
-        if (_dropController.text.isEmpty) {
-          _isPickupActive = false;
+        if (_isParcel && widget.serviceType != 'heavy_truck') {
+          _parcelStep = 1;
         }
       } else {
         _dropController.text = title;
         _dropQuery = title;
         _dropLatLng = coordinates;
         _dropPredictions = [];
+        if (_isParcel) {
+          _parcelStep = 3;
+        }
       }
     });
 
-    if (targetPickup && _dropController.text.isEmpty) {
+    if (!_isParcel && targetPickup && _dropController.text.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _dropFocusNode.requestFocus();
       });
@@ -841,13 +1012,13 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     _checkAndCalculateRoute();
   }
 
-  void _selectQuickDestination(Map<String, dynamic> item) {
+  void _selectQuickDestination(Map<String, dynamic> item, {bool? isPickup}) {
     final title = item['title'] as String;
     final subtitle = item['subtitle'] as String;
     final coord = item['latLng'] as LatLng;
     final full = '$title, $subtitle';
 
-    final bool targetPickup = _isPickupActive && _pickupController.text.isEmpty;
+    final bool targetPickup = isPickup ?? _isPickupActive;
 
     setState(() {
       if (targetPickup) {
@@ -855,18 +1026,21 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         _pickupQuery = full;
         _pickupLatLng = coord;
         _pickupPredictions = [];
-        if (_dropController.text.isEmpty) {
-          _isPickupActive = false;
+        if (_isParcel && widget.serviceType != 'heavy_truck') {
+          _parcelStep = 1;
         }
       } else {
         _dropController.text = full;
         _dropQuery = full;
         _dropLatLng = coord;
         _dropPredictions = [];
+        if (_isParcel) {
+          _parcelStep = 3;
+        }
       }
     });
 
-    if (targetPickup && _dropController.text.isEmpty) {
+    if (!_isParcel && targetPickup && _dropController.text.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _dropFocusNode.requestFocus();
       });
@@ -937,13 +1111,13 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     }
   }
 
-  Future<void> _selectPredictionItem(PlacePredictionItem item) async {
-    final isPickup = _isPickupActive;
+  Future<void> _selectPredictionItem(PlacePredictionItem item, {bool? isPickup}) async {
+    final bool targetPickup = isPickup ?? _isPickupActive;
     final displayTitle = item.mainText.isNotEmpty ? item.mainText : item.description;
     final fullText = item.description.isNotEmpty ? item.description : displayTitle;
 
     setState(() {
-      if (isPickup) {
+      if (targetPickup) {
         _pickupController.text = fullText;
         _pickupQuery = fullText;
         _pickupPredictions = [];
@@ -963,12 +1137,12 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
 
     if (coord != null) {
       setState(() {
-        if (isPickup) {
+        if (targetPickup) {
           _pickupLatLng = coord;
           if (_isParcel && widget.serviceType != 'heavy_truck') {
             _parcelStep = 1;
           }
-          if (_dropController.text.isEmpty) {
+          if (!_isParcel && _dropController.text.isEmpty) {
             _isPickupActive = false;
           }
         } else {
@@ -989,7 +1163,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         }
       });
 
-      if (isPickup && _dropController.text.isEmpty) {
+      if (!_isParcel && targetPickup && _dropController.text.isEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) _dropFocusNode.requestFocus();
         });
@@ -1019,12 +1193,28 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
           final String polylineStr = route['overview_polyline']['points'];
           List<LatLng> polylineCoordinates = _decodePolyline(polylineStr);
           
-          final Polyline polyline = Polyline(
-            polylineId: const PolylineId('route'),
-            color: AppTheme.primaryColor,
-            points: polylineCoordinates,
-            width: 5,
-          );
+          final polylines = {
+            Polyline(
+              polylineId: const PolylineId('route_casing'),
+              color: const Color(0xFF1557B0),
+              points: polylineCoordinates,
+              width: 12,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              zIndex: 1,
+            ),
+            Polyline(
+              polylineId: const PolylineId('route_inner'),
+              color: const Color(0xFF1A73E8),
+              points: polylineCoordinates,
+              width: 8,
+              jointType: JointType.round,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              zIndex: 2,
+            ),
+          };
           
           final startMarker = Marker(
             markerId: const MarkerId('start'),
@@ -1043,7 +1233,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
           setState(() {
             _distance = leg['distance']['text'];
             _duration = leg['duration']['text'];
-            _polylines = {polyline};
+            _polylines = polylines;
             _markers = {startMarker, endMarker};
             _routePoints = polylineCoordinates;
             _currentStep = 2; // Route screen
@@ -1077,12 +1267,28 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
   }
 
   void _setupFallbackRoute(LatLng origin, LatLng destination) {
-    final Polyline polyline = Polyline(
-      polylineId: const PolylineId('route'),
-      color: AppTheme.primaryColor,
-      points: [origin, destination],
-      width: 5,
-    );
+    final polylines = {
+      Polyline(
+        polylineId: const PolylineId('route_casing'),
+        color: const Color(0xFF1557B0),
+        points: [origin, destination],
+        width: 12,
+        jointType: JointType.round,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+        zIndex: 1,
+      ),
+      Polyline(
+        polylineId: const PolylineId('route_inner'),
+        color: const Color(0xFF1A73E8),
+        points: [origin, destination],
+        width: 8,
+        jointType: JointType.round,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+        zIndex: 2,
+      ),
+    };
     
     final startMarker = Marker(
       markerId: const MarkerId('start'),
@@ -1107,7 +1313,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     setState(() {
       _distance = '${roadDistKm.toStringAsFixed(1)} km';
       _duration = '$estMins mins';
-      _polylines = {polyline};
+      _polylines = polylines;
       _markers = {startMarker, endMarker};
       _routePoints = [origin, destination];
       _currentStep = 2;
@@ -1170,14 +1376,66 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     return val;
   }
 
-  String _calculateFareText(double basic, double perKm, {double? upTo275Fare}) {
+  Map<String, dynamic> _calculateRoundTripBreakdown(double basicFare, double perKmFare) {
+    if (_distance == null) {
+      double outward = basicFare;
+      double returnLeg = basicFare * 0.9;
+      double waitingCharge = 0.0;
+      double total = outward + returnLeg + _cancellationCharge;
+      return {
+        'outwardFare': outward,
+        'returnFare': returnLeg,
+        'waitingCharge': waitingCharge,
+        'taxes': (outward + returnLeg) * 0.05,
+        'totalFare': total,
+      };
+    }
+    double km = _parseDistance(_distance!);
+    double outward;
+    double returnLeg;
+    if (basicFare >= 130.0 && perKmFare >= 28.0) {
+      outward = basicFare + (km * perKmFare);
+      returnLeg = (basicFare * 0.9) + (km * perKmFare * 0.9);
+    } else {
+      outward = km <= 2.0 ? basicFare : basicFare + (km - 2.0) * perKmFare;
+      returnLeg = (basicFare * 0.9) + (km > 2.0 ? (km - 2.0) * perKmFare * 0.9 : 0.0);
+    }
+    double waitingRate = (basicFare >= 60) ? 3.0 : 2.0;
+    double waitingCharge = 0.0;
+    if (_pilotWaitOption == 'wait_at_destination') {
+      if (_waitingDurationMinutes > 15) {
+        waitingCharge = (_waitingDurationMinutes - 15) * waitingRate;
+      }
+    } else {
+      waitingCharge = 30.0; // scheduled return reservation fee
+    }
+    double subTotal = outward + returnLeg + waitingCharge;
+    double taxes = subTotal * 0.05;
+    double total = subTotal + taxes + _cancellationCharge;
+    return {
+      'outwardFare': outward,
+      'returnFare': returnLeg,
+      'waitingCharge': waitingCharge,
+      'taxes': taxes,
+      'totalFare': total,
+    };
+  }
+
+  String _calculateFareText(double basic, double perKm, {double? upTo275Fare, String? title}) {
     if (_distance == null) {
       final total = basic + _cancellationCharge;
       return '₹${total.toStringAsFixed(0)}';
     }
+    if (_isRoundTrip) {
+      final breakdown = _calculateRoundTripBreakdown(basic, perKm);
+      final double total = breakdown['totalFare'] as double;
+      return '₹${total.toStringAsFixed(0)}';
+    }
     double km = _parseDistance(_distance!);
     double fare;
-    if (widget.serviceType == 'heavy_truck') {
+    if (title == 'Car XL' || (title != null && title.toLowerCase().contains('car xl'))) {
+      fare = basic + (km * perKm);
+    } else if (widget.serviceType == 'heavy_truck') {
       final double flat275 = upTo275Fare ?? (basic * 2.5);
       if (km <= 100.0) {
         fare = basic;
@@ -1192,6 +1450,9 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
       } else {
         fare = basic + (km - 2.0) * perKm;
       }
+    }
+    if (title != null && title.contains('Share')) {
+      fare = fare * _sharedSeats;
     }
     final total = fare + _cancellationCharge;
     return '₹${total.toStringAsFixed(0)}';
@@ -1220,7 +1481,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         if (_isParcel) {
           _parcelStep = 1;
         }
-        if (_dropController.text.isEmpty) {
+        if (!_isParcel && _dropController.text.isEmpty) {
           _isPickupActive = false;
         }
       } else {
@@ -1235,7 +1496,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
       _currentStep = 0; // Return to selection screen
     });
 
-    if (isPickup && _dropController.text.isEmpty) {
+    if (!_isParcel && isPickup && _dropController.text.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _dropFocusNode.requestFocus();
       });
@@ -1420,6 +1681,36 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     final cleanStr = selectedPrice.replaceAll(RegExp(r'[^0-9.]'), '');
     final priceVal = double.tryParse(cleanStr) ?? 150.0;
 
+    // Ensure passenger count complies with selected vehicle capacity
+    final maxAllowed = _maxPassengersForSelectedVehicle;
+    if (_passengerCount > maxAllowed) {
+      setState(() {
+        _passengerCount = maxAllowed;
+      });
+    }
+
+    // Ensure Return Later date and time is not in the past
+    if (_isRoundTrip && _pilotWaitOption == 'return_later') {
+      final combined = DateTime(_returnDate.year, _returnDate.month, _returnDate.day, _returnTime.hour, _returnTime.minute);
+      if (combined.isBefore(_minAllowedReturnDateTime)) {
+        final minDt = _minAllowedReturnDateTime;
+        final formattedMin = _formatTimeOfDay(TimeOfDay(hour: minDt.hour, minute: minDt.minute));
+        setState(() {
+          _returnDate = minDt;
+          _returnTime = TimeOfDay(hour: minDt.hour, minute: minDt.minute);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Return time cannot be in the past. Adjusted to earliest available return pickup at $formattedMin.'),
+            backgroundColor: const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
     void proceedToBooking() {
       if (widget.serviceType == 'heavy_truck' && !_isHeavyTruckTimeSlotValid()) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1456,6 +1747,16 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
             : null,
         scheduledTimeSlot: widget.serviceType == 'heavy_truck' ? _heavyTruckTimeSlot : null,
         distance: _distance,
+        tripType: _tripType,
+        isRoundTrip: _isRoundTrip,
+        returnDate: _isRoundTrip ? '${_returnDate.year}-${_returnDate.month.toString().padLeft(2, '0')}-${_returnDate.day.toString().padLeft(2, '0')}' : null,
+        returnTime: _isRoundTrip ? '${_returnTime.hour.toString().padLeft(2, '0')}:${_returnTime.minute.toString().padLeft(2, '0')}' : null,
+        returnDateTime: _isRoundTrip ? DateTime(_returnDate.year, _returnDate.month, _returnDate.day, _returnTime.hour, _returnTime.minute).toIso8601String() : null,
+        waitingDurationMinutes: _isRoundTrip ? _waitingDurationMinutes : 0,
+        pilotWaitOption: _isRoundTrip ? _pilotWaitOption : null,
+        passengerCount: _passengerCount,
+        sharedSeats: _sharedSeats,
+        specialInstructions: _specialInstructionsController.text.trim().isNotEmpty ? _specialInstructionsController.text.trim() : null,
       );
 
       Navigator.push(
@@ -1487,12 +1788,520 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
         context,
         amount: priceVal,
         description: 'StayDriv Ride Booking - $selectedVehicle',
-        onSuccess: proceedToBooking,
+        customerPhone: _pickupPhoneController.text.trim(),
+        onSuccess: () {
+          _selectedPaymentMethod = 'PAID_ONLINE';
+          proceedToBooking();
+        },
       );
     } else {
       // Pay After Ride (Cash or UPI to driver)
       proceedToBooking();
     }
+  }
+
+  Widget _buildRoundTripConfigCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF5F3FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFDDD6FE), width: 1.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'ROUND TRIP',
+                  style: GoogleFonts.robotoMono(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Pickup ⇄ Destination ⇄ Return',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF4338CA),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Pilot Service Mode Switcher
+          Text(
+            'Pilot Service Option:',
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _pilotWaitOption = 'wait_at_destination';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _pilotWaitOption == 'wait_at_destination' ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _pilotWaitOption == 'wait_at_destination' ? const Color(0xFF6366F1) : Colors.grey.shade300,
+                        width: _pilotWaitOption == 'wait_at_destination' ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Wait at Destination',
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _pilotWaitOption == 'wait_at_destination' ? const Color(0xFF4338CA) : Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Pilot stays with you',
+                          style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _pilotWaitOption = 'return_later';
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _pilotWaitOption == 'return_later' ? Colors.white : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: _pilotWaitOption == 'return_later' ? const Color(0xFF6366F1) : Colors.grey.shade300,
+                        width: _pilotWaitOption == 'return_later' ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Return Later',
+                          style: GoogleFonts.hankenGrotesk(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _pilotWaitOption == 'return_later' ? const Color(0xFF4338CA) : Colors.grey.shade700,
+                          ),
+                        ),
+                        Text(
+                          'Scheduled re-pickup',
+                          style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 12),
+
+          // Duration / Scheduled Picker
+          if (_pilotWaitOption == 'wait_at_destination') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Expected Waiting Duration:',
+                  style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'First 15m free',
+                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.green.shade700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: [30, 60, 120, 240].map((mins) {
+                final isSel = _waitingDurationMinutes == mins;
+                final label = mins < 60 ? '${mins}m' : '${mins ~/ 60} hr${mins >= 120 ? 's' : ''}';
+                return ChoiceChip(
+                  label: Text(label, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600)),
+                  selected: isSel,
+                  selectedColor: const Color(0xFF6366F1),
+                  labelStyle: TextStyle(color: isSel ? Colors.white : Colors.black87),
+                  onSelected: (val) {
+                    if (val) setState(() => _waitingDurationMinutes = mins);
+                  },
+                );
+              }).toList(),
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: _selectReturnDate,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.calendar_today, size: 14, color: Color(0xFF6366F1)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _formatReturnDateString(_returnDate),
+                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: _selectReturnTime,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.access_time, size: 14, color: Color(0xFF6366F1)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              _formatTimeOfDay(_returnTime),
+                              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFC7D2FE)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF4338CA)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Return pickup: ${_formatReturnDateString(_returnDate)} at ${_formatTimeOfDay(_returnTime)}',
+                      style: GoogleFonts.inter(fontSize: 10.5, fontWeight: FontWeight.w600, color: const Color(0xFF4338CA)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+
+          // Passenger Counter bounded by selected vehicle capacity
+          Row(
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Number of Passengers:',
+                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: _maxPassengersForSelectedVehicle == 1
+                          ? const Color(0xFFEFF6FF)
+                          : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _maxPassengersForSelectedVehicle == 1
+                            ? const Color(0xFF93C5FD)
+                            : const Color(0xFFCBD5E1),
+                      ),
+                    ),
+                    child: Text(
+                      _vehiclePassengerCapacityLabel,
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: _maxPassengersForSelectedVehicle == 1
+                            ? const Color(0xFF1D4ED8)
+                            : const Color(0xFF475569),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, size: 22),
+                color: _passengerCount > 1 ? const Color(0xFF4F46E5) : Colors.grey.shade400,
+                onPressed: _passengerCount > 1 ? () => setState(() => _passengerCount--) : null,
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Text(
+                  '$_passengerCount',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, size: 22),
+                color: _passengerCount < _maxPassengersForSelectedVehicle ? const Color(0xFF4F46E5) : Colors.grey.shade400,
+                onPressed: _passengerCount < _maxPassengersForSelectedVehicle
+                    ? () => setState(() => _passengerCount++)
+                    : () {
+                        final opts = _availableOptions;
+                        final vTitle = opts.isNotEmpty && _selectedOptionIndex < opts.length
+                            ? opts[_selectedOptionIndex]['title']
+                            : 'This vehicle';
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('$vTitle accommodates a maximum of $_maxPassengersForSelectedVehicle passenger${_maxPassengersForSelectedVehicle > 1 ? 's' : ''}.'),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+          Text(
+            'Special Instructions / Luggage Notes (Optional):',
+            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 4),
+          TextField(
+            controller: _specialInstructionsController,
+            maxLength: 80,
+            inputFormatters: [LengthLimitingTextInputFormatter(80)],
+            decoration: InputDecoration(
+              counterText: '',
+              hintText: 'e.g. 1 backpack, pickup near building gate',
+              hintStyle: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade400),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              isDense: true,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
+            ),
+            style: GoogleFonts.inter(fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSharedRideSeatSelector(String vehicleTitle) {
+    final int maxCapacity = vehicleTitle.toLowerCase().contains('auto') ? 3 : 4;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDFA),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF99F6E4)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.airline_seat_recline_normal_rounded, color: Color(0xFF0D9488), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Seats Required:',
+                style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F766E)),
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, size: 20, color: Color(0xFF0D9488)),
+                onPressed: _sharedSeats > 1 ? () => setState(() => _sharedSeats--) : null,
+              ),
+              Text('$_sharedSeats seat${_sharedSeats > 1 ? 's' : ''}', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold, color: const Color(0xFF0F766E))),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, size: 20, color: Color(0xFF0D9488)),
+                onPressed: _sharedSeats < maxCapacity ? () => setState(() => _sharedSeats++) : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFareBreakdownCard(Map<String, dynamic> selectedOption) {
+    if (_isRoundTrip) {
+      final breakdown = _calculateRoundTripBreakdown(
+        (selectedOption['basicFare'] as num).toDouble(),
+        (selectedOption['perKmFare'] as num).toDouble(),
+      );
+      final outward = breakdown['outwardFare'] as double;
+      final ret = breakdown['returnFare'] as double;
+      final waiting = breakdown['waitingCharge'] as double;
+      final taxes = breakdown['taxes'] as double;
+      final total = breakdown['totalFare'] as double;
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Round Trip Fare Breakdown',
+                  style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.onSurfaceColor),
+                ),
+                Text(
+                  'Server-Validated',
+                  style: GoogleFonts.robotoMono(fontSize: 10, color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const Divider(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Outward Journey', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                Text('₹${outward.toStringAsFixed(0)}', style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Text('Return Journey', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                    const SizedBox(width: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(4)),
+                      child: Text('10% OFF', style: GoogleFonts.robotoMono(fontSize: 9, color: Colors.green.shade800, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                Text('₹${ret.toStringAsFixed(0)}', style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Waiting Charges (${_waitingDurationMinutes}m)', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                Text('₹${waiting.toStringAsFixed(0)}', style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Taxes & Additional (5%)', style: GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade600)),
+                Text('₹${taxes.toStringAsFixed(0)}', style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const Divider(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Total Estimated Fare', style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+                Text('₹${total.toStringAsFixed(0)}', style: GoogleFonts.robotoMono(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+    return const SizedBox.shrink();
   }
 
   @override
@@ -1682,16 +2491,18 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                             ),
                             if (_pickupController.text.isNotEmpty)
                               IconButton(
-                                icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),
+                                icon: const Icon(Icons.close_rounded, size: 22, color: Colors.black87),
                                 splashRadius: 20,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                                tooltip: 'Clear pickup address',
                                 onPressed: () {
                                   setState(() {
                                     _pickupController.clear();
                                     _pickupQuery = '';
                                     _pickupLatLng = null;
                                     _pickupPredictions = [];
+                                    _pickupFocusNode.requestFocus();
                                   });
                                 },
                               )
@@ -1705,58 +2516,6 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                 onPressed: _detectCurrentLocation,
                               ),
                           ],
-                        ),
-                        // Dedicated House / Flat / Residency input with spacious comfortable typing space
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: _isPickupActive ? Colors.green.shade400 : Colors.grey.shade300,
-                              width: 1.2,
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.home_work_outlined, size: 18, color: _isPickupActive ? Colors.green.shade700 : Colors.grey.shade600),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  controller: _pickupHouseController,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.black87,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'House / Flat / Residency (e.g. House No -84, Rishipranavam)',
-                                    hintStyle: GoogleFonts.inter(
-                                      color: Colors.grey.shade400,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.normal,
-                                    ),
-                                    border: InputBorder.none,
-                                    isDense: false,
-                                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                                  ),
-                                ),
-                              ),
-                              if (_pickupHouseController.text.isNotEmpty)
-                                InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      _pickupHouseController.clear();
-                                    });
-                                  },
-                                  child: const Padding(
-                                    padding: EdgeInsets.all(4.0),
-                                    child: Icon(Icons.clear, size: 16, color: Colors.grey),
-                                  ),
-                                ),
-                            ],
-                          ),
                         ),
                       ],
                     ),
@@ -1895,16 +2654,18 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                         ),
                         if (_dropController.text.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.cancel, size: 20, color: Colors.grey),
+                            icon: const Icon(Icons.close_rounded, size: 22, color: Colors.black87),
                             splashRadius: 20,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            tooltip: 'Clear drop address',
                             onPressed: () {
                               setState(() {
                                 _dropController.clear();
                                 _dropQuery = '';
                                 _dropLatLng = null;
                                 _dropPredictions = [];
+                                _dropFocusNode.requestFocus();
                               });
                             },
                           ),
@@ -2383,26 +3144,58 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
               child: const Icon(Icons.arrow_back, color: Colors.black),
             ),
           ),
-          // Bottom confirm location button
+          // Bottom confirm and cancel buttons
           Positioned(
             bottom: 30,
             left: 20,
             right: 20,
-            child: ElevatedButton(
-              onPressed: _confirmMapSelection,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              ),
-              child: Text(
-                'Confirm Location',
-                style: GoogleFonts.hankenGrotesk(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      setState(() {
+                        _currentStep = 0;
+                      });
+                    },
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: Colors.white,
+                      side: BorderSide(color: Colors.grey.shade300),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _confirmMapSelection,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                    ),
+                    child: Text(
+                      'Confirm Location',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -2410,14 +3203,9 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
     );
   }
 
-  // STEP 2: Map Route & Booking Options Panel
-  Widget _buildRouteAndBookingStep() {
-    final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 600;
+  List<Map<String, dynamic>> get _availableOptions {
     final isDelivery = widget.serviceType == 'delivery' || widget.serviceType == 'parcel' || widget.serviceType == 'heavy_truck';
-    
-    // Fares/options selection bike, auto, car
-    final List<Map<String, dynamic>> options = widget.serviceType == 'heavy_truck'
+    return widget.serviceType == 'heavy_truck'
       ? [
           {
             'icon': Icons.local_shipping_rounded,
@@ -2558,538 +3346,767 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                 'basicFare': 60.0,
                 'perKmFare': 18.0,
               },
+              {
+                'icon': Icons.electric_rickshaw_rounded,
+                'image': 'assets/images/auto.png',
+                'title': 'Share Auto',
+                'desc': 'Single/shared seat, save 40%',
+                'time': '2 min away',
+                'basicFare': 25.0,
+                'perKmFare': 9.0,
+                'badge': 'Best Value',
+              },
+              {
+                'icon': Icons.directions_car_rounded,
+                'image': 'assets/images/car.png',
+                'title': 'Share Car',
+                'desc': 'Carpool AC ride, save 35%',
+                'time': '4 min away',
+                'basicFare': 40.0,
+                'perKmFare': 12.0,
+                'badge': 'Carpool',
+              },
+              {
+                'icon': Icons.directions_car_filled_rounded,
+                'image': 'assets/images/car_xl.png',
+                'title': 'Car XL',
+                'desc': 'Spacious and comfortable XL ride',
+                'time': '4 min away',
+                'basicFare': 130.0,
+                'perKmFare': 28.0,
+                'badge': 'Spacious XL',
+              },
             ]);
+  }
+
+  // STEP 2: Map Route & Booking Options Panel
+  Widget _buildRouteAndBookingStep() {
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 600;
+    final isDelivery = widget.serviceType == 'delivery' || widget.serviceType == 'parcel' || widget.serviceType == 'heavy_truck';
+    
+    final List<Map<String, dynamic>> options = _availableOptions;
+
+    final mediaQuery = MediaQuery.of(context);
+    final topPadding = mediaQuery.padding.top;
+    final bottomPadding = mediaQuery.padding.bottom;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Stack(
         children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: _pickupLatLng ?? _center,
-              zoom: 13.0,
-            ),
-            onMapCreated: (controller) => _mapController = controller,
-            polylines: _polylines,
-            markers: _markers,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-          ),
-
-          // Back button
-          Positioned(
-            top: 50,
-            left: 20,
-            child: FloatingActionButton(
-              mini: true,
-              backgroundColor: Colors.white,
-              onPressed: () {
-                setState(() {
-                  _currentStep = 0; // Return to location selection
-                });
-              },
-              child: const Icon(Icons.arrow_back, color: Colors.black),
+          // 1. Google Map Background
+          Positioned.fill(
+            child: GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: _pickupLatLng ?? _center,
+                zoom: 13.0,
+              ),
+              onMapCreated: (controller) => _mapController = controller,
+              polylines: _polylines,
+              markers: _markers,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
             ),
           ),
 
-          // Bottom Ride Selection Details Sheet
+          // 2. Bottom Ride Selection Details Sheet
           Align(
             alignment: Alignment.bottomCenter,
             child: Container(
               constraints: BoxConstraints(
                 maxWidth: isDesktop ? 500 : double.infinity,
+                maxHeight: size.height * 0.77,
               ),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 boxShadow: [
                   BoxShadow(
-                    color: Color(0x0D000000),
-                    blurRadius: 40,
-                    offset: Offset(0, -12),
+                    color: Color(0x1A000000),
+                    blurRadius: 32,
+                    offset: Offset(0, -8),
                   ),
                 ],
               ),
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Handlebar
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 8),
+                    child: Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  
-                  // Route info overlay
-                  if (_distance != null && _duration != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.directions, color: AppTheme.primaryColor),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Distance: $_distance  •  Time: $_duration',
-                              style: GoogleFonts.hankenGrotesk(
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryColor,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
 
-                  Text(
-                    isDelivery ? 'Select Parcel Type' : 'Select Ride Type',
-                    style: GoogleFonts.hankenGrotesk(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.onSurfaceColor,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Option List
+                  // SCROLLABLE CONTENT BODY
                   Flexible(
-                    child: ListView.builder(
-                      shrinkWrap: true,
+                    child: SingleChildScrollView(
                       physics: const BouncingScrollPhysics(),
-                      itemCount: options.length,
-                      itemBuilder: (context, index) {
-                        final item = options[index];
-                        final isSelected = _selectedOptionIndex == index;
-                        final computedPrice = _calculateFareText(
-                          (item['basicFare'] as num).toDouble(),
-                          (item['perKmFare'] as num).toDouble(),
-                          upTo275Fare: item['upTo275Fare'] != null ? (item['upTo275Fare'] as num).toDouble() : null,
-                        );
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedOptionIndex = index;
-                            });
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.surfaceContainerLow : Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isSelected ? AppTheme.primaryColor : AppTheme.outlineVariant.withOpacity(0.3),
-                                width: isSelected ? 2 : 1,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isDelivery) ...[
+                            // Trip Selection: One-Way Trip vs Round Trip
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                            ),
-                            child: Stack(
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.surfaceContainer,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      clipBehavior: Clip.antiAlias,
-                                      child: item['image'] != null
-                                          ? Padding(
-                                              padding: const EdgeInsets.all(4.0),
-                                              child: Image.asset(
-                                                item['image'] as String,
-                                                fit: BoxFit.contain,
-                                                errorBuilder: (_, __, ___) => Icon(
-                                                  item['icon'] as IconData,
-                                                  color: AppTheme.primaryColor,
-                                                  size: 28,
-                                                ),
+                              padding: const EdgeInsets.all(4),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _tripType = 'ONE_WAY';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: !_isRoundTrip ? Colors.white : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: !_isRoundTrip
+                                              ? [
+                                                  BoxShadow(
+                                                    color: Colors.black.withOpacity(0.06),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 2),
+                                                  )
+                                                ]
+                                              : null,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.arrow_forward_rounded,
+                                              size: 16,
+                                              color: !_isRoundTrip ? AppTheme.primaryColor : Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'One-Way Trip',
+                                              style: GoogleFonts.hankenGrotesk(
+                                                fontSize: 13,
+                                                fontWeight: !_isRoundTrip ? FontWeight.bold : FontWeight.w600,
+                                                color: !_isRoundTrip ? AppTheme.primaryColor : Colors.grey.shade600,
                                               ),
-                                            )
-                                          : Icon(
-                                              item['icon'] as IconData,
-                                              color: AppTheme.primaryColor,
-                                              size: 28,
                                             ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item['title'] as String,
-                                            style: GoogleFonts.hankenGrotesk(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: AppTheme.onSurfaceColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            item['desc'] as String,
-                                            style: GoogleFonts.inter(
-                                              fontSize: 12,
-                                              color: AppTheme.onSurfaceVariant,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            item['time'] as String,
-                                            style: GoogleFonts.robotoMono(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppTheme.primaryColor,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Text(
-                                      computedPrice,
-                                      style: GoogleFonts.hankenGrotesk(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppTheme.onSurfaceColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (item['badge'] != null)
-                                  Positioned(
-                                    top: 0,
-                                    right: 50,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: const BoxDecoration(
-                                        color: AppTheme.primaryColor,
-                                        borderRadius: BorderRadius.all(Radius.circular(10)),
-                                      ),
-                                      child: Text(
-                                        item['badge'] as String,
-                                        style: GoogleFonts.robotoMono(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w700,
-                                          color: Colors.white,
+                                          ],
                                         ),
                                       ),
                                     ),
                                   ),
-                              ],
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _tripType = 'ROUND_TRIP';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                        decoration: BoxDecoration(
+                                          color: _isRoundTrip ? const Color(0xFF6366F1) : Colors.transparent,
+                                          borderRadius: BorderRadius.circular(10),
+                                          boxShadow: _isRoundTrip
+                                              ? [
+                                                  BoxShadow(
+                                                    color: const Color(0xFF6366F1).withOpacity(0.3),
+                                                    blurRadius: 4,
+                                                    offset: const Offset(0, 2),
+                                                  )
+                                                ]
+                                              : null,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.sync_alt_rounded,
+                                              size: 16,
+                                              color: _isRoundTrip ? Colors.white : Colors.grey.shade600,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Round Trip',
+                                              style: GoogleFonts.hankenGrotesk(
+                                                fontSize: 13,
+                                                fontWeight: _isRoundTrip ? FontWeight.bold : FontWeight.w600,
+                                                color: _isRoundTrip ? Colors.white : Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (widget.serviceType == 'heavy_truck') ...[
-                    Builder(
-                      builder: (context) {
-                        final selectedItem = options[_selectedOptionIndex];
-                        final double basic = (selectedItem['basicFare'] as num).toDouble();
-                        final double perKm = (selectedItem['perKmFare'] as num).toDouble();
-                        final double? upTo275 = selectedItem['upTo275Fare'] != null ? (selectedItem['upTo275Fare'] as num).toDouble() : null;
-                        
-                        final computedPriceText = _calculateFareText(basic, perKm, upTo275Fare: upTo275);
-                        final cleanStr = computedPriceText.replaceAll(RegExp(r'[^0-9.]'), '');
-                        final double totalFare = double.tryParse(cleanStr) ?? basic;
-                        
-                        final double advance = 1.0;
-                        final double balance = (totalFare - 1.0) < 0 ? 0.0 : totalFare - 1.0;
-                        
-                        return Container(
-                          margin: const EdgeInsets.only(top: 8, bottom: 12),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50.withOpacity(0.4),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.blue.shade200.withOpacity(0.5)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'Total Heavy Cargo Fare:',
-                                    style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
-                                  ),
-                                  Text(
-                                    '₹${totalFare.toStringAsFixed(0)}',
-                                    style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              const Divider(height: 1),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.flash_on, size: 14, color: AppTheme.primaryColor),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Advance Pay Online (Razorpay):',
-                                        style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    '₹${advance.toStringAsFixed(0)}',
-                                    style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Remaining Balance:',
-                                        style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    '₹${balance.toStringAsFixed(0)}',
-                                    style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                    ),
-                  ],
-                  const SizedBox(height: 16),
+                            const SizedBox(height: 12),
 
-                  // Payment Selector
-                  InkWell(
-                    onTap: _selectPaymentMethod,
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: _isParcel
-                                  ? (_selectedPaymentMethod == 'Pay at Pickup' ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1))
-                                  : (_selectedPaymentMethod == 'Pay After Ride' ? Colors.green.withOpacity(0.1) : Colors.indigo.withOpacity(0.1)),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(
-                              _isParcel
-                                  ? (_selectedPaymentMethod == 'Pay at Pickup' ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded)
-                                  : (_selectedPaymentMethod == 'Pay After Ride' ? Icons.money_rounded : Icons.payment_rounded),
-                              color: _isParcel
-                                  ? (_selectedPaymentMethod == 'Pay at Pickup' ? Colors.green : Colors.blue)
-                                  : (_selectedPaymentMethod == 'Pay After Ride' ? Colors.green : Colors.indigo),
-                              size: 16,
+                            if (_isRoundTrip) ...[
+                              _buildRoundTripConfigCard(),
+                              const SizedBox(height: 12),
+                            ],
+                          ],
+
+                          Text(
+                            isDelivery ? 'Select Parcel Type' : 'Select Ride Type',
+                            style: GoogleFonts.hankenGrotesk(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.onSurfaceColor,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.serviceType == 'heavy_truck'
-                                      ? _selectedPaymentMethod
-                                      : (_isParcel
-                                          ? _selectedPaymentMethod
-                                          : (_selectedPaymentMethod == 'Pay After Ride' ? 'Pay After Ride (Cash/UPI)' : 'Pay Online Now (Razorpay)')),
-                                  style: GoogleFonts.robotoMono(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.onSurfaceColor,
+                          const SizedBox(height: 10),
+
+                          // Option List (Unconstrained inside scroll view)
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: options.length,
+                            itemBuilder: (context, index) {
+                              final item = options[index];
+                              final isSelected = _selectedOptionIndex == index;
+                              final computedPrice = _calculateFareText(
+                                (item['basicFare'] as num).toDouble(),
+                                (item['perKmFare'] as num).toDouble(),
+                                upTo275Fare: item['upTo275Fare'] != null ? (item['upTo275Fare'] as num).toDouble() : null,
+                                title: item['title'] as String?,
+                              );
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _selectedOptionIndex = index;
+                                    final maxAllowed = _maxPassengersForSelectedVehicle;
+                                    if (_passengerCount > maxAllowed) {
+                                      _passengerCount = maxAllowed;
+                                    }
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 150),
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? AppTheme.surfaceContainerLow : Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isSelected ? AppTheme.primaryColor : AppTheme.outlineVariant.withOpacity(0.3),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            width: 56,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              color: AppTheme.surfaceContainer,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            clipBehavior: Clip.antiAlias,
+                                            child: item['image'] != null
+                                                ? Padding(
+                                                    padding: const EdgeInsets.all(4.0),
+                                                    child: Image.asset(
+                                                      item['image'] as String,
+                                                      fit: BoxFit.contain,
+                                                      errorBuilder: (_, __, ___) => Icon(
+                                                        item['icon'] as IconData,
+                                                        color: AppTheme.primaryColor,
+                                                        size: 28,
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    item['icon'] as IconData,
+                                                    color: AppTheme.primaryColor,
+                                                    size: 28,
+                                                  ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  item['title'] as String,
+                                                  style: GoogleFonts.hankenGrotesk(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: AppTheme.onSurfaceColor,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  item['desc'] as String,
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 12,
+                                                    color: AppTheme.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  item['time'] as String,
+                                                  style: GoogleFonts.robotoMono(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: AppTheme.primaryColor,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Text(
+                                            computedPrice,
+                                            style: GoogleFonts.hankenGrotesk(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.onSurfaceColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (item['badge'] != null)
+                                        Positioned(
+                                          top: 0,
+                                          right: 50,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: const BoxDecoration(
+                                              color: AppTheme.primaryColor,
+                                              borderRadius: BorderRadius.all(Radius.circular(10)),
+                                            ),
+                                            child: Text(
+                                              item['badge'] as String,
+                                              style: GoogleFonts.robotoMono(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                 ),
-                                Text(
-                                  widget.serviceType == 'heavy_truck'
-                                      ? (_selectedPaymentMethod == 'Advance Pay (Pickup Balance)'
-                                          ? 'Pay ₹0 advance online, remaining at pickup'
-                                          : 'Pay ₹0 advance online, remaining at drop')
-                                      : (_isParcel
-                                          ? (_selectedPaymentMethod == 'Pay at Pickup' ? 'Pay at the pickup location' : 'Pay at the drop destination')
-                                          : (_selectedPaymentMethod == 'Pay After Ride' ? 'Pay to driver at destination' : 'Secure payment via card/UPI')),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 10,
-                                    color: AppTheme.onSurfaceVariant,
+                              );
+                            },
+                          ),
+                          if (widget.serviceType == 'heavy_truck') ...[
+                            Builder(
+                              builder: (context) {
+                                final selectedItem = options[_selectedOptionIndex];
+                                final double basic = (selectedItem['basicFare'] as num).toDouble();
+                                final double perKm = (selectedItem['perKmFare'] as num).toDouble();
+                                final double? upTo275 = selectedItem['upTo275Fare'] != null ? (selectedItem['upTo275Fare'] as num).toDouble() : null;
+                                
+                                final computedPriceText = _calculateFareText(basic, perKm, upTo275Fare: upTo275);
+                                final cleanStr = computedPriceText.replaceAll(RegExp(r'[^0-9.]'), '');
+                                final double totalFare = double.tryParse(cleanStr) ?? basic;
+                                
+                                final double advance = 1.0;
+                                final double balance = (totalFare - 1.0) < 0 ? 0.0 : totalFare - 1.0;
+                                
+                                return Container(
+                                  margin: const EdgeInsets.only(top: 8, bottom: 12),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50.withOpacity(0.4),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.blue.shade200.withOpacity(0.5)),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Total Heavy Cargo Fare:',
+                                            style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey.shade800),
+                                          ),
+                                          Text(
+                                            '₹${totalFare.toStringAsFixed(0)}',
+                                            style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      const Divider(height: 1),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.flash_on, size: 14, color: AppTheme.primaryColor),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Advance Pay Online (Razorpay):',
+                                                style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            '₹${advance.toStringAsFixed(0)}',
+                                            style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryColor),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.info_outline, size: 14, color: Colors.grey),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                'Remaining Balance:',
+                                                style: GoogleFonts.hankenGrotesk(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey.shade700),
+                                              ),
+                                            ],
+                                          ),
+                                          Text(
+                                            '₹${balance.toStringAsFixed(0)}',
+                                            style: GoogleFonts.hankenGrotesk(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+
+                          // Payment Selector
+                          InkWell(
+                            onTap: _selectPaymentMethod,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppTheme.outlineVariant.withOpacity(0.3)),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      color: _isParcel
+                                          ? (_selectedPaymentMethod == 'Pay at Pickup' ? Colors.green.withOpacity(0.1) : Colors.blue.withOpacity(0.1))
+                                          : (_selectedPaymentMethod == 'Pay After Ride' ? Colors.green.withOpacity(0.1) : Colors.indigo.withOpacity(0.1)),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _isParcel
+                                          ? (_selectedPaymentMethod == 'Pay at Pickup' ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded)
+                                          : (_selectedPaymentMethod == 'Pay After Ride' ? Icons.money_rounded : Icons.payment_rounded),
+                                      color: _isParcel
+                                          ? (_selectedPaymentMethod == 'Pay at Pickup' ? Colors.green : Colors.blue)
+                                          : (_selectedPaymentMethod == 'Pay After Ride' ? Colors.green : Colors.indigo),
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          widget.serviceType == 'heavy_truck'
+                                              ? _selectedPaymentMethod
+                                              : (_isParcel
+                                                  ? _selectedPaymentMethod
+                                                  : (_selectedPaymentMethod == 'Pay After Ride' ? 'Pay After Ride (Cash/UPI)' : 'Pay Online Now (Razorpay)')),
+                                          style: GoogleFonts.robotoMono(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.onSurfaceColor,
+                                          ),
+                                        ),
+                                        Text(
+                                          widget.serviceType == 'heavy_truck'
+                                              ? (_selectedPaymentMethod == 'Advance Pay (Pickup Balance)'
+                                                  ? 'Pay ₹0 advance online, remaining at pickup'
+                                                  : 'Pay ₹0 advance online, remaining at drop')
+                                              : (_isParcel
+                                                  ? (_selectedPaymentMethod == 'Pay at Pickup' ? 'Pay at the pickup location' : 'Pay at the drop destination')
+                                                  : (_selectedPaymentMethod == 'Pay After Ride' ? 'Pay to driver at destination' : 'Secure payment via card/UPI')),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10,
+                                            color: AppTheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right, color: AppTheme.outlineColor, size: 20),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (_cancellationCharge > 0) ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline, size: 16, color: Colors.amber),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Includes ₹${_cancellationCharge.toStringAsFixed(0)} previous cancellation charge',
+                                      style: GoogleFonts.inter(fontSize: 12, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          if (widget.serviceType == 'heavy_truck') ...[
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 20),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      'Caution: Flat advance payment of ₹0 is non-refundable if the booking is cancelled.',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF991B1B),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Checkbox(
+                                    value: _acceptHeavyTruckTollgateTerms,
+                                    activeColor: AppTheme.primaryColor,
+                                    onChanged: (bool? val) {
+                                      setState(() {
+                                        _acceptHeavyTruckTollgateTerms = val ?? false;
+                                      });
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _acceptHeavyTruckTollgateTerms = !_acceptHeavyTruckTollgateTerms;
+                                      });
+                                    },
+                                    child: Text(
+                                      'I accept that tollgate and any other additional charges are payable by the customer.',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          const Icon(Icons.chevron_right, color: AppTheme.outlineColor, size: 20),
+                          ],
+
+                          if (!isDelivery && options[_selectedOptionIndex]['title'].toString().contains('Share')) ...[
+                            _buildSharedRideSeatSelector(options[_selectedOptionIndex]['title'] as String),
+                          ],
+                          if (!isDelivery) ...[
+                            _buildFareBreakdownCard(options[_selectedOptionIndex]),
+                          ],
+
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
                   ),
-                  if (_cancellationCharge > 0) ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.amber.shade300),
+
+                  // 3. STICKY BOTTOM ACTION AREA WITH SAFEAREA HANDLING
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, bottomPadding > 0 ? bottomPadding + 6 : 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200, width: 1),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline, size: 16, color: Colors.amber),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Includes ₹${_cancellationCharge.toStringAsFixed(0)} previous cancellation charge',
-                              style: GoogleFonts.inter(fontSize: 12, color: Colors.amber.shade900, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                  if (widget.serviceType == 'heavy_truck') ...[
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF2F2), // Very light red
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFFCA5A5)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 20),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Caution: Flat advance payment of ₹0 is non-refundable if the booking is cancelled.',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF991B1B),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Checkbox(
-                            value: _acceptHeavyTruckTollgateTerms,
-                            activeColor: AppTheme.primaryColor,
-                            onChanged: (bool? val) {
-                              setState(() {
-                                _acceptHeavyTruckTollgateTerms = val ?? false;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _acceptHeavyTruckTollgateTerms = !_acceptHeavyTruckTollgateTerms;
-                              });
-                            },
-                            child: Text(
-                              'I accept that tollgate and any other additional charges are payable by the customer.',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, -4),
                         ),
                       ],
                     ),
-                  ],
-                  const SizedBox(height: 20),
-
-                  // Confirm Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isConfirming || (widget.serviceType == 'heavy_truck' && !_acceptHeavyTruckTollgateTerms) ? null : () {
-                        final selected = options[_selectedOptionIndex];
-                        final priceText = _calculateFareText(
-                          (selected['basicFare'] as num).toDouble(),
-                          (selected['perKmFare'] as num).toDouble(),
-                          upTo275Fare: selected['upTo275Fare'] != null ? (selected['upTo275Fare'] as num).toDouble() : null,
-                        );
-                        _confirmBooking(
-                          selected['title'] as String,
-                          priceText,
-                        );
-                      },
-                      child: _isConfirming
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  isDelivery ? 'Confirm Parcel Request' : 'Confirm Booking',
-                                  style: GoogleFonts.hankenGrotesk(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          elevation: 2,
+                        ),
+                        onPressed: _isConfirming || (widget.serviceType == 'heavy_truck' && !_acceptHeavyTruckTollgateTerms) ? null : () {
+                          final selected = options[_selectedOptionIndex];
+                          final priceText = _calculateFareText(
+                            (selected['basicFare'] as num).toDouble(),
+                            (selected['perKmFare'] as num).toDouble(),
+                            upTo275Fare: selected['upTo275Fare'] != null ? (selected['upTo275Fare'] as num).toDouble() : null,
+                            title: selected['title'] as String,
+                          );
+                          _confirmBooking(
+                            selected['title'] as String,
+                            priceText,
+                          );
+                        },
+                        child: _isConfirming
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    isDelivery ? 'Confirm Parcel Request' : (_isRoundTrip ? 'Confirm Round Trip Booking' : 'Confirm Booking'),
+                                    style: GoogleFonts.hankenGrotesk(
+                                      fontSize: 17,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.arrow_forward, size: 20),
-                              ],
-                            ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
+                                ],
+                              ),
+                      ),
                     ),
                   ),
                 ],
               ),
+            ),
+          ),
+
+          // 4. TOP FLOATING HEADER: BACK BUTTON & ROUTE INFO (Rendered on top of everything)
+          Positioned(
+            top: topPadding + 8,
+            left: 16,
+            right: 16,
+            child: Row(
+              children: [
+                // Circular White Elevated Back Button
+                Material(
+                  color: Colors.white,
+                  elevation: 4,
+                  shadowColor: Colors.black26,
+                  shape: const CircleBorder(),
+                  child: InkWell(
+                    customBorder: const CircleBorder(),
+                    onTap: () {
+                      setState(() {
+                        _currentStep = 0; // Return to location selection without losing data
+                      });
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.arrow_back_rounded, color: Colors.black87, size: 22),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Distance & Travel Time Floating Banner
+                if (_distance != null && _duration != null)
+                  Expanded(
+                    child: Material(
+                      color: Colors.white,
+                      elevation: 4,
+                      shadowColor: Colors.black26,
+                      borderRadius: BorderRadius.circular(22),
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.navigation_rounded, color: AppTheme.primaryColor, size: 18),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                'Distance: $_distance  •  Time: $_duration',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.hankenGrotesk(
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primaryColor,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -3644,7 +4661,11 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
               if (isPickup) {
                 Navigator.pop(context);
               } else {
-                _parcelStep = 2;
+                if (_dropController.text.isNotEmpty && _dropLatLng != null) {
+                  _parcelStep = 2;
+                } else {
+                  _parcelStep = 1;
+                }
               }
             });
           },
@@ -3710,6 +4731,16 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                         cursorColor: Colors.black,
                         textInputAction: TextInputAction.search,
                         autofocus: true,
+                        onChanged: (val) {
+                          setState(() {
+                            if (isPickup) {
+                              _pickupQuery = val;
+                            } else {
+                              _dropQuery = val;
+                            }
+                          });
+                          _onQueryChanged(val, isPickup);
+                        },
                         onSubmitted: (val) {
                           _submitAddress(val, isPickup);
                         },
@@ -3731,6 +4762,31 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                         ),
                       ),
                     ),
+                    if ((isPickup ? _pickupController.text : _dropController.text).isNotEmpty)
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 24, color: Colors.black87),
+                        splashRadius: 22,
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                        tooltip: isPickup ? 'Clear pickup address' : 'Clear drop address',
+                        onPressed: () {
+                          setState(() {
+                            if (isPickup) {
+                              _pickupController.clear();
+                              _pickupQuery = '';
+                              _pickupLatLng = null;
+                              _pickupPredictions = [];
+                              _pickupFocusNode.requestFocus();
+                            } else {
+                              _dropController.clear();
+                              _dropQuery = '';
+                              _dropLatLng = null;
+                              _dropPredictions = [];
+                              _dropFocusNode.requestFocus();
+                            }
+                          });
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -3807,7 +4863,14 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                 )
                               : null,
                           trailing: const Icon(Icons.north_west_rounded, size: 16, color: Colors.grey),
-                          onTap: () => _selectPredictionItem(pred),
+                          onTap: () {
+                            if (isPickup) {
+                              _pickupFocusNode.unfocus();
+                            } else {
+                              _dropFocusNode.unfocus();
+                            }
+                            _selectPredictionItem(pred, isPickup: isPickup);
+                          },
                         );
                       },
                     )
@@ -3828,7 +4891,14 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                               'Use device GPS coordinates',
                               style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
                             ),
-                            onTap: _detectCurrentLocation,
+                            onTap: () async {
+                              await _detectCurrentLocation();
+                              if (isPickup && _pickupLatLng != null && _isParcel && widget.serviceType != 'heavy_truck') {
+                                setState(() {
+                                  _parcelStep = 1;
+                                });
+                              }
+                            },
                           ),
                           if (_historyLocations.isNotEmpty) const Divider(height: 1),
                         ],
@@ -3858,6 +4928,7 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                 item['title'] as String,
                                 item['address'] as String,
                                 item['latLng'] as LatLng,
+                                isPickup: isPickup,
                               ),
                             ),
                           );
@@ -4066,27 +5137,44 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                             'Add contact details',
                             style: GoogleFonts.hankenGrotesk(
                               fontWeight: FontWeight.bold,
-                              fontSize: 15,
+                              fontSize: 16,
                               color: Colors.black87,
                             ),
                           ),
                           const SizedBox(height: 12),
+                          // 1. Customer Name Field
+                          Text(
+                            'Customer Name',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
                           TextField(
                             controller: nameController,
                             style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
-                            cursorColor: Colors.black,
+                            cursorColor: AppTheme.primaryColor,
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
-                              prefixIcon: const Icon(Icons.person_outline),
-                              suffixIcon: const Icon(Icons.contact_phone_outlined, color: Colors.grey),
-                              hintText: 'Name*',
+                              prefixIcon: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryColor),
+                              hintText: 'Enter name',
                               hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 14),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(color: Colors.grey.shade300),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                             ),
                             onChanged: (val) {
                               if (useMyContact && val != widget.userName) {
@@ -4097,108 +5185,322 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                                     _dropUseMyContact = false;
                                   }
                                 });
+                              } else {
+                                setState(() {});
                               }
                             },
                           ),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: Checkbox(
-                                  value: useMyContact,
-                                  activeColor: AppTheme.primaryColor,
-                                  onChanged: (bool? checked) {
-                                    setState(() {
-                                      if (isPickup) {
-                                        _pickupUseMyContact = checked ?? false;
-                                        if (_pickupUseMyContact) {
-                                          _pickupNameController.text = widget.userName;
-                                          _pickupPhoneController.text = widget.phoneNumber;
-                                        } else {
-                                          _pickupNameController.clear();
-                                          _pickupPhoneController.clear();
-                                        }
-                                      } else {
-                                        _dropUseMyContact = checked ?? false;
-                                        if (_dropUseMyContact) {
-                                          _dropNameController.text = widget.userName;
-                                          _dropPhoneController.text = widget.phoneNumber;
-                                        } else {
-                                          _dropNameController.clear();
-                                          _dropPhoneController.clear();
-                                        }
-                                      }
-                                    });
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    final newVal = !useMyContact;
-                                    if (isPickup) {
-                                      _pickupUseMyContact = newVal;
-                                      if (_pickupUseMyContact) {
-                                        _pickupNameController.text = widget.userName;
-                                        _pickupPhoneController.text = widget.phoneNumber;
-                                      } else {
-                                        _pickupNameController.clear();
-                                        _pickupPhoneController.clear();
-                                      }
-                                    } else {
-                                      _dropUseMyContact = newVal;
-                                      if (_dropUseMyContact) {
-                                        _dropNameController.text = widget.userName;
-                                        _dropPhoneController.text = widget.phoneNumber;
-                                      } else {
-                                        _dropNameController.clear();
-                                        _dropPhoneController.clear();
-                                      }
-                                    }
-                                  });
-                                },
-                                child: Text(
-                                  'Use my contact for this booking',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    color: Colors.black87,
-                                  ),
-                                ),
-                              ),
-                            ],
+                          const SizedBox(height: 14),
+                          // 2. Mobile Number Field
+                          Text(
+                            'Mobile Number',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 6),
                           TextField(
                             controller: phoneController,
                             keyboardType: TextInputType.phone,
-                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black),
-                            cursorColor: Colors.black,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
+                            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black, letterSpacing: 0.5),
+                            cursorColor: AppTheme.primaryColor,
                             decoration: InputDecoration(
                               filled: true,
                               fillColor: Colors.white,
-                              prefixIcon: const Icon(Icons.phone_outlined),
-                              hintText: 'Phone Number*',
+                              prefixIcon: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  border: Border(right: BorderSide(color: Colors.grey.shade300)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.phone_outlined, size: 18, color: AppTheme.primaryColor),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '+91',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              suffixIcon: ContactPickerService.isValidIndianMobile(phoneController.text.trim())
+                                  ? const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 20)
+                                  : (phoneController.text.trim().isNotEmpty
+                                      ? IconButton(
+                                          icon: const Icon(Icons.clear, size: 18, color: Colors.grey),
+                                          onPressed: () {
+                                            setState(() {
+                                              phoneController.clear();
+                                              if (isPickup) _pickupUseMyContact = false;
+                                              else _dropUseMyContact = false;
+                                            });
+                                          },
+                                        )
+                                      : null),
+                              hintText: 'Enter 10-digit mobile number',
                               hintStyle: GoogleFonts.inter(color: Colors.grey.shade400, fontSize: 14),
+                              errorText: (phoneController.text.trim().isNotEmpty && !ContactPickerService.isValidIndianMobile(phoneController.text.trim()))
+                                  ? 'Please enter a valid 10-digit mobile number'
+                                  : null,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(color: Colors.grey.shade300),
                               ),
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
                             ),
                             onChanged: (val) {
-                              if (useMyContact && val != widget.phoneNumber) {
+                              final cleaned = ContactPickerService.cleanIndianPhoneNumber(val);
+                              if (cleaned != val && cleaned.length <= 10) {
+                                phoneController.value = TextEditingValue(
+                                  text: cleaned,
+                                  selection: TextSelection.collapsed(offset: cleaned.length),
+                                );
+                              }
+                              if (useMyContact && cleaned != ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber)) {
                                 setState(() {
-                                  if (isPickup) {
-                                    _pickupUseMyContact = false;
-                                  } else {
-                                    _dropUseMyContact = false;
-                                  }
+                                  if (isPickup) _pickupUseMyContact = false;
+                                  else _dropUseMyContact = false;
                                 });
+                              } else {
+                                setState(() {});
                               }
                             },
+                          ),
+                          const SizedBox(height: 12),
+                          // 3. Compact Action Buttons: [Select Contact]  [Use My Details]
+                          Row(
+                            children: [
+                              // [Select Contact] compact professional button
+                              Expanded(
+                                child: Material(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: InkWell(
+                                    onTap: () async {
+                                      try {
+                                        final result = await ContactPickerService.pickContact();
+                                        if (result == null) {
+                                          // User cancelled picker: preserve existing details!
+                                          return;
+                                        }
+
+                                        setState(() {
+                                          if (isPickup) {
+                                            _pickupUseMyContact = false;
+                                          } else {
+                                            _dropUseMyContact = false;
+                                          }
+
+                                          if (result.name.trim().isNotEmpty) {
+                                            nameController.text = result.name.trim();
+                                          }
+                                        });
+
+                                        // If contact has multiple phone numbers, allow customer to choose one
+                                        if (result.phoneNumbers.length > 1) {
+                                          if (mounted) {
+                                            final chosen = await ContactPickerService.showNumberSelectionDialog(
+                                              context,
+                                              contactName: result.name,
+                                              numbers: result.phoneNumbers,
+                                            );
+                                            if (mounted && chosen != null && chosen.isNotEmpty) {
+                                              setState(() {
+                                                phoneController.text = ContactPickerService.cleanIndianPhoneNumber(chosen);
+                                              });
+                                            }
+                                          }
+                                        } else if (result.phoneNumber.isNotEmpty) {
+                                          setState(() {
+                                            phoneController.text = ContactPickerService.cleanIndianPhoneNumber(result.phoneNumber);
+                                          });
+                                        } else {
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  '${result.name.isNotEmpty ? result.name : "Selected contact"} has no phone number. Please enter mobile number manually.',
+                                                  style: GoogleFonts.inter(),
+                                                ),
+                                                backgroundColor: const Color(0xFF1E293B),
+                                                behavior: SnackBarBehavior.floating,
+                                                duration: const Duration(seconds: 3),
+                                              ),
+                                            );
+                                          }
+                                        }
+                                      } catch (e) {
+                                        debugPrint('Contact picker error: $e');
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Contact picker is unavailable on this device. Please enter details manually.',
+                                                style: GoogleFonts.inter(),
+                                              ),
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      height: 48,
+                                      constraints: const BoxConstraints(minHeight: 48),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppTheme.primaryColor.withOpacity(0.35),
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.contact_phone_rounded,
+                                            color: AppTheme.primaryColor,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              'Select Contact',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.hankenGrotesk(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: AppTheme.primaryColor,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // [Use My Details] (with clear checkbox toggle)
+                              Expanded(
+                                child: Material(
+                                  color: useMyContact ? AppTheme.primaryColor.withOpacity(0.08) : Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        final newVal = !useMyContact;
+                                        if (isPickup) {
+                                          _pickupUseMyContact = newVal;
+                                          if (_pickupUseMyContact) {
+                                            _pickupNameController.text = widget.userName;
+                                            _pickupPhoneController.text = ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber);
+                                          } else {
+                                            _pickupNameController.clear();
+                                            _pickupPhoneController.clear();
+                                          }
+                                        } else {
+                                          _dropUseMyContact = newVal;
+                                          if (_dropUseMyContact) {
+                                            _dropNameController.text = widget.userName;
+                                            _dropPhoneController.text = ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber);
+                                          } else {
+                                            _dropNameController.clear();
+                                            _dropPhoneController.clear();
+                                          }
+                                        }
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Container(
+                                      height: 48,
+                                      constraints: const BoxConstraints(minHeight: 48),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: useMyContact ? AppTheme.primaryColor : Colors.grey.shade300,
+                                          width: useMyContact ? 1.5 : 1,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          SizedBox(
+                                            width: 22,
+                                            height: 22,
+                                            child: Checkbox(
+                                              value: useMyContact,
+                                              activeColor: AppTheme.primaryColor,
+                                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                              onChanged: (bool? checked) {
+                                                setState(() {
+                                                  final newVal = checked ?? false;
+                                                  if (isPickup) {
+                                                    _pickupUseMyContact = newVal;
+                                                    if (_pickupUseMyContact) {
+                                                      _pickupNameController.text = widget.userName;
+                                                      _pickupPhoneController.text = ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber);
+                                                    } else {
+                                                      _pickupNameController.clear();
+                                                      _pickupPhoneController.clear();
+                                                    }
+                                                  } else {
+                                                    _dropUseMyContact = newVal;
+                                                    if (_dropUseMyContact) {
+                                                      _dropNameController.text = widget.userName;
+                                                      _dropPhoneController.text = ContactPickerService.cleanIndianPhoneNumber(widget.phoneNumber);
+                                                    } else {
+                                                      _dropNameController.clear();
+                                                      _dropPhoneController.clear();
+                                                    }
+                                                  }
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Flexible(
+                                            child: Text(
+                                              'Use My Details',
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.hankenGrotesk(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                                color: useMyContact ? AppTheme.primaryColor : Colors.black87,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -4266,11 +5568,16 @@ class _RideSelectionScreenState extends State<RideSelectionScreen> {
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: (nameController.text.trim().isNotEmpty && phoneController.text.trim().isNotEmpty)
+                        onPressed: (nameController.text.trim().isNotEmpty && ContactPickerService.isValidIndianMobile(phoneController.text.trim()))
                             ? () {
                                 setState(() {
                                   if (isPickup) {
-                                    _parcelStep = 2;
+                                    if (_dropController.text.isEmpty || _dropLatLng == null) {
+                                      _isPickupActive = false;
+                                      _parcelStep = 5;
+                                    } else {
+                                      _parcelStep = 2;
+                                    }
                                   } else {
                                     _checkAndCalculateRoute();
                                     _parcelStep = 4;

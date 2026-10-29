@@ -1,55 +1,88 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'js_stub.dart' if (dart.library.js) 'dart:js' as js;
 import 'network_config.dart';
 import 'firebase_service.dart';
 import 'api_client.dart';
 
-
+/// Official Production Razorpay Payment Gateway for StayDriv
+/// 
+/// Uses Razorpay Flutter SDK for real payment collection (UPI, Cards, NetBanking, Wallets).
+/// All orders are securely created on the StayDriv backend, and signatures are
+/// cryptographically verified on the backend before completing payments.
 class RazorpayGateway extends StatefulWidget {
   final double amount;
   final String description;
-  final String apiKey;
   final bool isPayout;
-  final String? targetAccount; // UPI ID or Bank Account for payouts
+  final String? targetAccount;
+  final String? bookingId;
+  final String? customerPhone;
+  final String? customerEmail;
   final VoidCallback onSuccess;
+  final Function(String error)? onFailure;
 
   const RazorpayGateway({
     super.key,
     required this.amount,
     required this.description,
-    this.apiKey = 'rzp_live_Ta9cOGnIySuBCb',
     this.isPayout = false,
     this.targetAccount,
+    this.bookingId,
+    this.customerPhone,
+    this.customerEmail,
     required this.onSuccess,
+    this.onFailure,
   });
 
+  /// Entrypoint to open Razorpay payment flow across StayDriv screens.
   static void show(
     BuildContext context, {
     required double amount,
     required String description,
     bool isPayout = false,
     String? targetAccount,
+    String? bookingId,
+    String? customerPhone,
+    String? customerEmail,
     required VoidCallback onSuccess,
+    Function(String error)? onFailure,
   }) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 450),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 420),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 20,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
             child: RazorpayGateway(
               amount: amount,
               description: description,
               isPayout: isPayout,
               targetAccount: targetAccount,
+              bookingId: bookingId,
+              customerPhone: customerPhone,
+              customerEmail: customerEmail,
               onSuccess: onSuccess,
+              onFailure: onFailure,
             ),
           ),
         ),
@@ -62,178 +95,264 @@ class RazorpayGateway extends StatefulWidget {
 }
 
 class _RazorpayGatewayState extends State<RazorpayGateway> {
-  int _screenState = 0; // 0 = Payment Methods / Details, 1 = Processing, 2 = Success
-  String _selectedMethod = 'UPI';
-  String _upiSubMethod = 'vpa'; // 'vpa' or 'qr'
-  Timer? _statusPollTimer;
-  
-  // Input fields for simulation
-  final TextEditingController _upiController = TextEditingController(text: 'customer@okaxis');
-  final TextEditingController _cardNoController = TextEditingController(text: '4111 1111 1111 1111');
-  final TextEditingController _cardExpiryController = TextEditingController(text: '12/29');
-  final TextEditingController _cardCvvController = TextEditingController(text: '123');
+  // 0: Initializing/Ready, 1: Verifying Signature on Server, 2: Success, 3: Error
+  int _status = 0;
+  String _statusMessage = 'Connecting to Razorpay Secure Gateway...';
+  String _errorMessage = '';
+  String? _activeOrderId;
 
-  // Developer Sample Mode toggle (false = Real-Time Live Razorpay Gateway)
-  bool _isDeveloperSampleMode = false;
+  late Razorpay _razorpay;
+
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.isPayout) {
+        _processPayout();
+      } else {
+        _initiateRazorpayOrder();
+      }
+    });
+  }
 
   @override
   void dispose() {
-    _upiController.dispose();
-    _cardNoController.dispose();
-    _cardExpiryController.dispose();
-    _cardCvvController.dispose();
-    _statusPollTimer?.cancel();
+    _razorpay.clear();
     super.dispose();
   }
 
-  void _simulatePaymentSuccess() {
+  // --- 1. INITIATE REAL-TIME RAZORPAY ORDER ---
+  Future<void> _initiateRazorpayOrder() async {
     setState(() {
-      _screenState = 1; // Transition to processing loader screen
-    });
-
-    Timer(const Duration(milliseconds: 1100), () {
-      if (mounted) {
-        setState(() {
-          _screenState = 2; // Success screen!
-        });
-
-        Timer(const Duration(milliseconds: 1400), () {
-          if (mounted) {
-            Navigator.pop(context); // Close the dialog
-            widget.onSuccess();
-          }
-        });
-      }
-    });
-  }
-
-  void _simulatePaymentFailure() {
-    setState(() {
-      _screenState = 1; // Transition to processing loader screen
-    });
-
-    Timer(const Duration(milliseconds: 900), () {
-      if (mounted) {
-        setState(() {
-          _screenState = 0; // Return to checkout screen
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('❌ Sample Payment Test: Simulated payment decline/failure.'),
-            backgroundColor: Colors.redAccent,
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    });
-  }
-
-  void _startRealCheckout() async {
-    setState(() {
-      _screenState = 1; // Transition to processing loader screen
+      _status = 0;
+      _statusMessage = 'Creating secure payment order...';
+      _errorMessage = '';
     });
 
     try {
       final baseUrl = NetworkConfig.backendUrl;
       final createOrderUrl = Uri.parse('$baseUrl/api/payment/create-order');
 
-      // 1. Request Order Creation on Backend
+      // Fetch passenger contact details if available
+      String phone = widget.customerPhone ?? '';
+      String email = widget.customerEmail ?? 'customer@staydriv.com';
+      final currentUid = FirebaseService().currentUid;
+      if (phone.isEmpty && currentUid != null) {
+        try {
+          final doc = await FirebaseService().getProfile('customer', currentUid);
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data() as Map<String, dynamic>;
+            phone = data['phone'] ?? phone;
+            email = data['email'] ?? email;
+          }
+        } catch (_) {}
+      }
+
       final response = await ApiClient().post(
         createOrderUrl,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'amount': widget.amount,
+          'bookingId': widget.bookingId ?? '',
+          'customerPhone': phone,
+          'customerEmail': email,
         }),
+        retry: true,
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           final String orderId = data['orderId'];
+          final int amountInPaise = data['amount'];
+          final String keyId = data['keyId'] ?? 'rzp_live_Ta9cOGnIySuBCb';
+          _activeOrderId = orderId;
 
-          // 2. Launch Hosted Checkout URL
-          final String checkoutUrl = '$baseUrl/checkout.html'
-              '?orderId=$orderId'
-              '&amount=${data['amount']}'
-              '&key=${widget.apiKey}';
+          // Open Native Razorpay Checkout
+          final options = {
+            'key': keyId,
+            'amount': amountInPaise,
+            'name': 'StayDriv',
+            'description': widget.description,
+            'order_id': orderId,
+            'timeout': 300,
+            'prefill': {
+              'contact': phone,
+              'email': email,
+            },
+            'theme': {
+              'color': '#0B2545',
+            },
+            'modal': {
+              'confirm_close': true,
+            },
+            'send_sms_hash': true,
+          };
 
-          final Uri uri = Uri.parse(checkoutUrl);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          setState(() {
+            _statusMessage = 'Opening Razorpay Checkout...';
+          });
 
-            // 3. Start Polling Order Status
-            _statusPollTimer?.cancel();
-            _statusPollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+          if (kIsWeb) {
+            js.context['onStayDrivGatewayPaymentResult'] = js.allowInterop((resultStr) {
               try {
-                final statusUrl = Uri.parse('$baseUrl/api/payment/status/$orderId');
-                final statusResponse = await ApiClient().get(statusUrl, retry: false);
-                if (statusResponse.statusCode == 200) {
-                  final statusData = jsonDecode(statusResponse.body);
-                  if (statusData['success'] == true) {
-                    final String status = statusData['status'];
-                    if (status == 'verified') {
-                      timer.cancel();
-                      if (mounted) {
-                        setState(() {
-                          _screenState = 2; // Success screen!
-                        });
-                        
-                        // Complete checkout after showing success screen
-                        Timer(const Duration(milliseconds: 1500), () {
-                          if (mounted) {
-                            Navigator.pop(context); // Close the dialog
-                            widget.onSuccess();
-                          }
-                        });
-                      }
-                    } else if (status == 'failed') {
-                      timer.cancel();
-                      if (mounted) {
-                        setState(() {
-                          _screenState = 0; // Return to checkout screen to retry
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Payment verification failed. Please try again.'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
-                      }
-                    }
-                  }
+                final Map<String, dynamic> res = jsonDecode(resultStr.toString());
+                final status = res['status']?.toString();
+                if (status == 'success') {
+                  final resp = PaymentSuccessResponse(
+                    res['razorpay_payment_id']?.toString(),
+                    res['razorpay_order_id']?.toString() ?? orderId,
+                    res['razorpay_signature']?.toString(),
+                    res,
+                  );
+                  _handlePaymentSuccess(resp);
+                } else if (status == 'cancelled') {
+                  _handlePaymentError(PaymentFailureResponse(
+                    Razorpay.PAYMENT_CANCELLED,
+                    'Payment was cancelled by user.',
+                    null,
+                  ));
+                } else {
+                  final errMsg = res['message']?.toString() ?? 'Payment failed.';
+                  final errCode = res['code'] is int ? res['code'] as int : Razorpay.UNKNOWN_ERROR;
+                  _handlePaymentError(PaymentFailureResponse(
+                    errCode,
+                    errMsg,
+                    res['error'] is Map ? res['error'] as Map : null,
+                  ));
                 }
-              } catch (pollErr) {
-                debugPrint("Error polling status: $pollErr");
+              } catch (e) {
+                _handlePaymentError(PaymentFailureResponse(Razorpay.UNKNOWN_ERROR, 'Error parsing result: $e', null));
               }
             });
 
+            js.context.callMethod('openStayDrivRazorpayCheckout', [
+              jsonEncode(options),
+              'onStayDrivGatewayPaymentResult',
+            ]);
           } else {
-            throw Exception('Could not launch payment browser');
+            _razorpay.open(options);
           }
         } else {
           throw Exception(data['error'] ?? 'Order creation failed');
         }
       } else {
-        throw Exception('Server responded with status code ${response.statusCode}');
+        throw Exception('Server responded with HTTP ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _screenState = 0; // Back to checkout input screen
+          _status = 3;
+          _errorMessage = 'Could not start checkout: $e';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Checkout initialization failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }
 
-  void _startRealPayout() async {
+  // --- 2. HANDLE RAZORPAY NATIVE PAYMENT SUCCESS ---
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
+    debugPrint("[RAZORPAY SUCCESS] Payment ID: ${response.paymentId}, Order ID: ${response.orderId}");
+
+    if (!mounted) return;
     setState(() {
-      _screenState = 1; // Transition to processing loader screen
+      _status = 1; // Transition to Server Signature Verification
+      _statusMessage = 'Verifying payment with StayDriv secure server...';
+    });
+
+    try {
+      final baseUrl = NetworkConfig.backendUrl;
+      final verifyUrl = Uri.parse('$baseUrl/api/payment/verify-signature');
+
+      final verifyResponse = await ApiClient().post(
+        verifyUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'razorpay_order_id': response.orderId ?? _activeOrderId,
+          'razorpay_payment_id': response.paymentId,
+          'razorpay_signature': response.signature,
+          'bookingId': widget.bookingId ?? '',
+        }),
+        retry: true,
+      );
+
+      if (verifyResponse.statusCode == 200) {
+        final data = jsonDecode(verifyResponse.body);
+        if (data['success'] == true) {
+          if (mounted) {
+            setState(() {
+              _status = 2; // Verified Success
+              _statusMessage = 'Payment Verified & Captured!';
+            });
+
+            // Allow user to see success checkmark, then pop and invoke onSuccess
+            Timer(const Duration(milliseconds: 1400), () {
+              if (mounted) {
+                Navigator.of(context, rootNavigator: true).pop();
+                widget.onSuccess();
+              }
+            });
+          }
+        } else {
+          throw Exception(data['error'] ?? 'Signature verification rejected by server');
+        }
+      } else {
+        throw Exception('Server returned ${verifyResponse.statusCode} during signature check');
+      }
+    } catch (err) {
+      if (mounted) {
+        setState(() {
+          _status = 3;
+          _errorMessage = 'Payment verification failed: $err';
+        });
+        if (widget.onFailure != null) {
+          widget.onFailure!(_errorMessage);
+        }
+      }
+    }
+  }
+
+  // --- 3. HANDLE PAYMENT ERROR / CANCEL ---
+  void _handlePaymentError(PaymentFailureResponse response) {
+    debugPrint("[RAZORPAY FAILED] Code: ${response.code}, Message: ${response.message}");
+
+    if (!mounted) return;
+    String userMsg = 'Payment was cancelled or could not be completed.';
+    if (response.message != null && response.message!.isNotEmpty) {
+      userMsg = response.message!;
+    }
+
+    setState(() {
+      _status = 3;
+      _errorMessage = userMsg;
+    });
+
+    if (widget.onFailure != null) {
+      widget.onFailure!(userMsg);
+    }
+  }
+
+  // --- 4. HANDLE EXTERNAL WALLET ---
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    debugPrint("[RAZORPAY WALLET] Selected: ${response.walletName}");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Redirecting to ${response.walletName ?? "wallet"}...'),
+        backgroundColor: const Color(0xFF0B2545),
+      ),
+    );
+  }
+
+  // --- 5. PILOT EARNINGS PAYOUT HANDLER ---
+  Future<void> _processPayout() async {
+    setState(() {
+      _status = 0;
+      _statusMessage = 'Processing secure earnings withdrawal...';
+      _errorMessage = '';
     });
 
     try {
@@ -247,8 +366,9 @@ class _RazorpayGatewayState extends State<RazorpayGateway> {
         body: jsonEncode({
           'uid': currentUid,
           'amount': widget.amount,
-          'targetAccount': widget.targetAccount ?? 'driver@upi',
+          'targetAccount': widget.targetAccount ?? 'pilot@upi',
         }),
+        retry: true,
       );
 
       if (response.statusCode == 200) {
@@ -256,1049 +376,255 @@ class _RazorpayGatewayState extends State<RazorpayGateway> {
         if (data['success'] == true) {
           if (mounted) {
             setState(() {
-              _screenState = 2; // Success screen!
+              _status = 2;
+              _statusMessage = data['message'] ?? 'Payout Processed Successfully!';
             });
 
-            Timer(const Duration(milliseconds: 1500), () {
+            Timer(const Duration(milliseconds: 1400), () {
               if (mounted) {
-                Navigator.pop(context); // Close the dialog
+                Navigator.of(context, rootNavigator: true).pop();
                 widget.onSuccess();
               }
             });
           }
         } else {
-          throw Exception(data['error'] ?? 'Payout execution failed');
+          throw Exception(data['error'] ?? 'Payout failed');
         }
       } else {
-        throw Exception('Server responded with status code ${response.statusCode}');
+        String errMsg = 'Server responded with HTTP ${response.statusCode}';
+        try {
+          final data = jsonDecode(response.body);
+          if (data['error'] != null && data['error'].toString().isNotEmpty) {
+            errMsg = data['error'].toString();
+          } else if (data['message'] != null && data['message'].toString().isNotEmpty) {
+            errMsg = data['message'].toString();
+          }
+        } catch (_) {}
+        throw Exception(errMsg);
       }
     } catch (e) {
       if (mounted) {
+        String userErr = e.toString();
+        if (userErr.startsWith('Exception: ')) {
+          userErr = userErr.substring(11);
+        }
         setState(() {
-          _screenState = 0; // Return to payout detail view to retry
+          _status = 3;
+          _errorMessage = userErr;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Payout failed: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (widget.onFailure != null) {
+          widget.onFailure!(userErr);
+        }
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_screenState == 0) {
-      return widget.isPayout ? _buildPayoutDetailsScreen() : _buildCheckoutScreen();
-    } else if (_screenState == 1) {
-      return _buildProcessingScreen();
-    } else {
-      return _buildSuccessScreen();
-    }
-  }
-
-  // --- CUSTOMER CHECKOUT GATEWAY ---
-  Widget _buildCheckoutScreen() {
     return Container(
-      color: Colors.white,
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Razorpay branding header
-          Container(
-            color: const Color(0xFF0B2545),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+          // Header Logo & Branding
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B2545),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Center(
+                  child: Text(
+                    'S',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 20,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(
+                      'StayDriv Pay',
+                      style: GoogleFonts.hankenGrotesk(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0B2545),
+                      ),
+                    ),
                     Row(
                       children: [
-                        // Razorpay Blue-box styled Logo
-                        Container(
-                          width: 20,
-                          height: 20,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF3399FF),
-                            borderRadius: BorderRadius.all(Radius.circular(4)),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'R',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Razorpay Secure',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.description,
-                      style: GoogleFonts.inter(
-                        color: Colors.white70,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '₹${widget.amount.toStringAsFixed(2)}',
-                  style: GoogleFonts.robotoMono(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Mode Banner with Interactive Developer Toggle
-          Container(
-            color: _isDeveloperSampleMode ? const Color(0xFFEFF6FF) : Colors.green.shade50,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  _isDeveloperSampleMode ? Icons.science_rounded : Icons.check_circle_outline,
-                  color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade900,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _isDeveloperSampleMode
-                            ? 'SAMPLE MODE (Developer Test)'
-                            : 'LIVE MODE | ${widget.apiKey}',
-                        style: GoogleFonts.robotoMono(
-                          color: _isDeveloperSampleMode ? const Color(0xFF1E40AF) : Colors.green.shade900,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _isDeveloperSampleMode
-                            ? 'Instant test simulation • No real money required'
-                            : 'Live production checkout active',
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          color: _isDeveloperSampleMode ? const Color(0xFF3B82F6) : Colors.green.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isDeveloperSampleMode = !_isDeveloperSampleMode;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _isDeveloperSampleMode ? const Color(0xFFDBEAFE) : Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _isDeveloperSampleMode ? const Color(0xFF93C5FD) : Colors.green.shade400,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isDeveloperSampleMode ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-                          size: 18,
-                          color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade800,
-                        ),
+                        const Icon(Icons.lock_outline, size: 12, color: Colors.green),
                         const SizedBox(width: 4),
                         Text(
-                          _isDeveloperSampleMode ? 'Sample' : 'Live',
+                          'Powered by Razorpay Live',
                           style: GoogleFonts.inter(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade800,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.green.shade800,
                           ),
                         ),
                       ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Payment Mode Tabs
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Row(
-              children: [
-                _buildMethodTab('UPI', Icons.qr_code_2_rounded),
-                const SizedBox(width: 10),
-                _buildMethodTab('Card', Icons.credit_card_rounded),
-                const SizedBox(width: 10),
-                _buildMethodTab('Netbanking', Icons.account_balance_rounded),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Interactive Details Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: _selectedMethod == 'UPI'
-                ? _buildUpiSection()
-                : _selectedMethod == 'Card'
-                    ? _buildCardSection()
-                    : _buildNetbankingSection(),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Proceed Button & Secure badge
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              children: [
-                if (_isDeveloperSampleMode) ...[
-                  // Primary Developer Sample Payment Button
-                  ElevatedButton(
-                    onPressed: _simulatePaymentSuccess,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1E60FF),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.bolt_rounded, color: Colors.amberAccent, size: 22),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Pay Now (Sample Test) • ₹${widget.amount.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _simulatePaymentFailure,
-                          icon: const Icon(Icons.close_rounded, size: 14, color: Colors.red),
-                          label: Text(
-                            'Simulate Failure',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.red.shade700,
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.red.shade200),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _startRealCheckout,
-                          icon: const Icon(Icons.open_in_browser_rounded, size: 14, color: Color(0xFF1E60FF)),
-                          label: Text(
-                            'Real Checkout',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF1E60FF),
-                            ),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: Colors.blue.shade200),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ] else ...[
-                  // Live Mode Real Checkout Button
-                  ElevatedButton(
-                    onPressed: _startRealCheckout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF3399FF),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.security, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Pay Now • ₹${widget.amount.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: _simulatePaymentSuccess,
-                    icon: const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF1E60FF)),
-                    label: Text(
-                      'Developer Quick Test (Sample Bypass)',
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF1E60FF)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isDeveloperSampleMode ? Icons.science_outlined : Icons.lock,
-                      color: _isDeveloperSampleMode ? const Color(0xFF3B82F6) : Colors.grey.shade400,
-                      size: 13,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _isDeveloperSampleMode
-                          ? 'DEVELOPER TEST ENVIRONMENT • NO REAL MONEY DEDUCTED'
-                          : 'SECURED BY RAZORPAY • PCI-DSS COMPLIANT',
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 8.5,
-                        color: _isDeveloperSampleMode ? const Color(0xFF2563EB) : Colors.grey.shade400,
-                        fontWeight: FontWeight.w600,
-                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- PARTNER PAYOUT GATEWAY ---
-  Widget _buildPayoutDetailsScreen() {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Payout branding header
-          Container(
-            color: const Color(0xFF0F172A),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF5046E5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 14),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Razorpay Payouts',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '₹${widget.amount.toStringAsFixed(2)}',
-                  style: GoogleFonts.robotoMono(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 20,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Mode Banner with Interactive Developer Toggle
-          Container(
-            color: _isDeveloperSampleMode ? const Color(0xFFEFF6FF) : Colors.green.shade50,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              children: [
-                Icon(
-                  _isDeveloperSampleMode ? Icons.science_rounded : Icons.check_circle_outline,
-                  color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade900,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _isDeveloperSampleMode
-                            ? 'SAMPLE MODE (Developer Cashout)'
-                            : 'LIVE MODE | ${widget.apiKey}',
-                        style: GoogleFonts.robotoMono(
-                          color: _isDeveloperSampleMode ? const Color(0xFF1E40AF) : Colors.green.shade900,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10.5,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        _isDeveloperSampleMode
-                            ? 'Instant payout simulation • No RazorpayX balance required'
-                            : 'Live RazorpayX payout transfer active',
-                        style: GoogleFonts.inter(
-                          fontSize: 9.5,
-                          color: _isDeveloperSampleMode ? const Color(0xFF3B82F6) : Colors.green.shade800,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isDeveloperSampleMode = !_isDeveloperSampleMode;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: _isDeveloperSampleMode ? const Color(0xFFDBEAFE) : Colors.green.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _isDeveloperSampleMode ? const Color(0xFF93C5FD) : Colors.green.shade400,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          _isDeveloperSampleMode ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
-                          size: 18,
-                          color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade800,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          _isDeveloperSampleMode ? 'Sample' : 'Live',
-                          style: GoogleFonts.inter(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            color: _isDeveloperSampleMode ? const Color(0xFF1D4ED8) : Colors.green.shade800,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'RECIPIENT ACCOUNT DETAILS',
-                  style: GoogleFonts.robotoMono(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF5046E5).withValues(alpha: 0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.account_balance_wallet, color: Color(0xFF5046E5), size: 20),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.targetAccount ?? 'driver@upi',
-                              style: GoogleFonts.robotoMono(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                color: Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Instant UPI Transfer (VPA)',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Transaction Description',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.description,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 32),
-
-          // Payout button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              children: [
-                if (_isDeveloperSampleMode) ...[
-                  ElevatedButton(
-                    onPressed: _simulatePaymentSuccess,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5046E5),
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.bolt_rounded, color: Colors.amberAccent, size: 22),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Confirm Cashout (Sample Test) • ₹${widget.amount.toStringAsFixed(2)}',
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _startRealPayout,
-                    icon: const Icon(Icons.flash_on, size: 14, color: Color(0xFF5046E5)),
-                    label: Text(
-                      'Real RazorpayX Payout',
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF5046E5)),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: Colors.indigo.shade200),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ] else ...[
-                  ElevatedButton(
-                    onPressed: _startRealPayout,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF5046E5),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.flash_on, color: Colors.white, size: 18),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Confirm Instant Cashout',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    onPressed: _simulatePaymentSuccess,
-                    icon: const Icon(Icons.bolt_rounded, size: 14, color: Color(0xFF5046E5)),
-                    label: Text(
-                      'Developer Quick Test (Sample Cashout)',
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF5046E5)),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _isDeveloperSampleMode ? Icons.science_outlined : Icons.lock,
-                      color: _isDeveloperSampleMode ? const Color(0xFF6366F1) : Colors.grey.shade400,
-                      size: 13,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _isDeveloperSampleMode
-                          ? 'DEVELOPER TEST ENVIRONMENT • NO REAL PAYOUT WIRE'
-                          : 'DIRECT BANK WIRE VIA RAZORPAY API',
-                      style: GoogleFonts.robotoMono(
-                        fontSize: 8.5,
-                        color: _isDeveloperSampleMode ? const Color(0xFF4F46E5) : Colors.grey.shade400,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMethodTab(String method, IconData icon) {
-    final isSelected = _selectedMethod == method;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedMethod = method;
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF3399FF).withValues(alpha: 0.08) : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF3399FF) : Colors.grey.shade300,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? const Color(0xFF3399FF) : Colors.grey.shade600,
-                size: 20,
               ),
-              const SizedBox(height: 6),
-              Text(
-                method,
-                style: GoogleFonts.inter(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? const Color(0xFF3399FF) : Colors.grey.shade600,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '₹${widget.amount.toStringAsFixed(2)}',
+                  style: GoogleFonts.robotoMono(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
+                    color: const Color(0xFF0B2545),
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildUpiSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: ChoiceChip(
-                label: const Text('UPI ID'),
-                selected: _upiSubMethod == 'vpa',
-                onSelected: (val) {
-                  if (val) setState(() => _upiSubMethod = 'vpa');
-                },
-                selectedColor: const Color(0xFF3399FF).withOpacity(0.15),
-                checkmarkColor: const Color(0xFF3399FF),
-                labelStyle: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  color: _upiSubMethod == 'vpa' ? const Color(0xFF3399FF) : Colors.grey.shade600,
-                  fontSize: 12,
-                ),
+          const SizedBox(height: 20),
+          const Divider(height: 1),
+          const SizedBox(height: 24),
+
+          // Body Content depending on Status
+          if (_status == 0 || _status == 1) ...[
+            const SizedBox(
+              width: 46,
+              height: 46,
+              child: CircularProgressIndicator(
+                strokeWidth: 3.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0B2545)),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ChoiceChip(
-                label: const Text('QR Scan'),
-                selected: _upiSubMethod == 'qr',
-                onSelected: (val) {
-                  if (val) setState(() => _upiSubMethod = 'qr');
-                },
-                selectedColor: const Color(0xFF3399FF).withOpacity(0.15),
-                checkmarkColor: const Color(0xFF3399FF),
-                labelStyle: GoogleFonts.inter(
-                  fontWeight: FontWeight.bold,
-                  color: _upiSubMethod == 'qr' ? const Color(0xFF3399FF) : Colors.grey.shade600,
-                  fontSize: 12,
-                ),
+            const SizedBox(height: 20),
+            Text(
+              _statusMessage,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF1E293B),
               ),
             ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (_upiSubMethod == 'vpa') ...[
-          Text(
-            'ENTER UPI ID',
-            style: GoogleFonts.robotoMono(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
+            const SizedBox(height: 8),
+            Text(
+              'Please complete payment via UPI, Card, NetBanking or Wallet.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _upiController,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-              hintText: 'yourname@okbank',
-              prefixIcon: const Icon(Icons.alternate_email, color: Color(0xFF3399FF)),
+          ] else if (_status == 2) ...[
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: Color(0xFFDCFCE7),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_rounded, color: Color(0xFF16A34A), size: 36),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'UPI apps supported: Google Pay, PhonePe, Paytm, BHIM UPI etc.',
-            style: GoogleFonts.inter(fontSize: 11, color: Colors.grey),
-          ),
-        ] else ...[
-          Center(
-            child: Column(
+            const SizedBox(height: 16),
+            Text(
+              'Payment Successful!',
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFF16A34A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Transaction verified and captured securely.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ] else ...[
+            Container(
+              width: 60,
+              height: 60,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFEE2E2),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close_rounded, color: Color(0xFFDC2626), size: 36),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Payment Not Completed',
+              style: GoogleFonts.hankenGrotesk(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: const Color(0xFFDC2626),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage.isNotEmpty
+                  ? _errorMessage
+                  : 'The transaction was cancelled or declined.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300, width: 2),
-                    borderRadius: BorderRadius.circular(16),
-                    color: Colors.white,
-                  ),
-                  child: Image.network(
-                    'https://api.qrserver.com/v1/create-qr-code/?size=150x150&data='
-                    'upi://pay?pa=staydriv@axisbank%26pn=StayDriv%26am=${widget.amount}%26cu=INR',
-                    width: 150,
-                    height: 150,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 150,
-                        height: 150,
-                        color: Colors.grey.shade100,
-                        child: const Icon(Icons.qr_code_2_rounded, size: 80, color: Colors.grey),
-                      );
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.of(context, rootNavigator: true).pop();
                     },
+                    child: Text('Close', style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  'Scan this QR Code from any UPI App to Pay',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Amount: ₹${widget.amount.toStringAsFixed(2)}',
-                  style: GoogleFonts.robotoMono(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: const Color(0xFF3399FF),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0B2545),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: _initiateRazorpayOrder,
+                    child: Text(
+                      'Retry',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCardSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'CARD NUMBER',
-          style: GoogleFonts.robotoMono(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _cardNoController,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            hintText: '4111 1111 1111 1111',
-            prefixIcon: const Icon(Icons.credit_card, color: Color(0xFF3399FF)),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'EXPIRY DATE',
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _cardExpiryController,
-                    decoration: InputDecoration(
-                      hintText: 'MM/YY',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'CVV',
-                    style: GoogleFonts.robotoMono(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _cardCvvController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      hintText: '123',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNetbankingSection() {
-    final List<Map<String, String>> popularBanks = [
-      {'name': 'State Bank of India', 'code': 'SBI'},
-      {'name': 'HDFC Bank', 'code': 'HDFC'},
-      {'name': 'ICICI Bank', 'code': 'ICICI'},
-      {'name': 'Axis Bank', 'code': 'AXIS'},
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'POPULAR BANKS',
-          style: GoogleFonts.robotoMono(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey.shade600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: popularBanks.map((bank) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                bank['code']!,
-                style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  // --- LOADER STATE ---
-  Widget _buildProcessingScreen() {
-    final themeColor = widget.isPayout ? const Color(0xFF5046E5) : const Color(0xFF3399FF);
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(themeColor),
-            strokeWidth: 4,
-          ),
-          const SizedBox(height: 32),
-          Text(
-            widget.isPayout ? 'Processing Cashout...' : 'Authorizing Transaction...',
-            style: GoogleFonts.hankenGrotesk(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.isPayout 
-                ? 'Contacting banking servers via Razorpay Payouts'
-                : 'Securing connection with bank server',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- SUCCESS STATE ---
-  Widget _buildSuccessScreen() {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: const BoxDecoration(
-              color: Color(0xFF10B981),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.check_rounded, color: Colors.white, size: 44),
-          ),
-          const SizedBox(height: 32),
-          Text(
-            widget.isPayout ? 'Cashout Completed!' : 'Payment Successful!',
-            style: GoogleFonts.hankenGrotesk(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            widget.isPayout
-                ? 'Funds transferred successfully. ID: payout_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}'
-                : 'Transaction successful. ID: pay_${DateTime.now().millisecondsSinceEpoch.toString().substring(6)}',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.robotoMono(
-              fontSize: 11,
-              color: Colors.grey.shade600,
-            ),
-          ),
         ],
       ),
     );

@@ -1,0 +1,22 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.staydriv.app",
+      "sha256_cert_fingerprints": [
+        "33:CD:21:F8:D3:4D:66:D9:B5:3A:CE:D8:ED:C7:35:40:D7:07:58:20:0A:D4:63:E0:3B:09:75:33:33:B1:6E:BA"
+      ]
+    }
+  },
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.staydriv.customer",
+      "sha256_cert_fingerprints": [
+        "33:CD:21:F8:D3:4D:66:D9:B5:3A:CE:D8:ED:C7:35:40:D7:07:58:20:0A:D4:63:E0:3B:09:75:33:33:B1:6E:BA"
+      ]
+    }
+  }
+]

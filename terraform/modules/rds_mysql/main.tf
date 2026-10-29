@@ -14,6 +14,7 @@ terraform {
 
 # --- DB Subnet Group (Private Database Subnets Across 2 AZs) ---
 resource "aws_db_subnet_group" "main" {
+  count       = var.enable_rds ? 1 : 0
   name_prefix = "${var.project_name}-${var.environment}-db-subnet-group-"
   subnet_ids  = var.private_db_subnet_ids
   description = "StayDriv private database subnet group"
@@ -29,6 +30,7 @@ resource "aws_db_subnet_group" "main" {
 
 # --- Custom Parameter Group for UTF8mb4 & Performance ---
 resource "aws_db_parameter_group" "mysql" {
+  count       = var.enable_rds ? 1 : 0
   name_prefix = "${var.project_name}-${var.environment}-mysql-pg-"
   family      = "mysql8.0"
   description = "Custom parameter group for StayDriv MySQL 8.0"
@@ -57,6 +59,7 @@ resource "aws_db_parameter_group" "mysql" {
 
 # --- Generate Strong Random Password for Master User ---
 resource "random_password" "master_password" {
+  count            = var.enable_rds ? 1 : 0
   length           = 24
   special          = true
   override_special = "!#$%&*()-_=+[]{}<>:?"
@@ -64,6 +67,7 @@ resource "random_password" "master_password" {
 
 # --- Amazon RDS MySQL Instance (Private & Encrypted) ---
 resource "aws_db_instance" "main" {
+  count                 = var.enable_rds ? 1 : 0
   identifier_prefix     = "${var.project_name}-${var.environment}-mysql-"
   engine                = "mysql"
   engine_version        = var.mysql_version
@@ -77,10 +81,10 @@ resource "aws_db_instance" "main" {
 
   db_name  = var.database_name
   username = var.db_username
-  password = random_password.master_password.result
+  password = random_password.master_password[0].result
 
-  db_subnet_group_name   = aws_db_subnet_group.main.name
-  parameter_group_name   = aws_db_parameter_group.mysql.name
+  db_subnet_group_name   = aws_db_subnet_group.main[0].name
+  parameter_group_name   = aws_db_parameter_group.mysql[0].name
   vpc_security_group_ids = [var.rds_security_group_id]
 
   backup_retention_period   = var.backup_retention_period
@@ -109,6 +113,7 @@ resource "aws_db_instance" "main" {
 
 # --- AWS Secrets Manager: Secure Storage for Database Credentials ---
 resource "aws_secretsmanager_secret" "db_credentials" {
+  count       = var.enable_rds ? 1 : 0
   name_prefix = "${var.project_name}-${var.environment}-db-credentials-"
   description = "StayDriv Master MySQL database credentials"
 
@@ -118,14 +123,16 @@ resource "aws_secretsmanager_secret" "db_credentials" {
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
+  count     = var.enable_rds ? 1 : 0
+  secret_id = aws_secretsmanager_secret.db_credentials[0].id
   secret_string = jsonencode({
     engine   = "mysql"
-    host     = aws_db_instance.main.address
-    port     = aws_db_instance.main.port
+    host     = aws_db_instance.main[0].address
+    port     = aws_db_instance.main[0].port
     database = var.database_name
     username = var.db_username
-    password = random_password.master_password.result
-    url      = "mysql://${var.db_username}:${urlencode(random_password.master_password.result)}@${aws_db_instance.main.address}:${aws_db_instance.main.port}/${var.database_name}"
+    password = random_password.master_password[0].result
+    url      = "mysql://${var.db_username}:${urlencode(random_password.master_password[0].result)}@${aws_db_instance.main[0].address}:${aws_db_instance.main[0].port}/${var.database_name}"
   })
 }
+

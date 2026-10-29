@@ -2,39 +2,126 @@
 
 export interface Customer {
   uid: string;
+  customerId?: string;
   name: string;
   email: string;
   phone: string;
   status: 'active' | 'blocked';
   walletBalance: number;
   createdAt: string;
+  bookingStatus?: string;
+  currentRideStatus?: string;
+  activeBookingId?: string | null;
+  currentPickup?: string;
+  currentDestination?: string;
+  lat?: number | null;
+  lng?: number | null;
+  hasLocation?: boolean;
+  isLocationStale?: boolean;
+  googleMapsUrl?: string | null;
+  assignedPilotId?: string | null;
+  assignedPilotName?: string | null;
+  assignedPilotPhone?: string | null;
+  vehiclePlate?: string | null;
+  vehicleType?: string | null;
+  vehicleModel?: string | null;
+  vehicleOwnerName?: string | null;
+  vehicleOwnerPhone?: string | null;
+  rideStartTime?: string | null;
+  lastLocationUpdate?: string;
 }
 
 export interface Partner {
   uid: string;
+  pilotId?: string;
   name: string;
+  driverName?: string;
   email: string;
   phone: string;
-  vehicleType: 'Bike' | 'Auto' | 'Car' | 'Mini Truck' | 'Truck';
+  driverPhone?: string;
+  ownerName?: string;
+  ownerPhone?: string;
+  vehicleType: string;
   vehiclePlate: string;
-  vehicleModelColor: string;
-  status: 'pending' | 'approved' | 'rejected' | 'suspended';
+  vehicleNumber?: string;
+  vehicleModel?: string;
+  vehicleModelColor?: string;
+  vehicleMake?: string;
+  vehicleColor?: string;
+  vehicleRegistrationDate?: string;
+  insuranceDocument?: string;
+  insuranceDocumentUrl?: string;
+  insuranceExpiryDate?: string;
+  rcDocumentUrl?: string;
+  address?: string;
+  photo?: string;
+  currentRideId?: string;
+  applicationId?: string;
+  totalLifetimeEarnings?: number;
+  salary?: number;
+  approved?: boolean;
+  isBlocked?: boolean;
+  status: 'pending' | 'approved' | 'rejected' | 'suspended' | 'under_review' | 'action_required';
+  online?: boolean;
+  onlineStatus?: string;
+  rideStatus?: string;
   rating: number;
   earnings: number;
   totalTrips: number;
   totalDeliveries: number;
-  documents: {
-    aadhaarFront: string;
-    aadhaarBack: string;
-    drivingLicenseFront: string;
-    drivingLicenseBack: string;
-    rcFront: string;
-    rcBack: string;
-    profilePhoto: string;
-    fitness?: string;
-    permit?: string;
+  lat?: number | null;
+  lng?: number | null;
+  hasLocation?: boolean;
+  isLocationStale?: boolean;
+  heading?: number;
+  speed?: number;
+  googleMapsUrl?: string | null;
+  currentBookingId?: string | null;
+  currentRideStatus?: string | null;
+  currentCustomerName?: string | null;
+  currentCustomerPhone?: string | null;
+  currentPickup?: string | null;
+  currentDestination?: string | null;
+  lastLocationUpdate?: string;
+  correctionNotes?: string;
+  rejectionReason?: string;
+  verificationHistory?: Array<{
+    action: string;
+    docKey?: string;
+    reason?: string;
+    notes?: string;
+    adminName?: string;
+    timestamp?: string;
+  }>;
+  documents?: Record<string, any>;
+  aadhaarFront?: string;
+  aadhaarBack?: string;
+  panFront?: string;
+  panBack?: string;
+  licenseFront?: string;
+  licenseBack?: string;
+  rcFront?: string;
+  rcBack?: string;
+  fitness?: string;
+  permit?: string;
+  dob?: string;
+  walletBalance?: number;
+  bookingAccess?: {
+    status?: string;
+    enabled?: boolean;
+    disabledReason?: string;
+    updatedBy?: string;
+    updatedAt?: string;
   };
-  walletBalance: number;
+  adminBookingEnabled?: boolean;
+  bookingAccessStatus?: 'ENABLED' | 'DISABLED';
+  bookingAccessReason?: string;
+  pilotDutyStatus?: 'ON' | 'OFF';
+  dutyStatus?: 'ON' | 'OFF';
+  lastStatusUpdate?: string;
+  lastActive?: string;
+  submittedAt?: string;
+  updatedAt?: string;
   createdAt: string;
 }
 
@@ -46,16 +133,43 @@ export interface Booking {
   drop: string;
   pickupLatLng: { lat: number; lng: number };
   dropLatLng: { lat: number; lng: number };
-  vehicle: 'Bike' | 'Auto' | 'Car';
+  vehicle: string;
   price: string;
   otp: string;
-  status: 'requested' | 'accepted' | 'arriving' | 'started' | 'completed' | 'cancelled';
+  status: 'requested' | 'searching' | 'accepted' | 'arriving' | 'arrived' | 'started' | 'in_progress' | 'completed' | 'cancelled' | string;
   driverId: string | null;
   driverName: string | null;
+  driverPhone?: string | null;
   vehiclePlate: string | null;
   vehicleModelColor: string | null;
-  paymentOption: 'UPI' | 'Card' | 'Wallet' | 'Cash';
+  paymentOption: string;
   createdAt: string;
+
+  // Round Trip & Shared Ride Parameters
+  tripType?: 'ONE_WAY' | 'ROUND_TRIP' | 'SHARE_AUTO' | 'SHARE_CAR' | string;
+  isRoundTrip?: boolean;
+  returnDate?: string;
+  returnTime?: string;
+  returnDateTime?: string;
+  returnPickup?: string;
+  returnDrop?: string;
+  waitingDurationMinutes?: number;
+  pilotWaitOption?: string;
+  outwardDistance?: string;
+  returnDistance?: string;
+  outwardFare?: number;
+  returnFare?: number;
+  waitingCharge?: number;
+  tollCharges?: number;
+  taxes?: number;
+  platformCommission?: number;
+  pilotEarnings?: number;
+  passengerCount?: number;
+  sharedSeats?: number;
+  specialInstructions?: string;
+  currentLeg?: 'outward' | 'waiting' | 'return' | 'completed' | string;
+  outwardTripStatus?: string;
+  returnTripStatus?: string;
 }
 
 export interface Delivery {
@@ -122,6 +236,7 @@ export interface PromoCode {
   minBookingValue: number;
   expiryDate: string;
   status: 'active' | 'inactive';
+  active?: boolean;
   usageCount: number;
 }
 
@@ -130,8 +245,10 @@ export interface AdminUser {
   email: string;
   name: string;
   role: 'super_admin' | 'admin' | 'support' | 'finance';
-  status: 'active' | 'inactive';
-  createdAt: string;
+  status?: 'active' | 'inactive';
+  createdAt?: string;
+  phone?: string;
+  lastLogin?: string;
 }
 
 export interface AuditLog {
@@ -344,6 +461,72 @@ export const mockBookings: Booking[] = [
     paymentOption: 'Cash',
     createdAt: '2026-05-31T13:15:00Z',
   },
+  {
+    bookingId: 'BK_1005',
+    customerId: 'cust_1',
+    customerName: 'Aarav Mehta',
+    pickup: 'Hitech City Phase 2, Hyderabad',
+    drop: 'Shamshabad International Airport, Hyderabad',
+    pickupLatLng: { lat: 17.4435, lng: 78.3772 },
+    dropLatLng: { lat: 17.2403, lng: 78.4294 },
+    vehicle: 'Car',
+    price: '₹1,580.00',
+    otp: '9120',
+    status: 'started',
+    driverId: 'drv_1',
+    driverName: 'Ramesh Kumar',
+    vehiclePlate: 'TS 09 SD 1234',
+    vehicleModelColor: 'Black Hyundai Verna',
+    paymentOption: 'UPI',
+    createdAt: '2026-06-01T08:00:00Z',
+    tripType: 'ROUND_TRIP',
+    isRoundTrip: true,
+    returnDate: '01-JUNE-2026',
+    returnTime: '12:30 PM',
+    returnDateTime: '2026-06-01T12:30:00',
+    returnPickup: 'Shamshabad International Airport, Hyderabad',
+    returnDrop: 'Hitech City Phase 2, Hyderabad',
+    waitingDurationMinutes: 60,
+    pilotWaitOption: 'wait_at_destination',
+    outwardDistance: '32.4 km',
+    returnDistance: '32.4 km',
+    outwardFare: 750,
+    returnFare: 675,
+    waitingCharge: 112.5,
+    taxes: 76.88,
+    platformCommission: 237,
+    pilotEarnings: 1343,
+    passengerCount: 2,
+    currentLeg: 'waiting',
+    outwardTripStatus: 'arrived',
+    returnTripStatus: 'pending',
+  },
+  {
+    bookingId: 'BK_1006',
+    customerId: 'cust_2',
+    customerName: 'Ananya Roy',
+    pickup: 'Madhapur Metro Station, Hyderabad',
+    drop: 'Gachibowli Stadium, Hyderabad',
+    pickupLatLng: { lat: 17.4385, lng: 78.3912 },
+    dropLatLng: { lat: 17.4472, lng: 78.3512 },
+    vehicle: 'Share Auto',
+    price: '₹60.00',
+    otp: '4091',
+    status: 'accepted',
+    driverId: 'drv_3',
+    driverName: 'Mohd Farooq',
+    vehiclePlate: 'TS 08 UA 5678',
+    vehicleModelColor: 'Yellow Bajaj Auto RE',
+    paymentOption: 'Wallet',
+    createdAt: '2026-06-01T10:15:00Z',
+    tripType: 'SHARE_AUTO',
+    isRoundTrip: false,
+    passengerCount: 1,
+    sharedSeats: 2,
+    outwardDistance: '5.2 km',
+    platformCommission: 9,
+    pilotEarnings: 51,
+  },
 ];
 
 export const mockDeliveries: Delivery[] = [
@@ -459,6 +642,7 @@ export const mockConfig = {
     Bike: 40,
     Auto: 60,
     Car: 100,
+    'Car XL': 130,
     'Mini Truck': 250,
     Truck: 600,
   },
@@ -466,6 +650,7 @@ export const mockConfig = {
     Bike: 8,
     Auto: 12,
     Car: 18,
+    'Car XL': 28,
     'Mini Truck': 35,
     Truck: 75,
   },

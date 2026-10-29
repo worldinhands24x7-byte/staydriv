@@ -116,6 +116,13 @@ variable "multi_az" {
   default     = true
 }
 
+variable "enable_rds" {
+  description = "Enable or disable RDS MySQL deployment"
+  type        = bool
+  default     = false
+}
+
+
 # --- Route 53 & ACM Variables ---
 variable "enable_route53_and_acm" {
   description = "Whether to provision ACM certificate and Route 53 DNS records"

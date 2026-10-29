@@ -18,6 +18,8 @@ yarn-error.log*
 *.exe
 *.dill
 *.so
+*.tar.gz
+**/*.tar.gz
 build/
 .dart_tool/
 .gradle/
@@ -28,8 +30,16 @@ android/.kotlin/
 ios/.symlinks/
 ios/Pods/
 
-# Web / Admin build outputs (can be generated)
+# Web / Admin build outputs
 Staydriv_Admin/dist/
+
+# Scratch & SSM temporary files
+scratch/
+**/scratch/
+ssm_*.json
+**/ssm_*.json
+scratch_*.json
+**/scratch_*.json
 
 # Logs and temporary files
 *.log

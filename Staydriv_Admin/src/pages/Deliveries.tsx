@@ -4,7 +4,24 @@ import { Search, Eye, AlertCircle, Ban, Compass, Box, X } from 'lucide-react';
 
 export const Deliveries: React.FC = () => {
   const { deliveries, partners, assignDriver, cancelBooking } = useDatabase();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const auto = sessionStorage.getItem('admin_auto_filter');
+    if (auto) {
+      sessionStorage.removeItem('admin_auto_filter');
+      return auto;
+    }
+    return '';
+  });
+
+  React.useEffect(() => {
+    const handleSearchNav = (e: any) => {
+      if (e.detail?.filter && (e.detail?.tab === 'deliveries' || !e.detail?.tab)) {
+        setSearchTerm(e.detail.filter);
+      }
+    };
+    window.addEventListener('admin:search-navigate', handleSearchNav);
+    return () => window.removeEventListener('admin:search-navigate', handleSearchNav);
+  }, []);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedDelivery, setSelectedDelivery] = useState<any | null>(null);
   const [showAssignPanel, setShowAssignPanel] = useState(false);
@@ -36,10 +53,19 @@ export const Deliveries: React.FC = () => {
 
   // Find eligible online approved drivers of matching cargo vehicle type
   const getEligibleDrivers = (vehicleType: string) => {
-    return partners.filter(p => 
-      p.status === 'approved' && 
-      p.vehicleType.toLowerCase().trim() === vehicleType.toLowerCase().trim()
-    );
+    const target = (vehicleType || '').toLowerCase().trim();
+    return partners.filter(p => {
+      const isAppr = Boolean(p.approved || (p as any).isApproved || String(p.status || '').toUpperCase() === 'APPROVED');
+      if (!isAppr) return false;
+      const pvt = (p.vehicleType || '').toLowerCase().trim();
+      if (pvt === target) return true;
+      if (target.includes('mini truck') && (pvt.includes('mini truck') || pvt.includes('pickup') || pvt.includes('ace') || pvt.includes('dost'))) return true;
+      if (target.includes('heavy truck') && (pvt.includes('heavy truck') || pvt.includes('ton'))) return true;
+      if (target.includes('truck') && pvt.includes('truck')) return true;
+      if (target.includes('auto') && pvt.includes('auto')) return true;
+      if (target.includes('bike') && (pvt.includes('bike') || pvt.includes('scoot'))) return true;
+      return false;
+    });
   };
 
   return (

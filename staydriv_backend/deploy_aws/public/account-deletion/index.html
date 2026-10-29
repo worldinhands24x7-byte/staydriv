@@ -1,0 +1,1694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <title>StayDriv – Account & Data Deletion Request | Google Play Compliance</title>
+  <meta name="description" content="Official Account & Personal Data Deletion Request portal for StayDriv app by WorldInHands 24x7. Request account closure, permanent data erasure, and review statutory data retention policies.">
+  <meta name="robots" content="index, follow">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/icons/Icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #070a13;
+      --card-bg: rgba(15, 23, 42, 0.78);
+      --card-hover: rgba(22, 33, 62, 0.85);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-focus: #3b82f6;
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-glow: rgba(37, 99, 235, 0.35);
+      --pilot-color: #ea580c;
+      --text-color: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --success-color: #10b981;
+      --warning-color: #f59e0b;
+      --danger-color: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1.6;
+      padding: 24px 16px 60px;
+      background-image: 
+        radial-gradient(circle at 50% 0%, rgba(37, 99, 235, 0.22) 0%, transparent 55%),
+        radial-gradient(circle at 80% 80%, rgba(234, 88, 12, 0.1) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    /* Top Brand Bar */
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .brand-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #60a5fa;
+      margin-bottom: 14px;
+    }
+
+    .brand-badge svg {
+      width: 16px;
+      height: 16px;
+      fill: currentColor;
+    }
+
+    .logo-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3);
+    }
+
+    .logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #93c5fd 0%, #3b82f6 50%, #1d4ed8 100%);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .app-meta {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .developer-name {
+      color: #cbd5e1;
+      font-weight: 600;
+    }
+
+    .page-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 700;
+      margin-top: 10px;
+      color: #ffffff;
+      letter-spacing: -0.3px;
+    }
+
+    .compliance-alert {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-left: 4px solid #3b82f6;
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      margin: 20px 0 28px;
+      text-align: left;
+      font-size: 14px;
+      backdrop-filter: blur(12px);
+    }
+
+    .compliance-alert svg {
+      flex-shrink: 0;
+      width: 22px;
+      height: 22px;
+      fill: #60a5fa;
+      margin-top: 2px;
+    }
+
+    /* Tab Navigation */
+    .tab-nav {
+      display: flex;
+      gap: 8px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 6px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(16px);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .tab-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .tab-btn {
+      flex: 1;
+      min-width: 140px;
+      padding: 12px 18px;
+      background: transparent;
+      border: none;
+      border-radius: 12px;
+      color: var(--text-secondary);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .tab-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      color: #ffffff;
+      background: var(--primary-color);
+      box-shadow: 0 4px 16px var(--primary-glow);
+    }
+
+    /* Main Card Layout */
+    .main-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 32px 28px;
+      box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5);
+      margin-bottom: 28px;
+      text-align: left;
+    }
+
+    @media (max-width: 640px) {
+      .main-card {
+        padding: 24px 18px;
+      }
+      .logo {
+        font-size: 36px;
+      }
+      .page-title {
+        font-size: 22px;
+      }
+    }
+
+    /* Tab Panels */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.25s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #e2e8f0;
+    }
+
+    .form-label span.req {
+      color: var(--danger-color);
+      margin-left: 2px;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* App Selector Cards */
+    .app-selector-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 6px;
+    }
+
+    @media (max-width: 520px) {
+      .app-selector-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .app-card-radio {
+      position: relative;
+    }
+
+    .app-card-radio input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      z-index: 2;
+    }
+
+    .app-card-box {
+      border: 2px solid var(--border-color);
+      background: rgba(30, 41, 59, 0.5);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .app-card-box .app-tag {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      width: fit-content;
+    }
+
+    .app-card-radio.customer .app-tag {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+    }
+
+    .app-card-radio.pilot .app-tag {
+      background: rgba(234, 88, 12, 0.2);
+      color: #fb923c;
+    }
+
+    .app-card-box .app-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .app-card-box .app-package {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    .app-card-radio input[type="radio"]:checked + .app-card-box {
+      border-color: var(--primary-color);
+      background: rgba(37, 99, 235, 0.12);
+      box-shadow: 0 0 16px rgba(37, 99, 235, 0.25);
+    }
+
+    .app-card-radio.pilot input[type="radio"]:checked + .app-card-box {
+      border-color: var(--pilot-color);
+      background: rgba(234, 88, 12, 0.12);
+      box-shadow: 0 0 16px rgba(234, 88, 12, 0.25);
+    }
+
+    /* Inputs */
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-prefix {
+      position: absolute;
+      left: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 15px;
+      pointer-events: none;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      color: var(--text-color);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 15px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .form-input.has-prefix {
+      padding-left: 50px;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--border-focus);
+      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    }
+
+    .form-select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%2394a3b8' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    /* Confirmation Checkbox */
+    .checkbox-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin: 24px 0;
+      background: var(--danger-bg);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      padding: 16px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+    }
+
+    .checkbox-container input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      margin-top: 3px;
+      accent-color: var(--danger-color);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .checkbox-label {
+      font-size: 13px;
+      color: #fca5a5;
+      line-height: 1.5;
+      cursor: pointer;
+    }
+
+    /* Primary Buttons */
+    .btn-submit {
+      width: 100%;
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 14px 24px;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 18px var(--primary-glow);
+    }
+
+    .btn-submit:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(37, 99, 235, 0.5);
+    }
+
+    .btn-submit:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-submit.btn-danger {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 4px 18px rgba(220, 38, 38, 0.4);
+    }
+
+    .btn-submit.btn-danger:hover:not(:disabled) {
+      box-shadow: 0 6px 24px rgba(220, 38, 38, 0.6);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    /* OTP Step View */
+    .otp-stage {
+      display: none;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .otp-stage.active {
+      display: block;
+    }
+
+    .otp-icon-wrap {
+      width: 64px;
+      height: 64px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 2px solid rgba(59, 130, 246, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .otp-icon-wrap svg {
+      width: 30px;
+      height: 30px;
+      fill: #60a5fa;
+    }
+
+    .otp-inputs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 24px 0;
+    }
+
+    .otp-digit {
+      width: 46px;
+      height: 54px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      color: #ffffff;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .otp-digit:focus {
+      border-color: var(--border-focus);
+      background: rgba(30, 41, 59, 0.9);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+
+    .otp-timer {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 20px;
+    }
+
+    .otp-timer span {
+      color: #60a5fa;
+      font-weight: 700;
+    }
+
+    .resend-link {
+      color: #60a5fa;
+      text-decoration: underline;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .resend-link:disabled {
+      color: var(--text-muted);
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+
+    /* Result Stage View */
+    .result-stage {
+      display: none;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    .result-stage.active {
+      display: block;
+    }
+
+    .success-icon-wrap {
+      width: 72px;
+      height: 72px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 2px solid rgba(16, 185, 129, 0.4);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+
+    .success-icon-wrap svg {
+      width: 36px;
+      height: 36px;
+      fill: var(--success-color);
+    }
+
+    .receipt-box {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin: 24px 0;
+      text-align: left;
+    }
+
+    .receipt-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      font-size: 14px;
+    }
+
+    .receipt-row:last-child {
+      border-bottom: none;
+    }
+
+    .receipt-label {
+      color: var(--text-secondary);
+    }
+
+    .receipt-val {
+      font-weight: 600;
+      color: #ffffff;
+      font-family: monospace;
+    }
+
+    .receipt-val.highlight {
+      color: #60a5fa;
+      font-size: 15px;
+    }
+
+    /* Informational Cards & Tables */
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 24px 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title svg {
+      width: 22px;
+      height: 22px;
+      fill: #3b82f6;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .info-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .info-card {
+      background: rgba(30, 41, 59, 0.45);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+
+    .info-card.danger {
+      border-top: 3px solid var(--danger-color);
+    }
+
+    .info-card.warning {
+      border-top: 3px solid var(--warning-color);
+    }
+
+    .info-card.primary {
+      border-top: 3px solid var(--primary-color);
+    }
+
+    .info-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card ul {
+      list-style-type: none;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .info-card ul li {
+      margin-bottom: 8px;
+      padding-left: 20px;
+      position: relative;
+      line-height: 1.5;
+    }
+
+    .info-card.danger ul li::before {
+      content: "✕";
+      color: var(--danger-color);
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+
+    .info-card.warning ul li::before {
+      content: "§";
+      color: var(--warning-color);
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+
+    .info-card.primary ul li::before {
+      content: "✓";
+      color: #60a5fa;
+      position: absolute;
+      left: 0;
+      font-weight: bold;
+    }
+
+    /* Policy Retention Table */
+    .table-responsive {
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    table.retention-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    table.retention-table th {
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      padding: 12px 16px;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    table.retention-table td {
+      padding: 12px 16px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: top;
+    }
+
+    table.retention-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .badge-period {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      white-space: nowrap;
+    }
+
+    .badge-deleted {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 12px;
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      white-space: nowrap;
+    }
+
+    /* Process Timeline */
+    .timeline {
+      position: relative;
+      margin: 20px 0 28px;
+      padding-left: 28px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      top: 6px;
+      bottom: 6px;
+      width: 2px;
+      background: rgba(59, 130, 246, 0.3);
+    }
+
+    .timeline-item {
+      position: relative;
+      margin-bottom: 24px;
+    }
+
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .timeline-dot {
+      position: absolute;
+      left: -28px;
+      top: 3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 3px solid #3b82f6;
+    }
+
+    .timeline-item.active .timeline-dot {
+      background: #3b82f6;
+      box-shadow: 0 0 10px #3b82f6;
+    }
+
+    .timeline-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .timeline-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      max-width: 380px;
+      background: #1e293b;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 18px;
+      color: #ffffff;
+      font-size: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 9999;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.error {
+      border-left: 4px solid var(--danger-color);
+    }
+
+    .toast.success {
+      border-left: 4px solid var(--success-color);
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .help-links {
+      display: flex;
+      justify-content: center;
+      gap: 18px;
+      margin: 12px 0;
+      flex-wrap: wrap;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Brand Header -->
+    <header>
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+        Google Play Data Safety & Compliance Portal
+      </div>
+
+      <div class="logo-container">
+        <img src="/icons/Icon-192.png" alt="StayDriv Logo" class="logo-icon" onerror="this.style.display='none'">
+        <div class="logo">StayDriv</div>
+      </div>
+
+      <div class="app-meta">
+        App: <strong>StayDriv</strong> &bull; Developer: <span class="developer-name">WorldInHands 24x7</span>
+      </div>
+
+      <h1 class="page-title">Account & Personal Data Deletion Request</h1>
+    </header>
+
+    <!-- Compliance Notice Banner -->
+    <div class="compliance-alert">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+      <div>
+        <strong>Google Play Developer Policy Compliance:</strong>
+        In accordance with Google Play's Data Safety and Account Deletion Policy, users of <strong>StayDriv</strong> can submit a formal request to permanently delete their account and associated personal data directly from this public web portal without having to reinstall the app.
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('request-tab')">
+        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        Submit Deletion Request
+      </button>
+      <button class="tab-btn" onclick="switchTab('status-tab')">
+        <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        Check Request Status
+      </button>
+      <button class="tab-btn" onclick="switchTab('policy-tab')">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+        Data Retention & Legal Basis
+      </button>
+    </div>
+
+    <!-- MAIN CARD CONTAINER -->
+    <div class="main-card">
+
+      <!-- ==================== TAB 1: SUBMIT DELETION REQUEST ==================== -->
+      <div id="request-tab" class="tab-content active">
+
+        <!-- STAGE 1: FORM INPUT -->
+        <div id="stage-input">
+          <h2 style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px;">Step 1: Account Information & Scope</h2>
+          <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">
+            Specify your registered StayDriv account details. We will send an SMS verification code to confirm ownership before initiating deactivation.
+          </p>
+
+          <form id="deletion-form" onsubmit="handleSendOtp(event)">
+            <!-- App Selection -->
+            <div class="form-group">
+              <label class="form-label">Select Registered Application <span class="req">*</span></label>
+              <div class="app-selector-grid">
+                <label class="app-card-radio customer">
+                  <input type="radio" name="appType" value="customer" checked>
+                  <div class="app-card-box">
+                    <span class="app-tag">Passenger / Rider</span>
+                    <span class="app-name">StayDriv App</span>
+                    <span class="app-package">Package: com.staydriv.app</span>
+                  </div>
+                </label>
+
+                <label class="app-card-radio pilot">
+                  <input type="radio" name="appType" value="pilot">
+                  <div class="app-card-box">
+                    <span class="app-tag">Pilot / Driver Partner</span>
+                    <span class="app-name">StayDriv Pilot</span>
+                    <span class="app-package">Package: com.staydriv.pilot</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <!-- Mobile Phone Input -->
+            <div class="form-group">
+              <label class="form-label" for="phoneInput">Registered Mobile Number <span class="req">*</span></label>
+              <div class="input-wrapper">
+                <span class="input-prefix">+91</span>
+                <input 
+                  type="tel" 
+                  id="phoneInput" 
+                  class="form-input has-prefix" 
+                  placeholder="Enter 10-digit mobile number" 
+                  maxlength="10" 
+                  pattern="[0-9]{10}" 
+                  required
+                  inputmode="numeric"
+                  autocomplete="tel-national"
+                >
+              </div>
+              <div class="form-hint">Must match the registered phone number in your StayDriv profile.</div>
+            </div>
+
+            <!-- Optional Email -->
+            <div class="form-group">
+              <label class="form-label" for="emailInput">Registered Email Address (Optional)</label>
+              <input 
+                type="email" 
+                id="emailInput" 
+                class="form-input" 
+                placeholder="name@example.com" 
+                autocomplete="email"
+              >
+              <div class="form-hint">If provided, deletion receipt and statutory notices will also be sent to this email.</div>
+            </div>
+
+            <!-- Reason for Deletion -->
+            <div class="form-group">
+              <label class="form-label" for="reasonSelect">Primary Reason for Account Deletion <span class="req">*</span></label>
+              <select id="reasonSelect" class="form-select" required>
+                <option value="" disabled selected>Please select a reason</option>
+                <option value="No longer using the service">I no longer need or use the ride service</option>
+                <option value="Privacy and data concerns">Privacy, telemetry or data protection concerns</option>
+                <option value="Switching phone number or device">Switching to a new phone number or device</option>
+                <option value="Created duplicate account">Created an accidental duplicate account</option>
+                <option value="Dissatisfied with pricing or service">Dissatisfied with vehicle availability or pricing</option>
+                <option value="Closing driver partnership">Ending partnership as a driver / pilot</option>
+                <option value="Other reason">Other (please specify below)</option>
+              </select>
+            </div>
+
+            <!-- Additional Comments -->
+            <div class="form-group">
+              <label class="form-label" for="commentsInput">Additional Comments / Specific Data Request (Optional)</label>
+              <textarea 
+                id="commentsInput" 
+                class="form-textarea" 
+                placeholder="Provide any additional context or request specific data elements to be removed..."
+                maxlength="500"
+              ></textarea>
+            </div>
+
+            <!-- Mandatory Confirmation Checkbox -->
+            <label class="checkbox-container">
+              <input type="checkbox" id="consentCheckbox" required>
+              <span class="checkbox-label">
+                <strong>Mandatory Confirmation:</strong> I hereby request the permanent deletion of my StayDriv account and associated personal data. I understand that account access will be terminated immediately upon OTP verification. Profile information, saved addresses, device identifiers, and live tracking history will be permanently erased within 30 days. I acknowledge that financial invoices and tax audit transaction logs must be retained for 7 years under the Indian Income Tax Act 1961 and CGST Act 2017.
+              </span>
+            </label>
+
+            <!-- Submit Button -->
+            <button type="submit" id="btnRequestOtp" class="btn-submit">
+              <span>Send Verification Code (OTP)</span>
+              <svg style="width:18px;height:18px;fill:currentColor;" viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- STAGE 2: OTP VERIFICATION -->
+        <div id="stage-otp" class="otp-stage">
+          <div class="otp-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+          </div>
+
+          <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;margin-bottom:6px;">Step 2: Verify Account Ownership</h2>
+          <p style="font-size:14px;color:var(--text-secondary);max-width:480px;margin:0 auto 16px;">
+            To protect your privacy and prevent unauthorized deletion, enter the 6-digit verification code sent to <strong id="displayMaskedPhone" style="color:#ffffff;">+91 ******XXXX</strong>.
+          </p>
+
+          <form id="otp-form" onsubmit="handleVerifyOtp(event)">
+            <div class="otp-inputs">
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required autofocus>
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+              <input type="text" class="otp-digit" maxlength="1" pattern="[0-9]" inputmode="numeric" required>
+            </div>
+
+            <div class="otp-timer">
+              Code valid for: <span id="timerCountdown">10:00</span>
+              &bull; 
+              <button type="button" id="btnResendOtp" class="resend-link" onclick="handleResendOtp()" disabled>Resend Code</button>
+            </div>
+
+            <div style="display:flex;gap:12px;max-width:440px;margin:0 auto;">
+              <button type="button" class="btn-secondary" onclick="backToInputStage()" style="flex:1;">
+                Edit Details
+              </button>
+              <button type="submit" id="btnConfirmDelete" class="btn-submit btn-danger" style="flex:2;">
+                <span>Confirm Deletion</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- STAGE 3: RECEIPT & CONFIRMATION -->
+        <div id="stage-result" class="result-stage">
+          <div class="success-icon-wrap">
+            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </div>
+
+          <h2 style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:700;color:#ffffff;margin-bottom:6px;">Account Deletion Request Accepted</h2>
+          <p style="font-size:14px;color:var(--text-secondary);max-width:540px;margin:0 auto 20px;">
+            Your account deactivation has been initiated immediately. Your profile data has been locked and queued for permanent data purging.
+          </p>
+
+          <div class="receipt-box">
+            <div class="receipt-row">
+              <span class="receipt-label">Tracking Request ID</span>
+              <span class="receipt-val highlight" id="receiptRequestId">DEL-XXXXXX</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Support Ticket Ref</span>
+              <span class="receipt-val" id="receiptTicketId">STY-XXXXXX</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Account Type</span>
+              <span class="receipt-val" id="receiptAppType">Customer App</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Registered Phone</span>
+              <span class="receipt-val" id="receiptPhone">+91 ******XXXX</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Immediate Action Taken</span>
+              <span class="receipt-val" style="color:var(--warning-color);">Sessions Revoked & Deactivated</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Scheduled Permanent Purge</span>
+              <span class="receipt-val" id="receiptPurgeDate">30 Days from today</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Status</span>
+              <span class="receipt-val" style="color:var(--success-color);">QUEUED FOR DELETION</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+            <button type="button" class="btn-secondary" onclick="window.print()">
+              <svg style="width:16px;height:16px;fill:currentColor;" viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>
+              Print Receipt
+            </button>
+            <button type="button" class="btn-submit" onclick="copyReceiptDetails()" style="width:auto;padding:12px 24px;">
+              <svg style="width:16px;height:16px;fill:currentColor;" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+              Copy Tracking ID
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ==================== TAB 2: CHECK REQUEST STATUS ==================== -->
+      <div id="status-tab" class="tab-content">
+        <h2 style="font-family:'Outfit',sans-serif;font-size:20px;font-weight:700;margin-bottom:6px;">Track Your Deletion Request</h2>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">
+          Enter your Tracking Request ID (e.g. DEL-A1B2C3) or 10-digit registered mobile number to check real-time processing status.
+        </p>
+
+        <form id="status-lookup-form" onsubmit="handleLookupStatus(event)" style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
+          <input 
+            type="text" 
+            id="statusQueryInput" 
+            class="form-input" 
+            placeholder="Enter DEL-XXXXXX or 10-digit phone" 
+            style="flex:1;min-width:240px;" 
+            required
+          >
+          <button type="submit" id="btnLookupStatus" class="btn-submit" style="width:auto;min-width:140px;">
+            <span>Lookup Status</span>
+          </button>
+        </form>
+
+        <div id="statusResultBox" style="display:none;" class="receipt-box">
+          <div class="receipt-row">
+            <span class="receipt-label">Request ID</span>
+            <span class="receipt-val highlight" id="lookupIdDisplay">-</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Current Status</span>
+            <span class="receipt-val" id="lookupStatusDisplay">-</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Application</span>
+            <span class="receipt-val" id="lookupAppDisplay">-</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Submission Date</span>
+            <span class="receipt-val" id="lookupDateDisplay">-</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Target Completion Date</span>
+            <span class="receipt-val" id="lookupPurgeDisplay">-</span>
+          </div>
+          <div class="receipt-row">
+            <span class="receipt-label">Support Ticket Reference</span>
+            <span class="receipt-val" id="lookupTicketDisplay">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 3: DATA RETENTION & LEGAL POLICIES ==================== -->
+      <div id="policy-tab" class="tab-content">
+        <h2 style="font-family:'Outfit',sans-serif;font-size:22px;font-weight:700;margin-bottom:12px;">Data Deletion & Statutory Retention Disclosure</h2>
+        <p style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;">
+          StayDriv complies fully with Google Play's User Data policy and applicable statutory Indian digital privacy laws (Information Technology Act 2000, IT Rules 2021, and the Digital Personal Data Protection Act). Below is the comprehensive disclosure of data erased versus data legally retained.
+        </p>
+
+        <!-- Process Timeline -->
+        <h3 class="section-title">
+          <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>
+          Account Deletion Process & Expected Completion Time
+        </h3>
+
+        <div class="timeline">
+          <div class="timeline-item active">
+            <div class="timeline-dot"></div>
+            <div class="timeline-title">Stage 1: Identity & Ownership Verification (Immediate)</div>
+            <div class="timeline-desc">You submit this online request and verify account ownership via a 6-digit SMS OTP sent to your registered mobile number.</div>
+          </div>
+          <div class="timeline-item active">
+            <div class="timeline-dot"></div>
+            <div class="timeline-title">Stage 2: Instant Account Deactivation & Session Invalidation (Within 1 Minute)</div>
+            <div class="timeline-desc">All active app sessions are immediately revoked. The user cannot log in, request rides, or accept bookings. For Pilot partners, driver listings and live tracking broadcast are permanently stopped.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-title">Stage 3: Reconciliation & Cooling Period (Days 1 to 7)</div>
+            <div class="timeline-desc">Pending trip settlements, ride dispute resolutions, or pending wallet withdrawal requests are reconciled. Users may contact support if the deletion was submitted in error.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-title">Stage 4: Permanent Data Purge & Pseudonymization (Completed within 30 Days)</div>
+            <div class="timeline-desc">All personal identifiers, profile photos, telemetry, and documents are permanently purged from active production databases and S3 storage within 30 statutory days.</div>
+          </div>
+        </div>
+
+        <!-- Cards: What is Deleted vs Retained -->
+        <div class="info-grid">
+          <div class="info-card danger">
+            <h4>
+              <span class="badge-deleted">PERMANENTLY DELETED</span>
+              Personal Data Erased
+            </h4>
+            <ul>
+              <li><strong>Profile Information:</strong> Name, phone number, email address, profile picture, gender, and emergency contacts.</li>
+              <li><strong>Authentication Credentials:</strong> Password hashes, session tokens, JWTs, and biometric app credentials.</li>
+              <li><strong>Device & Notification Data:</strong> FCM push notification tokens, device hardware IDs, IP associations.</li>
+              <li><strong>Saved Locations:</strong> Favorite places, home and work coordinates, custom route history.</li>
+              <li><strong>Live Telemetry:</strong> Real-time GPS breadcrumbs, speed, and continuous movement tracks.</li>
+              <li><strong>Pilot Documents:</strong> Driver license photos, vehicle RC copies, insurance uploads, selfie biometric photos.</li>
+              <li><strong>In-App Communications:</strong> Masked call records and chat messages between rider and pilot.</li>
+            </ul>
+          </div>
+
+          <div class="info-card warning">
+            <h4>
+              <span class="badge-period">STATUTORILY RETAINED</span>
+              Data Retained for Legal Compliance
+            </h4>
+            <ul>
+              <li><strong>Invoices & Tax Records (7 Years):</strong> Invoices, GST tax calculations, and trip billing ledgers retained under Section 44AA of the Indian Income Tax Act 1961 & CGST Act 2017.</li>
+              <li><strong>Payment Gateway Logs (5 Years):</strong> Digital payment settlement IDs and transaction references retained pursuant to RBI Guidelines (PSSR Act 2007) & PMLA 2002.</li>
+              <li><strong>Security & Access Logs (180 Days):</strong> Server IP access and audit logs retained pursuant to Rule 3(1)(h) of the IT Rules 2021 and CERT-In directions under Section 70B of the IT Act.</li>
+              <li><strong>Active Dispute Files:</strong> Records pertaining to pending police escalations, insurance claims, or legal disputes retained until formal case closure.</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Statutory Retention Table -->
+        <h3 class="section-title">
+          <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+          Statutory Legal Retention Schedule
+        </h3>
+
+        <div class="table-responsive">
+          <table class="retention-table">
+            <thead>
+              <tr>
+                <th>Data Category</th>
+                <th>Retention Period</th>
+                <th>Legal & Regulatory Basis</th>
+                <th>Storage Handling</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>User Profile & Identity</strong><br>(Name, photo, contacts, phone)</td>
+                <td><span class="badge-deleted">Permanently Erased</span></td>
+                <td>Google Play Policy & Right to Erasure</td>
+                <td>Purged completely within 30 days from active DB & S3.</td>
+              </tr>
+              <tr>
+                <td><strong>Tax Invoices & Financial Ledgers</strong><br>(Trip fare, GST, driver payout)</td>
+                <td><span class="badge-period">7 Years</span></td>
+                <td>Section 44AA of Income Tax Act 1961;<br>Section 36 of CGST Act 2017</td>
+                <td>Anonymized, detached from profile, stored in encrypted financial vault.</td>
+              </tr>
+              <tr>
+                <td><strong>Digital Payment Transaction IDs</strong><br>(Razorpay/Gateway references)</td>
+                <td><span class="badge-period">5 Years</span></td>
+                <td>RBI Master Directions on Payment Gateways (PSSR Act 2007); PMLA 2002</td>
+                <td>Only payment token & bank settlement reference retained.</td>
+              </tr>
+              <tr>
+                <td><strong>Information Security & Server Logs</strong><br>(Access logs, timestamp, routing)</td>
+                <td><span class="badge-period">180 Days</span></td>
+                <td>Rule 3(1)(h) of IT Rules, 2021;<br>CERT-In Directions under IT Act Sec 70B</td>
+                <td>Encrypted access logs auto-rotated and purged after 180 days.</td>
+              </tr>
+              <tr>
+                <td><strong>Driver KYC & Vehicle Uploads</strong><br>(RC, License, Insurance photos)</td>
+                <td><span class="badge-deleted">Permanently Erased</span></td>
+                <td>Google Play Policy & DPDP Act compliance</td>
+                <td>Raw image files purged from S3; non-financial pilot profile deleted.</td>
+              </tr>
+              <tr>
+                <td><strong>Active Legal / Safety Disputes</strong><br>(Accident reports, police FIRs)</td>
+                <td><span class="badge-period">Case Conclusion</span></td>
+                <td>Applicable Criminal Procedure / Civil Law</td>
+                <td>Held strictly until final legal settlement or court disposal.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Help & Developer Footer -->
+    <footer>
+      <div>
+        <strong>StayDriv</strong> &bull; Developed by <strong>WorldInHands 24x7</strong>
+      </div>
+      <div class="help-links">
+        <a href="https://play.google.com/store/apps/details?id=com.staydriv.app" target="_blank" rel="noopener">StayDriv on Google Play</a>
+        <span>&bull;</span>
+        <a href="/download.html">Download Apps</a>
+        <span>&bull;</span>
+        <a href="mailto:support@staydriv.in">support@staydriv.in</a>
+        <span>&bull;</span>
+        <a href="tel:+919490440281">+91 9490440281</a>
+      </div>
+      <div style="font-size:12px;margin-top:8px;">
+        Support Helpline / WhatsApp: +91 9490440281 &bull; Registered Office: WorldInHands 24x7, Hyderabad, Telangana, India.
+        <br>&copy; 2026 WorldInHands 24x7. All rights reserved.
+      </div>
+    </footer>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="toast">
+    <span id="toastMsg">Notification message</span>
+  </div>
+
+  <!-- Javascript Logic -->
+  <script>
+    // State management
+    let currentRequestId = '';
+    let currentPhone = '';
+    let currentAppType = 'customer';
+    let currentEmail = '';
+    let currentReason = '';
+    let currentComments = '';
+    let countdownInterval = null;
+    let secondsLeft = 600;
+
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+    }
+
+    // Toast alert
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toastMsg');
+      msg.textContent = message;
+      toast.className = 'toast show ' + (isError ? 'error' : 'success');
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 5000);
+    }
+
+    // OTP Input Auto-focus
+    const otpInputs = document.querySelectorAll('.otp-digit');
+    otpInputs.forEach((input, index) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '');
+        e.target.value = val;
+        if (val && index < otpInputs.length - 1) {
+          otpInputs[index + 1].focus();
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && index > 0) {
+          otpInputs[index - 1].focus();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const pasteData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+        for (let i = 0; i < pasteData.length; i++) {
+          if (otpInputs[i]) otpInputs[i].value = pasteData[i];
+        }
+        if (pasteData.length === 6) {
+          otpInputs[5].focus();
+        }
+      });
+    });
+
+    // Start 10 min countdown
+    function startTimer() {
+      clearInterval(countdownInterval);
+      secondsLeft = 600;
+      const timerEl = document.getElementById('timerCountdown');
+      const resendBtn = document.getElementById('btnResendOtp');
+      resendBtn.disabled = true;
+
+      countdownInterval = setInterval(() => {
+        secondsLeft--;
+        const m = Math.floor(secondsLeft / 60);
+        const s = secondsLeft % 60;
+        timerEl.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+
+        if (secondsLeft <= 540) { // allow resend after 60s
+          resendBtn.disabled = false;
+        }
+
+        if (secondsLeft <= 0) {
+          clearInterval(countdownInterval);
+          timerEl.textContent = 'Expired';
+          resendBtn.disabled = false;
+        }
+      }, 1000);
+    }
+
+    // Stage 1: Send OTP
+    async function handleSendOtp(e) {
+      e.preventDefault();
+      const phoneInput = document.getElementById('phoneInput').value.trim();
+      const emailInput = document.getElementById('emailInput').value.trim();
+      const reasonSelect = document.getElementById('reasonSelect').value;
+      const commentsInput = document.getElementById('commentsInput').value.trim();
+      const appType = document.querySelector('input[name="appType"]:checked').value;
+      const consent = document.getElementById('consentCheckbox').checked;
+
+      if (!/^\d{10}$/.test(phoneInput)) {
+        showToast('Please enter a valid 10-digit mobile number.', true);
+        return;
+      }
+
+      if (!consent) {
+        showToast('Please check the mandatory confirmation box to proceed.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btnRequestOtp');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Dispatching OTP...';
+
+      try {
+        const response = await fetch('/api/account/deletion-request/otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: phoneInput,
+            appType: appType,
+            email: emailInput,
+            reason: reasonSelect,
+            comments: commentsInput
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          currentRequestId = data.requestId;
+          currentPhone = phoneInput;
+          currentAppType = appType;
+          currentEmail = emailInput;
+          currentReason = reasonSelect;
+          currentComments = commentsInput;
+
+          document.getElementById('displayMaskedPhone').textContent = data.maskedPhone || ('+91 ******' + phoneInput.slice(-4));
+          document.getElementById('stage-input').style.display = 'none';
+          document.getElementById('stage-otp').classList.add('active');
+
+          startTimer();
+          otpInputs[0].focus();
+          showToast(data.message || 'Verification code sent to registered number');
+        } else {
+          showToast(data.error || 'Failed to dispatch verification code. Please check your phone number.', true);
+        }
+      } catch (err) {
+        showToast('Network error while requesting verification code: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Send Verification Code (OTP)</span> <svg style="width:18px;height:18px;fill:currentColor;" viewBox="0 0 24 24"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-7.85-1.42 1.42L16.86 11H5v2z"/></svg>';
+      }
+    }
+
+    // Resend OTP
+    async function handleResendOtp() {
+      const resendBtn = document.getElementById('btnResendOtp');
+      resendBtn.disabled = true;
+      resendBtn.textContent = 'Sending...';
+
+      try {
+        const response = await fetch('/api/account/deletion-request/otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: currentPhone,
+            appType: currentAppType,
+            email: currentEmail,
+            reason: currentReason,
+            comments: currentComments
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+          currentRequestId = data.requestId;
+          startTimer();
+          showToast('New verification code sent successfully.');
+        } else {
+          showToast(data.error || 'Failed to resend code.', true);
+        }
+      } catch (err) {
+        showToast('Error resending OTP: ' + err.message, true);
+      } finally {
+        resendBtn.textContent = 'Resend Code';
+      }
+    }
+
+    // Back to Stage 1
+    function backToInputStage() {
+      document.getElementById('stage-otp').classList.remove('active');
+      document.getElementById('stage-input').style.display = 'block';
+      clearInterval(countdownInterval);
+    }
+
+    // Stage 2: Verify OTP & Execute Deletion Request
+    async function handleVerifyOtp(e) {
+      e.preventDefault();
+      let otp = '';
+      otpInputs.forEach(i => otp += i.value);
+
+      if (otp.length !== 6) {
+        showToast('Please enter the full 6-digit verification code.', true);
+        return;
+      }
+
+      const btn = document.getElementById('btnConfirmDelete');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Verifying & Deactivating...';
+
+      try {
+        const response = await fetch('/api/account/deletion-request/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestId: currentRequestId,
+            phone: currentPhone,
+            appType: currentAppType,
+            otp: otp
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          clearInterval(countdownInterval);
+          document.getElementById('stage-otp').classList.remove('active');
+          document.getElementById('stage-result').classList.add('active');
+
+          document.getElementById('receiptRequestId').textContent = data.requestId;
+          document.getElementById('receiptTicketId').textContent = data.ticketId || 'STY-' + data.requestId.replace('DEL-', '');
+          document.getElementById('receiptAppType').textContent = currentAppType === 'pilot' ? 'StayDriv Pilot (Driver)' : 'StayDriv (Customer App)';
+          document.getElementById('receiptPhone').textContent = '+91 ******' + currentPhone.slice(-4);
+          document.getElementById('receiptPurgeDate').textContent = data.scheduledPurgeDate ? new Date(data.scheduledPurgeDate).toLocaleDateString('en-IN', { year:'numeric', month:'short', day:'numeric' }) : 'Within 30 Days';
+
+          showToast('Account deactivation confirmed. Deletion scheduled.');
+        } else {
+          showToast(data.error || 'Invalid or expired verification code.', true);
+        }
+      } catch (err) {
+        showToast('Verification failed: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Confirm Deletion</span>';
+      }
+    }
+
+    // Copy Receipt Info
+    function copyReceiptDetails() {
+      const id = document.getElementById('receiptRequestId').textContent;
+      navigator.clipboard.writeText(id).then(() => {
+        showToast('Tracking ID copied to clipboard: ' + id);
+      }).catch(() => {
+        showToast('Tracking ID: ' + id);
+      });
+    }
+
+    // Tab 2: Status Lookup
+    async function handleLookupStatus(e) {
+      e.preventDefault();
+      const q = document.getElementById('statusQueryInput').value.trim();
+      const btn = document.getElementById('btnLookupStatus');
+      const box = document.getElementById('statusResultBox');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Checking...';
+
+      try {
+        const res = await fetch('/api/account/deletion-request/status/' + encodeURIComponent(q));
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          box.style.display = 'block';
+          document.getElementById('lookupIdDisplay').textContent = data.request.requestId;
+          document.getElementById('lookupStatusDisplay').textContent = data.request.status;
+          document.getElementById('lookupAppDisplay').textContent = data.request.appType === 'pilot' ? 'StayDriv Pilot' : 'StayDriv App';
+          document.getElementById('lookupDateDisplay').textContent = new Date(data.request.requestedAt).toLocaleString('en-IN');
+          document.getElementById('lookupPurgeDisplay').textContent = data.request.scheduledPurgeDate ? new Date(data.request.scheduledPurgeDate).toLocaleDateString('en-IN') : 'Scheduled within 30 days';
+          document.getElementById('lookupTicketDisplay').textContent = data.request.ticketId || 'Assigned to Admin Team';
+        } else {
+          box.style.display = 'none';
+          showToast(data.error || 'No matching deletion request found for the given ID/phone.', true);
+        }
+      } catch (err) {
+        showToast('Error looking up request status: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<span>Lookup Status</span>';
+      }
+    }
+  </script>
+</body>
+</html>

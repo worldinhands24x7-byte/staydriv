@@ -25,5 +25,6 @@ output "target_group_arn" {
 
 output "waf_web_acl_arn" {
   description = "The ARN of the WAF Web ACL"
-  value       = var.enable_waf ? aws_wafv2_web_acl.main[0].arn : null
+  value       = var.enable_waf ? try(aws_wafv2_web_acl.main[0].arn, null) : null
 }
+

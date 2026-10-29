@@ -11,18 +11,20 @@ export const Settings: React.FC = () => {
   const [commPercent, setCommPercent] = useState<number>(config.commissionPercent);
   
   // Base fares
-  const [bikeBase, setBikeBase] = useState(config.baseFares.Bike || 40);
-  const [autoBase, setAutoBase] = useState(config.baseFares.Auto || 60);
-  const [carBase, setCarBase] = useState(config.baseFares.Car || 100);
-  const [miniTruckBase, setMiniTruckBase] = useState(config.baseFares['Mini Truck'] || 250);
-  const [truckBase, setTruckBase] = useState(config.baseFares.Truck || 600);
+  const [bikeBase, setBikeBase] = useState((config.baseFares as any).Bike || 40);
+  const [autoBase, setAutoBase] = useState((config.baseFares as any).Auto || 60);
+  const [carBase, setCarBase] = useState((config.baseFares as any).Car || 100);
+  const [carXlBase, setCarXlBase] = useState((config.baseFares as any)['Car XL'] || 130);
+  const [miniTruckBase, setMiniTruckBase] = useState((config.baseFares as any)['Mini Truck'] || 250);
+  const [truckBase, setTruckBase] = useState((config.baseFares as any).Truck || 600);
 
   // Per km rates
-  const [bikePerKm, setBikePerKm] = useState(config.perKmRates.Bike || 8);
-  const [autoPerKm, setAutoPerKm] = useState(config.perKmRates.Auto || 12);
-  const [carPerKm, setCarPerKm] = useState(config.perKmRates.Car || 18);
-  const [miniTruckPerKm, setMiniTruckPerKm] = useState(config.perKmRates['Mini Truck'] || 35);
-  const [truckPerKm, setTruckPerKm] = useState(config.perKmRates.Truck || 75);
+  const [bikePerKm, setBikePerKm] = useState((config.perKmRates as any).Bike || 8);
+  const [autoPerKm, setAutoPerKm] = useState((config.perKmRates as any).Auto || 12);
+  const [carPerKm, setCarPerKm] = useState((config.perKmRates as any).Car || 18);
+  const [carXlPerKm, setCarXlPerKm] = useState((config.perKmRates as any)['Car XL'] || 28);
+  const [miniTruckPerKm, setMiniTruckPerKm] = useState((config.perKmRates as any)['Mini Truck'] || 35);
+  const [truckPerKm, setTruckPerKm] = useState((config.perKmRates as any).Truck || 75);
 
   // Cancellation charges
   const [custCancel, setCustCancel] = useState(config.cancellationCharges.customer || 30);
@@ -48,6 +50,7 @@ export const Settings: React.FC = () => {
     await updateBaseFare('Bike', bikeBase);
     await updateBaseFare('Auto', autoBase);
     await updateBaseFare('Car', carBase);
+    await updateBaseFare('Car XL', carXlBase);
     await updateBaseFare('Mini Truck', miniTruckBase);
     await updateBaseFare('Truck', truckBase);
 
@@ -55,6 +58,7 @@ export const Settings: React.FC = () => {
     await updatePerKmRate('Bike', bikePerKm);
     await updatePerKmRate('Auto', autoPerKm);
     await updatePerKmRate('Car', carPerKm);
+    await updatePerKmRate('Car XL', carXlPerKm);
     await updatePerKmRate('Mini Truck', miniTruckPerKm);
     await updatePerKmRate('Truck', truckPerKm);
 
@@ -105,7 +109,7 @@ export const Settings: React.FC = () => {
               {/* Base Fares */}
               <div>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Base Category Fares (₹)</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginTop: '6px' }}>
                   <div className="form-group">
                     <label>Bike Base</label>
                     <input type="number" value={bikeBase} onChange={(e) => setBikeBase(parseInt(e.target.value))} />
@@ -118,13 +122,17 @@ export const Settings: React.FC = () => {
                     <label>Cab Base</label>
                     <input type="number" value={carBase} onChange={(e) => setCarBase(parseInt(e.target.value))} />
                   </div>
+                  <div className="form-group">
+                    <label>Car XL Base (₹)</label>
+                    <input type="number" value={carXlBase} onChange={(e) => setCarXlBase(parseInt(e.target.value))} />
+                  </div>
                 </div>
               </div>
 
               {/* Per Km Rates */}
               <div>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Per Kilometer Rates (₹/km)</span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginTop: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px', marginTop: '6px' }}>
                   <div className="form-group">
                     <label>Bike Rate</label>
                     <input type="number" value={bikePerKm} onChange={(e) => setBikePerKm(parseInt(e.target.value))} />
@@ -136,6 +144,10 @@ export const Settings: React.FC = () => {
                   <div className="form-group">
                     <label>Cab Rate</label>
                     <input type="number" value={carPerKm} onChange={(e) => setCarPerKm(parseInt(e.target.value))} />
+                  </div>
+                  <div className="form-group">
+                    <label>Car XL Rate (₹/km)</label>
+                    <input type="number" value={carXlPerKm} onChange={(e) => setCarXlPerKm(parseInt(e.target.value))} />
                   </div>
                 </div>
               </div>

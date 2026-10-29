@@ -13,8 +13,15 @@ class ApiClient {
 
   ApiClient._internal();
 
+  static String? _authToken;
+  static void setAuthToken(String? token) => _authToken = token;
+  static String? get authToken => _authToken;
+
   Map<String, String> _addBypassHeaders(Map<String, String>? headers) {
     final Map<String, String> merged = Map<String, String>.from(NetworkConfig.standardBypassHeaders);
+    if (_authToken != null && _authToken!.isNotEmpty) {
+      merged['Authorization'] = 'Bearer $_authToken';
+    }
     if (headers != null) {
       merged.addAll(headers);
     }

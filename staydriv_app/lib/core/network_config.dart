@@ -3,11 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NetworkConfig {
-  static const String defaultHttpsTunnelUrl = 'https://aaron-unity-alternatives-canvas.trycloudflare.com';
+  static const String defaultHttpsTunnelUrl = 'https://dk60tgl9yds4p.cloudfront.net';
   static String _backendUrl = defaultHttpsTunnelUrl;
 
   static List<String> get presetUrls => [
-    'https://aaron-unity-alternatives-canvas.trycloudflare.com',
+    'https://dk60tgl9yds4p.cloudfront.net',
     'http://192.168.1.16:3000',
     'http://localhost:3000',
     'http://10.0.2.2:3000',
@@ -26,9 +26,12 @@ class NetworkConfig {
       final prefs = await SharedPreferences.getInstance();
       final savedUrl = prefs.getString('custom_backend_url') ?? prefs.getString('backend_url');
       if (savedUrl != null && savedUrl.trim().isNotEmpty) {
-        final isOldExpired = savedUrl.contains('silk-flu') ||
+        final isOldExpired = savedUrl.contains('trycloudflare.com') ||
+            savedUrl.contains('loca.lt') ||
+            savedUrl.contains('silk-flu') ||
             savedUrl.contains('staydriv-v3-dev') ||
-            savedUrl.contains('qualified-seems');
+            savedUrl.contains('qualified-seems') ||
+            savedUrl.contains('elb.amazonaws.com');
         final isLocalHostOnly = savedUrl.contains('localhost') || savedUrl.contains('127.0.0.1');
         if (isOldExpired || (!kIsWeb && defaultTargetPlatform == TargetPlatform.android && isLocalHostOnly)) {
           _backendUrl = defaultHttpsTunnelUrl;

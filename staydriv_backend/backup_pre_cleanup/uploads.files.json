@@ -1,0 +1,28 @@
+[
+  {
+    "_id": "6abd4b365b0cd45caee3f594",
+    "length": 27,
+    "chunkSize": 261120,
+    "uploadDate": "2026-09-30T17:47:34.611Z",
+    "filename": "mock_uid_9876543210_pilot_1790790454568.jpg",
+    "metadata": {
+      "uid": "mock_uid_9876543210_pilot",
+      "documentType": "rcFront",
+      "originalFileName": "rc_front.jpg",
+      "uploadedAt": "2026-09-30T17:47:34.568Z"
+    }
+  },
+  {
+    "_id": "6abd5ed46e42306f277c4df5",
+    "length": 27,
+    "chunkSize": 261120,
+    "uploadDate": "2026-09-30T19:11:16.352Z",
+    "filename": "mock_uid_9876543210_pilot_1790795476347.jpg",
+    "metadata": {
+      "uid": "mock_uid_9876543210_pilot",
+      "documentType": "rcFront",
+      "originalFileName": "rc_front.jpg",
+      "uploadedAt": "2026-09-30T19:11:16.347Z"
+    }
+  }
+]

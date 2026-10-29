@@ -2,11 +2,27 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/services.dart';
 import 'core/theme.dart';
 import 'core/firebase_service.dart';
 import 'core/network_config.dart';
+import 'core/location_share_service.dart';
+import 'core/push_notification_service.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'features/onboarding/screens/login_screen.dart';
 import 'features/dashboard/screens/home_screen.dart';
+import 'core/floating_widget_service.dart';
+import 'features/notifications/services/notification_inbox_service.dart';
+
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  try {
+    await FirebaseService.initialize();
+  } catch (_) {}
+  debugPrint('[PUSH BACKGROUND] Remote message received: ${message.notification?.title ?? message.data['title']}');
+}
 
 class CellularHttpOverrides extends HttpOverrides {
   @override
@@ -22,6 +38,13 @@ void main() async {
     HttpOverrides.global = CellularHttpOverrides();
   }
   await FirebaseService.initialize();
+  if (!kIsWeb) {
+    try {
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      debugPrint('[PUSH] Failed to register background handler: $e');
+    }
+  }
   await NetworkConfig.init();
   if (!kIsWeb) {
     await NetworkConfig.autoDiscoverReachableBackend();
@@ -100,7 +123,7 @@ void main() async {
     savedUrl = defaultUrl;
     await prefs.setString('backend_url', savedUrl);
   }
-  if (savedUrl != null && savedUrl.isNotEmpty) {
+  if (savedUrl.isNotEmpty) {
     try {
       NetworkConfig.backendUrl = savedUrl;
     } catch (_) {
@@ -117,6 +140,19 @@ void main() async {
   if (mockUid != null) {
     FirebaseService.setMockUid(mockUid);
   }
+
+  // Check for cold-start deep link or shared location intent
+  if (!kIsWeb) {
+    try {
+      const channel = MethodChannel('com.staydriv.app/location_share');
+      final initialLink = await channel.invokeMethod<String>('getInitialSharedLocation');
+      if (initialLink != null && initialLink.trim().isNotEmpty) {
+        await LocationShareService.savePendingLink(initialLink.trim());
+      }
+    } catch (e) {
+      debugPrint('Could not check initial link in main(): $e');
+    }
+  }
   
   runApp(StayDrivApp(
     isLoggedIn: isLoggedIn,
@@ -127,7 +163,7 @@ void main() async {
   ));
 }
 
-class StayDrivApp extends StatelessWidget {
+class StayDrivApp extends StatefulWidget {
   final bool isLoggedIn;
   final String userName;
   final String userRole;
@@ -144,17 +180,74 @@ class StayDrivApp extends StatelessWidget {
   });
 
   @override
+  State<StayDrivApp> createState() => _StayDrivAppState();
+}
+
+class _StayDrivAppState extends State<StayDrivApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+
+    // Initialize Push Notifications
+    PushNotificationService().init(
+      role: widget.userRole,
+      phone: widget.phoneNumber,
+    );
+
+    NotificationInboxService().init(
+      role: widget.userRole,
+      phone: widget.phoneNumber,
+    );
+
+    PushNotificationService.inAppNotificationNotifier.addListener(_handleInAppNotification);
+  }
+
+  void _handleInAppNotification() {
+    final item = PushNotificationService.inAppNotificationNotifier.value;
+    if (item != null) {
+      NotificationInboxService().fetchInbox();
+      final ctx = rootScaffoldMessengerKey.currentContext;
+      if (ctx != null) {
+        PushNotificationService.showInAppBanner(ctx, item);
+      }
+      PushNotificationService.inAppNotificationNotifier.value = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    PushNotificationService.inAppNotificationNotifier.removeListener(_handleInAppNotification);
+    WidgetsBinding.instance.removeObserver(this);
+    FloatingWidgetService.hide();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.hidden) {
+      FloatingWidgetService.syncWithCurrentState(
+        isMinimizing: true,
+        userRole: widget.userRole,
+      );
+    } else if (state == AppLifecycleState.resumed) {
+      FloatingWidgetService.hide();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       title: 'StayDriv',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
-      home: isLoggedIn
+      home: widget.isLoggedIn
           ? HomeScreen(
-              userName: userName,
-              userRole: userRole,
-              phoneNumber: phoneNumber,
-              selectedVehicle: selectedVehicle,
+              userName: widget.userName,
+              userRole: widget.userRole,
+              phoneNumber: widget.phoneNumber,
+              selectedVehicle: widget.selectedVehicle,
             )
           : const LoginScreen(),
     );

@@ -1,0 +1,47 @@
+[
+  {
+    "_id": "6abe922655e9eb742354c3a0",
+    "refundId": "REF-801201",
+    "refundType": "customer",
+    "bookingId": "BK-10822",
+    "userName": "Priya Verma",
+    "userPhone": "9811223344",
+    "amount": "₹240",
+    "paymentMethod": "Razorpay UPI",
+    "transactionId": "TXN-RZP-9921",
+    "reason": "Pilot unable to reach pickup location due to puncture; auto-cancelled after customer paid.",
+    "status": "pending",
+    "createdAt": "2026-10-01T14:02:30.066Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe922655e9eb742354c3a1",
+    "refundId": "REF-801202",
+    "refundType": "customer",
+    "bookingId": "BK-10780",
+    "userName": "Karthik Rao",
+    "userPhone": "9822334455",
+    "amount": "₹139",
+    "paymentMethod": "Online / Card",
+    "transactionId": "TXN-RZP-8832",
+    "reason": "Customer cancelled within 1 min of driver assignment, advance fee refund due.",
+    "status": "pending",
+    "createdAt": "2026-10-01T11:02:30.066Z",
+    "__v": 0
+  },
+  {
+    "_id": "6abe922655e9eb742354c3a2",
+    "refundId": "REF-801203",
+    "refundType": "pilot",
+    "bookingId": "BK-10790",
+    "userName": "Mahender Rao (Pilot)",
+    "userPhone": "9849012345",
+    "amount": "₹50",
+    "paymentMethod": "Direct Wallet Credit",
+    "transactionId": "TXN-PLT-5512",
+    "reason": "Customer cancelled 7 minutes after pilot reached pickup point; cancellation compensation due to pilot.",
+    "status": "pending",
+    "createdAt": "2026-10-01T13:02:30.066Z",
+    "__v": 0
+  }
+]

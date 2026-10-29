@@ -83,6 +83,7 @@ module "rds_mysql" {
   database_name         = var.database_name
   db_username           = var.db_username
   multi_az              = var.multi_az
+  enable_rds            = var.enable_rds
   common_tags           = local.common_tags
 }
 

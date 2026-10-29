@@ -1,0 +1,10 @@
+{
+  "commands": [
+    "aws s3 cp s3://staydriv-prod-assets-60345301/deploy/staydriv_core_backend.tar.gz /tmp/staydriv_core_backend.tar.gz",
+    "tar -xzf /tmp/staydriv_core_backend.tar.gz -C /opt/staydriv/",
+    "sudo systemctl restart staydriv",
+    "sleep 2",
+    "sudo systemctl is-active staydriv",
+    "curl -s http://127.0.0.1:3000/api/health"
+  ]
+}

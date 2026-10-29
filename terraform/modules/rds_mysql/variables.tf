@@ -84,3 +84,10 @@ variable "common_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "enable_rds" {
+  description = "Enable or disable RDS MySQL deployment"
+  type        = bool
+  default     = false
+}
+

@@ -1,1 +1,14 @@
-{"app_name":"staydriv_app","version":"1.0.23","build_number":"23","package_name":"staydriv_app"}
+{
+  "version": "1.0.115",
+  "buildNumber": 115,
+  "releaseDate": "2026-10-28T02:49:00.000Z",
+  "features": [
+    "Pilot Duty ON / DUTY OFF Toggle: Clearly visible and functional CupertinoSwitch toggle on Pilot Console home screen",
+    "Authoritative Admin Booking Access Sync: Connected Pilot Console and Admin Console to unified database source of truth",
+    "Real-time Permission & Duty Enforcement: Real-time socket events for duty and booking access status changes with optimistic UI and rollback protection",
+    "₹20 Daily Pilot Plan & 100% Earnings: 100% ride & food delivery earnings and 0% StayDriv platform commission",
+    "Automated Eligibility Checks: Strict verification including active unexpired ₹20 plan, approved status, verified vehicle, and active duty before dispatching bookings"
+  ],
+  "apkUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.apk",
+  "aabUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.aab"
+}

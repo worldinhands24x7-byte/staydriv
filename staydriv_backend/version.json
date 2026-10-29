@@ -1,0 +1,14 @@
+{
+  "version": "1.0.114",
+  "buildNumber": 114,
+  "releaseDate": "2026-10-28T00:40:00.000Z",
+  "features": [
+    "₹20 Daily Pilot Plan & 100% Earnings: Introduced ₹20 daily plan for eligible pilots with 100% ride & food delivery earnings and 0% StayDriv platform commission",
+    "Admin-Controlled DUTY ON / DUTY OFF: Interconnected real-time duty status between Pilot Console, Admin Console, and dispatch engine with exclusive admin authority",
+    "Pilot Duty Status Notices: Integrated authoritative DUTY ON and DUTY OFF operational notices and 100% earnings guarantee statement",
+    "Automated Eligibility Checks: Strict 5-point verification including active unexpired ₹20 plan, approved status, verified vehicle, and active duty before dispatching bookings or food orders",
+    "Unified Core Architecture: Preserved background GPS tracking, Socket.IO connections, incoming ride buzzer, and clean circular Pilot home launcher"
+  ],
+  "apkUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.apk",
+  "aabUrl": "https://dk60tgl9yds4p.cloudfront.net/staydriv-combined.aab"
+}
